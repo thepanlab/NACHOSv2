@@ -1,0 +1,16 @@
+{
+  "data_path": "results/distributed/pig_kidney_subset_parallel/training_results",
+  "matrices_path": "results/processed_output/confusion_matrix_many/pig_kidney_subset",
+  "means_output_path": "results/processed_output/confusion_matrix_many/pig_kidney_subset",
+
+  "round_to": 0,
+
+  "label_types": {
+    "cortex": 0, 
+    "medulla": 1,
+    "pelvis": 2
+  },
+
+  "is_outer": false
+
+}

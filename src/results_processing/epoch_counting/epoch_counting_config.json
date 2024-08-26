@@ -1,0 +1,6 @@
+{
+  "data_path": "../results/training/seq_outer_10/training_results",
+  "output_path": "../results/epoch_counting/seq_outer_10",
+
+  "is_outer": true
+}

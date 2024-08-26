@@ -1,0 +1,36 @@
+{
+    "hyperparameters": {
+        "batch_size": 32,
+        "channels": 1,
+        "cropping_position": [40, 10],
+        "decay": 0.001,
+        "do_cropping": false,
+        "epochs": 20,
+        "learning_rate": 0.0005,
+        "momentum": 0.9,
+	    "bool_nesterov": true,
+        "patience": 10
+    },
+
+    "data_input_directory": "/ssd/sly/CW_treated_tiff",
+    "output_path": "results/distributed/3D_pig_kidney_subset_parallel",
+    "job_name": "3D_pig_kidney_subset",
+    
+    "k_epoch_checkpoint_frequency": 1,
+
+    "shuffle_the_images": true,
+    "shuffle_the_folds": false,
+    "seed": 9,
+
+    "class_names": ["cortex", "medulla", "pelvis-calyx"],
+    "selected_model_name": "Conv3DModel",
+    "metrics": [],
+    
+    "subject_list": ["Kidney_01", "Kidney_02", "Kidney_03", "Kidney_04", "Kidney_05", "Kidney_06", "Kidney_07", "Kidney_08", "Kidney_09", "Kidney_10"],
+    "test_subjects": ["Kidney_04"],
+    "validation_subjects": ["Kidney_01", "Kidney_02", "Kidney_03", "Kidney_04", "Kidney_05", "Kidney_06", "Kidney_07", "Kidney_08", "Kidney_09", "Kidney_10"],
+    
+    "image_size": [185, 210, 185],
+    "target_height": 301,
+    "target_width": 235
+}

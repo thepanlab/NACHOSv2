@@ -1,0 +1,27 @@
+{
+    "prediction_output": "../results/results_processing/prediction/mpi_inner_10",
+    "test_subject_data_input": {
+        "k1": "../results/training/mpi_inner_10/training_results/Test_subject_k1"
+    },
+    "model_input": {
+        "Inception": "../results/training/mpi_inner_10/training_results/Test_subject_k10/config_mpi_inner_10_test_k10_val_k1_InceptionV3/InceptionV3_0_test_k10_val_k1/model/InceptionV3_0_test_k10_val_k1_InceptionV3.h5"
+    },
+
+    "batch_size": 8,
+    "output_tabled_info": true,
+    "use_true_labels": true,
+
+    "image_settings": {
+        "mean": 0,
+        "use_mean": "false",
+        "class_names": ["cortex","medulla","pelvis"],
+        "channels": 1,
+        "do_cropping" : "false",
+        "offset_height": 0,
+        "offset_width": 0,
+        "target_height": 301,
+        "target_width": 235
+    },
+
+    "is_outer": false
+}
