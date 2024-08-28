@@ -1,7 +1,6 @@
 import argparse
-from contextlib import redirect_stderr
-import io
 import json
+import sys
 from termcolor import colored
 
 
@@ -16,33 +15,52 @@ def parse_json(default_config_file_name):
     # Parses the command line
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-j', '--json', '--load_json',
-        help='Load settings from a JSON file.',
-        required = False
+        '--f', '--file', '--config_file',
+        dest = 'json_file',
+        help = 'Load settings from a JSON file.',
+        required = False,
+        default = None
     )
+    
+    args = parser.parse_args()
     
     # Tries to read the arguments
     try:
-        shh = io.StringIO()
         
-        with redirect_stderr(shh):
-            args = parser.parse_args()
+        # If a file is given, uses it
+        if args.json_file:
             
-        if args.json is None:
-            raise Exception(colored("You shouldn't see this...", 'red'))
+            configuration_file = args.json_file
+            
         
-        configuration_file = args.json
+        # Else, ask for a file
+        else:
+            
+            configuration_file = prompt_json(default_config_file_name)
         
+        
+        # Opens the configuration file
+        with open(configuration_file) as config:
+            
+            return json.load(config)
     
-    except:
-        
-        configuration_file = prompt_json(default_config_file_name)
     
-    
-    # Opens the configuration file
-    with open(configuration_file) as config:
+    # Desl ith the exceptions
+    except argparse.ArgumentError:
+        print(colored("Error: Invalid argument provided.", 'red'))
+        sys.exit(1)
         
-        return json.load(config)
+    except FileNotFoundError:
+        print(colored(f"Error: Configuration file '{configuration_file}' not found.", 'red'))
+        sys.exit(1)
+        
+    except json.JSONDecodeError:
+        print(colored(f"Error: '{configuration_file}' is not a valid JSON file.", 'red'))
+        sys.exit(1)
+        
+    except Exception as e:
+        print(colored(f"An unexpected error occurred: {str(e)}", 'red'))
+        sys.exit(1)
 
 
 
