@@ -42,12 +42,8 @@ def sequential_processing(execution_device, list_of_configs, list_of_configs_pat
 
 
         # Creates the path to the data CSV files
+        data_path = current_configuration["csv_input_directory"]
         
-        if is_3d:
-            data_path = "data/3D_kidney_csv" # TODO
-        
-        else:
-            data_path = "data/2D_kidney_csv" # TODO
         
         # Creates the normalization
         normalize_transform = None

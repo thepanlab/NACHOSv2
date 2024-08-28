@@ -13,6 +13,7 @@
     },
 
     "data_input_directory": "/home/pcallec/mif_outer/data/pig_kidney_subset",
+    "csv_input_directory": "data/2D_kidney_csv",
     "output_path": "results/distributed/pig_kidney_subset_parallel",
     "job_name": "pig_kidney_subset",
     

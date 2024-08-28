@@ -13,6 +13,7 @@
     },
 
     "data_input_directory": "/ssd/sly/CW_treated_tiff",
+    "csv_input_directory": "data/3D_kidney_csv",
     "output_path": "results/distributed/3D_pig_kidney_subset_parallel",
     "job_name": "3D_pig_kidney_subset",
     

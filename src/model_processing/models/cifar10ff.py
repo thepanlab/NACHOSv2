@@ -3,9 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-input_size = 3*32*32
-
-
 class CIFAR10FF(nn.Module):
     def __init__(self, configuration_file):
         super(CIFAR10FF, self).__init__()

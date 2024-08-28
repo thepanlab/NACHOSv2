@@ -1,0 +1,81 @@
+{
+    "hyperparameters": {
+        "batch_size": 32,
+        "channels": 1,
+        "cropping_position": [
+            40,
+            10
+        ],
+        "decay": 0.01,
+        "do_cropping": false,
+        "epochs": 20,
+        "learning_rate": 0.01,
+        "momentum": 0.9,
+        "bool_nesterov": true,
+        "patience": 10
+    },
+    "data_input_directory": "/data/cifar10_images",
+    "csv_input_directory": "data/cifar10_csv",
+    "output_path": "results/distributed/cifar_test",
+    "job_name": "cifar_test",
+    "k_epoch_checkpoint_frequency": 1,
+    "shuffle_the_images": true,
+    "shuffle_the_folds": false,
+    "seed": 9,
+    "class_names": [
+        "airplane",
+        "automobile",
+        "bird",
+        "cat",
+        "deer",
+        "dog",
+        "frog",
+        "horse",
+        "ship",
+        "truck"
+    ],
+    "selected_model_name": "Cifar10FF",
+    "metrics": [],
+    "subject_list": [
+        "cifar_1",
+        "cifar_2",
+        "cifar_3",
+        "cifar_4",
+        "cifar_5",
+        "cifar_6",
+        "cifar_7",
+        "cifar_8",
+        "cifar_9",
+        "cifar_10"
+    ],
+    "test_subjects": [
+        "cifar_1",
+        "cifar_2",
+        "cifar_3",
+        "cifar_4",
+        "cifar_5",
+        "cifar_6",
+        "cifar_7",
+        "cifar_8",
+        "cifar_9",
+        "cifar_10"
+    ],
+    "validation_subjects": [
+        "cifar_1",
+        "cifar_2",
+        "cifar_3",
+        "cifar_4",
+        "cifar_5",
+        "cifar_6",
+        "cifar_7",
+        "cifar_8",
+        "cifar_9",
+        "cifar_10"
+    ],
+    "image_size": [
+        32,
+        32
+    ],
+    "target_height": 301,
+    "target_width": 235
+}
