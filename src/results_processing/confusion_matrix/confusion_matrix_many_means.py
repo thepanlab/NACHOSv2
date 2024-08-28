@@ -10,7 +10,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 sys.path.append(PROJECT_ROOT)
 import setup_paths
 
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def get_input_matrices(matrices_path, is_outer):

@@ -28,13 +28,15 @@ Note: Currently, `learning_curve`, `class_recall`, and `confusion_matrix` have b
 
 ## Using Processing Scripts
 
-To use a processing script, navigate to its directory and run it with Python. For example:
+To use a processing script, navigate to its directory and run it with Python. You can now specify the configuration file directly in the command line using the `--f` argument. For example:
 
 ```bash
-python3 src/results_processing/learning_curve/learning_curve_many.py
+python3 src/results_processing/learning_curve/learning_curve_many.py --f path/to/your/config.json
 ```
 
-Each script requires its own configuration file, typically located in the same directory as the script.
+You can also use `--file` or `--config_file` as alternative flags to specify the configuration file.
+
+If you don't specify a configuration file in the command line, the script will prompt you to enter the path to a configuration file. If you don't provide a file at this prompt, the script will use the default configuration file.
 
 ### Configuration Files
 

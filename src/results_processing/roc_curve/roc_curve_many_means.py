@@ -7,7 +7,7 @@ from termcolor import colored
 
 from results_processing.roc_curve.roc_curve import get_data
 from results_processing.roc_curve.roc_curve_many import find_directories
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def run_program(config):

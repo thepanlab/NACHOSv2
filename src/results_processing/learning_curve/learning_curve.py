@@ -7,7 +7,7 @@ import setup_paths
 
 from src.results_processing.learning_curve.create_graphs import create_graphs
 from src.results_processing.learning_curve.learning_curve_utils import file_verification
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def main(config = None):

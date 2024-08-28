@@ -1,4 +1,4 @@
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 from termcolor import colored
 from src.file_processing import path_getter
 import pandas as pd

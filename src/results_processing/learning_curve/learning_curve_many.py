@@ -7,7 +7,7 @@ import setup_paths
 
 from src.results_processing.learning_curve import learning_curve
 from src.file_processing import path_getter
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 

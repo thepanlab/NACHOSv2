@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from results_processing.tabled_prediction_info import tabled_prediction_info
 from src.image_processing.image_parser import *
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def get_images(data_input, class_names):

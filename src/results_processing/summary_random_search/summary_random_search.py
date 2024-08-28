@@ -6,7 +6,7 @@ from termcolor import colored
 
 from results_processing.epoch_counting import epoch_counting
 from results_processing.metrics_table import metrics_table
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def convert_metrics_table(output_path, output_filename):

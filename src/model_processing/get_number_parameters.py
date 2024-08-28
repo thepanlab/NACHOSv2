@@ -7,7 +7,7 @@ sys.path.append(PROJECT_ROOT)
 import setup_paths
 
 from src.model_processing.create_model import create_training_model
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def get_number_parameters(model):

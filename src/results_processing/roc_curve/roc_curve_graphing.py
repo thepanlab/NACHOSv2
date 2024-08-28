@@ -1,6 +1,6 @@
 from . import roc_curve
 from src.file_processing import path_getter
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def run_program(args):

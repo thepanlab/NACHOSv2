@@ -7,7 +7,7 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.preprocessing import label_binarize
 from termcolor import colored
 
-from src.results_processing.results_processing_utils import get_config
+from src.results_processing.results_processing_utils import get_configuration_file
 from src.results_processing.results_processing_utils.get_data import get_data
 
 
@@ -108,7 +108,7 @@ def main(config = None):
 
     # Obtaining dictionary of configurations from json file
     if config is None:
-        config = get_config.parse_json('./results_processing/roc_curve/roc_curve_config.json')
+        config = get_configuration_file.parse_json('./results_processing/roc_curve/roc_curve_config.json')
 
     # Check that the output path exists
     output_path = config['output_path']

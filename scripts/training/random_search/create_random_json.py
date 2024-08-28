@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 # https://www.geeksforgeeks.org/reading-and-writing-json-to-a-file-in-python/#
 

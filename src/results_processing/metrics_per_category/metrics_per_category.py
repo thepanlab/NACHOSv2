@@ -8,7 +8,7 @@ from sklearn.metrics import recall_score
 from termcolor import colored
 from tqdm import tqdm
 
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 from src.utils.predicted_formatter.predicted_formatter import main as reformat
 from src.utils.predicted_formatter.predicted_formatter import translate_file
 from src.utils.predicted_formatter.predicted_formatter import write_file

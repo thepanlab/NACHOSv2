@@ -8,7 +8,7 @@ from termcolor import colored
 import tensorflow as tf                 # TODO Convert to PyTorch
 from tensorflow import keras
 
-from src.results_processing.results_processing_utils import get_config
+from src.results_processing.results_processing_utils import get_configuration_file
 
 
 def get_images(addr):
@@ -231,7 +231,7 @@ def main(config = None):
     
     # Obtaining dictionary of configurations from the json file
     if config is None:
-        config = get_config.parse_json('./results_processing/grad_cam/grad_cam_config.json')
+        config = get_configuration_file.parse_json('./results_processing/grad_cam/grad_cam_config.json')
 
     # Loads the data needed for the program
     model = load_data(config["input_model_address"])

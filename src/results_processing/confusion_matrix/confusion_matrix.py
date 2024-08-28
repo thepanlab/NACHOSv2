@@ -9,7 +9,7 @@ sys.path.append(PROJECT_ROOT)
 import setup_paths
 
 from src.results_processing.confusion_matrix.confusion_matrix_utils import check_and_convert_labels, check_and_convert_values
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 from src.results_processing.results_processing_utils.get_data import get_data
 
 

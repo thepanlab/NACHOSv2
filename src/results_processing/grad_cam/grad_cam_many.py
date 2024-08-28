@@ -5,7 +5,7 @@ from termcolor import colored
 
 from results_processing.grad_cam import grad_cam
 from src.image_processing.image_getter import get_image_path_list
-from src.results_processing.results_processing_utils import get_config
+from src.results_processing.results_processing_utils import get_configuration_file
 
 
 def filter_file_list(path_list, query):
@@ -190,7 +190,7 @@ def main(config=None):
     
     # Obtaining dictionary of configurations from the json file
     if config is None:
-        config = get_config.parse_json('./results_processing/grad_cam/grad_cam_many_config.json')
+        config = get_configuration_file.parse_json('./results_processing/grad_cam/grad_cam_many_config.json')
 
     # Read in and filter the image paths to include only the relevant items
     img_addrs = filter_images(config["input_directory_or_tabled_info"], config["query"])

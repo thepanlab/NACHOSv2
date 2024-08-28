@@ -9,7 +9,7 @@ import setup_paths
 
 from src.file_processing.file_getter import get_subfolder_files
 from src.results_processing.confusion_matrix import confusion_matrix
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def find_directories(data_path, is_outer):

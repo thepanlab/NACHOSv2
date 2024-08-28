@@ -10,7 +10,7 @@ import setup_paths
 
 from src.results_processing.confusion_matrix.get_input_matrices import get_input_matrices
 from src.results_processing.confusion_matrix.confusion_matrix_utils import get_matrices_of_mode_shape
-from src.results_processing.results_processing_utils.get_config import parse_json
+from src.results_processing.results_processing_utils.get_configuration_file import parse_json
 
 
 def prepare_matrix_dataframes(labels):
