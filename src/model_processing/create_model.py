@@ -4,7 +4,6 @@ import sys
 from src.model_processing.models.cifar10ff import CIFAR10FF
 from src.model_processing.models.conv3D import Conv3DModel
 from src.model_processing.models.inceptionv3 import InceptionV3
-from src.model_processing.models.simple3DCNN import Simple3DCNN
 from src.model_processing.models.resnet3D import ResNet3D
 from src.model_processing.models.resnet18_3D import ResNet18_3D
 
@@ -16,7 +15,6 @@ models_dictionary = {
     "InceptionV3": InceptionV3,
     "ResNet18-3D": ResNet18_3D,
     "ResNet3D": ResNet3D,
-    "Simple3DCNN": Simple3DCNN,
 }
 
 
