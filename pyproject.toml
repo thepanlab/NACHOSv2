@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "NACHOS_v2"
+version = "2.0"
+requires-python = ">=3.8"
+authors = [
+  {name = "Paul Calle", email = "pcallec@ou.edu",
+   name = "PanLab"}
+   ]
+description = "NACHOS is a framework that uses Nested Cross-Validation, HPO, and HPC."
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = [
+    'deep learning',
+    'medical imaging'
+]
+
+
+[project.urls]
+Homepage = "https://github.com/thepanlab/NACHOS_v2"
+Repository = "https://github.com/thepanlab/NACHOS_v2"
+
+[project.scripts]
