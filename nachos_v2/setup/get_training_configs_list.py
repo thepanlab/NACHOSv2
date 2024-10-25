@@ -2,7 +2,7 @@ import json
 import os
 from termcolor import colored
 
-from src.setup.command_line_parser import DEFAULT_CONFIGURATION_PATH
+from nachos_v2.setup.command_line_parser import DEFAULT_CONFIGURATION_PATH
     
     
 def get_training_configs_list(configuration_file_path, configuration_folder_path):
@@ -23,7 +23,7 @@ def get_training_configs_list(configuration_file_path, configuration_folder_path
     
     
     # Checks for command line errors
-    if not (configuration_file_path or configuration_folder_path): # Shouldn't bu used because a default configuration folder path exists
+    if not (configuration_file_path or configuration_folder_path): # Shouldn't be used because a default configuration folder path exists
         raise Exception(colored("Error: no configuration file or folder specified.", 'red'))
     
     if (configuration_file_path and configuration_folder_path) and configuration_folder_path != DEFAULT_CONFIGURATION_PATH:
@@ -41,8 +41,8 @@ def get_training_configs_list(configuration_file_path, configuration_folder_path
             list_of_configs_paths.append(configuration_file_path)
     
     
-    # If a folder is specified, reads all the files in it and returns a list of datas
-    # If neither file or folder specify, should go here with the default configuration folder path
+    # If a folder is specified, reads all the files in it and returns a list of data
+    # If neither file or folder is specified, should go here with the default configuration folder path
     else:
         
         if not os.path.isdir(configuration_folder_path): # Checks if the folder exists
