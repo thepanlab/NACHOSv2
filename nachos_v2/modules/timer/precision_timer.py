@@ -37,7 +37,7 @@ class PrecisionTimer:
         if self.is_running: # If the timer is running, stops it
             self.stop_timer()
 
-        self.precise_elapsed_time = self.end_time - self.start_time # Caculates the elapsed time
+        self.precise_elapsed_time = self.end_time - self.start_time # Calculates the elapsed time
         
         return self.precise_elapsed_time
         

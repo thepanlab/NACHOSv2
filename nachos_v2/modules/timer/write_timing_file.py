@@ -1,8 +1,6 @@
 import os
 from termcolor import colored
 
-from src.modules.timer.precision_timer import *
-
 
 def write_timing_file(timer, directory_path, is_verbose_on = False):
     """
