@@ -1,14 +1,14 @@
 from termcolor import colored
 
-from scripts.training.training_sequential.sequential_subject_loop import sequential_subject_loop
-from src.data_processing.check_unique_subjects import check_unique_subjects
-from src.data_processing.normalize import normalize
-from src.data_processing.read_data_csv import read_data_csv
-from src.log_processing.read_log import read_item_list_in_log
-from src.log_processing.write_log import write_log_to_file
-from src.setup.check_configuration_types import check_configuration_types
-from src.setup.define_dimensions import define_dimensions
-from src.data_processing.get_list_of_epochs import get_list_of_epochs
+from nachosv2.training.training_sequential.sequential_subject_loop import sequential_subject_loop
+from nachosv2.data_processing.check_unique_subjects import check_unique_subjects
+from nachosv2.data_processing.normalize import normalize
+from nachosv2.data_processing.read_data_csv import read_data_csv
+from nachosv2.log_processing.read_log import read_item_list_in_log
+from nachosv2.log_processing.write_log import write_log_to_file
+from nachosv2.setup.check_configuration_types import check_configuration_types
+from nachosv2.setup.define_dimensions import define_dimensions
+from nachosv2.data_processing.get_list_of_epochs import get_list_of_epochs
 
 
 def sequential_processing(execution_device, list_of_configs, list_of_configs_paths, is_outer_loop, is_verbose_on = False):

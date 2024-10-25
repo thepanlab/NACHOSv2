@@ -2,18 +2,13 @@ import os
 import sys
 from termcolor import colored
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-sys.path.append(PROJECT_ROOT)
-import setup_paths
-
-from scripts.training.training_sequential.sequential_processing import sequential_processing
-from src.modules.timer.precision_timer import PrecisionTimer
-from src.modules.timer.write_timing_file import write_timing_file
-from src.output_processing.memory_leak_check import initiate_memory_leak_check, end_memory_leak_check
-from src.setup.command_line_parser import command_line_parser
-from src.setup.define_execution_device import define_execution_device
-from src.setup.get_training_configs_list import get_training_configs_list
-
+from nachos_v2.training.training_sequential.sequential_processing import sequential_processing
+from nachos_v2.modules.timer.precision_timer import PrecisionTimer
+from nachos_v2.modules.timer.write_timing_file import write_timing_file
+from nachos_v2.output_processing.memory_leak_check import initiate_memory_leak_check, end_memory_leak_check
+from nachos_v2.setup.command_line_parser import command_line_parser
+from nachos_v2.setup.define_execution_device import define_execution_device
+from nachos_v2.setup.get_training_configs_list import get_training_configs_list
 
 """
 Green: indications about where is the training
@@ -24,12 +19,7 @@ Red: errors, fatal or not
 """
 
 
-# Sequential Inner Loop
-if __name__ == "__main__":
-    """
-    Called when this file is run.
-    """   
-    
+def run_training():
     # Parses the command line arguments
     command_line_arguments = command_line_parser()
     
@@ -79,3 +69,8 @@ if __name__ == "__main__":
     # Creates a file and writes elapsed time in it
     timing_directory_path = "../results/training_timings" # The directory's path where to put the timing file
     write_timing_file(all_programm_timer, timing_directory_path, is_verbose_on)
+
+
+# Sequential Inner Loop
+if __name__ == "__main__":
+    run_training()

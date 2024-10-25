@@ -2,7 +2,7 @@ import json
 import os
 from termcolor import colored
 
-from nachos_v2.setup.command_line_parser import DEFAULT_CONFIGURATION_PATH
+from nachosv2.setup.command_line_parser import DEFAULT_CONFIGURATION_PATH
     
     
 def get_training_configs_list(configuration_file_path, configuration_folder_path):
