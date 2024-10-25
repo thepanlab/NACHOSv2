@@ -2,13 +2,13 @@ import os
 import sys
 from termcolor import colored
 
-from nachos_v2.training.training_sequential.sequential_processing import sequential_processing
-from nachos_v2.modules.timer.precision_timer import PrecisionTimer
-from nachos_v2.modules.timer.write_timing_file import write_timing_file
-from nachos_v2.output_processing.memory_leak_check import initiate_memory_leak_check, end_memory_leak_check
-from nachos_v2.setup.command_line_parser import command_line_parser
-from nachos_v2.setup.define_execution_device import define_execution_device
-from nachos_v2.setup.get_training_configs_list import get_training_configs_list
+from nachosv2.training.training_sequential.sequential_processing import sequential_processing
+from nachosv2.modules.timer.precision_timer import PrecisionTimer
+from nachosv2.modules.timer.write_timing_file import write_timing_file
+from nachosv2.output_processing.memory_leak_check import initiate_memory_leak_check, end_memory_leak_check
+from nachosv2.setup.command_line_parser import command_line_parser
+from nachosv2.setup.define_execution_device import define_execution_device
+from nachosv2.setup.get_training_configs_list import get_training_configs_list
 
 """
 Green: indications about where is the training
