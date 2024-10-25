@@ -8,6 +8,40 @@ DEFAULT_VERBOSE = False
 DEFAULT_EXECUTION_DEVICE = "cuda:1"
 
 
+def _command_parser(parser):
+    """
+    Actually parses the arguments.
+    
+    Agrs:
+        parser (ArgumentParser): The parser.
+    """
+    
+    # Definition of all arguments
+    parser.add_argument( # Allows to specify the config file in command line
+        '--file', '--config_file',
+        type = str, default = None, required = False,
+        help = 'Load settings from a JSON file.'
+    )
+    
+    parser.add_argument( # Allows to specify the config folder in command line
+        '--folder', '--config_folder',
+        type = str, default = DEFAULT_CONFIGURATION_PATH, required = False,
+        help = 'Load settings from a JSON folder.'
+    )
+    
+    parser.add_argument( # Allows to activate verbose mode in command line
+        '--verbose', '--v',
+        action = 'store_true', default = DEFAULT_VERBOSE, required = False,
+        help = 'Activate verbose mode if specified'
+    )
+    
+    parser.add_argument( # Allows to specify the execution device in command line
+        '--device', '--d',
+        type = str, default = DEFAULT_EXECUTION_DEVICE, required = False,
+        help = 'Change the execution device'
+    )
+    
+    
 def command_line_parser():
     """
     Parses the command line.
@@ -50,35 +84,3 @@ def command_line_parser():
 
 
 
-def _command_parser(parser):
-    """
-    Actually parses the arguments.
-    
-    Agrs:
-        parser (ArgumentParser): The parser.
-    """
-    
-    # Definition of all arguments
-    parser.add_argument( # Allows to specify the config file in command line
-        '--file', '--config_file',
-        type = str, default = None, required = False,
-        help = 'Load settings from a JSON file.'
-    )
-    
-    parser.add_argument( # Allows to specify the config folder in command line
-        '--folder', '--config_folder',
-        type = str, default = DEFAULT_CONFIGURATION_PATH, required = False,
-        help = 'Load settings from a JSON folder.'
-    )
-    
-    parser.add_argument( # Allows to activate verbose mode in command line
-        '--verbose', '--v',
-        action = 'store_true', default = DEFAULT_VERBOSE, required = False,
-        help = 'Activate verbose mode if specified'
-    )
-    
-    parser.add_argument( # Allows to specify the execution device in command line
-        '--device', '--d',
-        type = str, default = DEFAULT_EXECUTION_DEVICE, required = False,
-        help = 'Change the execution device'
-    )
