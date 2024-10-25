@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nachosv2"
 version = "2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   {name = "Paul Calle", email = "pcallec@ou.edu"},
   {name = "PanLab"}
@@ -26,7 +26,7 @@ Repository = "https://github.com/thepanlab/NACHOS_v2"
 [project.scripts]
 
 [tool.setuptools.packages.find]
-where = ["nachosv2"]  # list of folders that contain the packages (["."] by default)
-# include = ["my_package*"]  # package names should match these glob patterns (["*"] by default)
-exclude = ["tests*"]  # exclude packages matching these glob patterns (empty by default)
+# where = ["."]  # list of folders that contain the packages (["."] by default)
+include = ["nachosv2*"]  # package names should match these glob patterns (["*"] by default)
+exclude = ["nachosv2.tests*"]  # exclude packages matching these glob patterns (empty by default)
 namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
