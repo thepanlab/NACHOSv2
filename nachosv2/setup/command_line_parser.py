@@ -8,9 +8,9 @@ DEFAULT_VERBOSE = False
 DEFAULT_EXECUTION_DEVICE = "cuda:1"
 
 
-def _command_parser(parser):
+def _add_arguments(parser):
     """
-    Actually parses the arguments.
+    Given an existing parActually parses the arguments.
     
     Agrs:
         parser (ArgumentParser): The parser.
@@ -42,9 +42,9 @@ def _command_parser(parser):
     )
     
     
-def command_line_parser():
+def parse_command_line_args():
     """
-    Parses the command line.
+    Parses command-line arguments.
     
     Returns:
         recognized_arguments (dict): The dictionnary of all recognized arguments
@@ -54,33 +54,24 @@ def command_line_parser():
     # Instantiates the parser object to add it new possible arguments
     parser = argparse.ArgumentParser()
     
-    
     # Actually parses the arguments
-    _command_parser(parser)
-    
+    _add_arguments(parser)
     
     # Splits the recognized arguments from the unrecognized ones
     recognized_arguments, unrecognized_arguments = parser.parse_known_args()
         # recognized_arguments is a namespace of the recognized arguments
         # unrecognized_arguments is a list of the unrecognized arguments
 
-
     # Converts the namespace into a dictionary for easier use
     recognized_arguments = vars(recognized_arguments)
     
-
     # Warns for every unrecognized arguments
     if unrecognized_arguments:
         print(colored(f"Warning: unrecognized argument(s): {unrecognized_arguments}.", 'yellow'))
-
     
     # Prints if verbose mode is activated
     if recognized_arguments['verbose']:
         print(colored("Verbose mode activated.", 'cyan'))
-
     
     # Returns the recognized arguments
     return recognized_arguments
-
-
-
