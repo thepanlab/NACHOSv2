@@ -1,44 +1,33 @@
 from termcolor import colored
-
 import torch
 
 
-def define_execution_device(execution_device_name):
+def define_execution_device(device_name):
     '''
     Defines the device where the program will be running.
     
     Args:
-        execution_device_name (str): The name of the execution device wanted
+        device_name (str): The name of the execution device wanted
         
     Returns:
         execution_device (str): The name of the execution device that will be use
     '''
     
-    printing_color = 'green' # The default color for printing. Used if everything is good
+    print_color = 'green' # The default color for printing. Used if everything is good
     
-    
+    list_cuda_devices_allowed = ["cuda:0", "cuda:1"]
     # If CUDA is asked
-    if execution_device_name == "cuda:0" or "cuda:1":
-        
-        # Checks if CUDA is available
-        if torch.cuda.is_available():
-            
-            if execution_device_name == "cuda:0": # If GPU0 is asked
-                torch.cuda.set_device(0) # Sets the execution device 
-                
-            elif execution_device_name == "cuda:1": # If GPU1 is asked
-                torch.cuda.set_device(1) # Sets the execution device
-            
-            execution_device = execution_device_name # Sets the execution device's name
-            
-            
-        else: # If CUDA is not available
-            print(colored("Non-fatal error: CUDA non available"), 'red')
-            execution_device = "cpu" # Sets the execution device's name
-            printing_color = 'red' # Change the prinintg color
+    # Check if a CUDA device is requested and available
+    if device_name in list_cuda_devices_allowed and torch.cuda.is_available():
+        torch.cuda.device(device_name)  # Set the specified CUDA device
+        execution_device = device_name  # Set execution device to requested CUDA device
+    else:
+        print(colored("Non-fatal error: CUDA not available, switching to CPU.", 'red'))
+        execution_device = "cpu"  # Fallback to CPU
+        print_color = 'red'
     
 
     # Prints which execution device will be used
-    print(colored(f"The model will be running on {execution_device}", printing_color))
+    print(colored(f"The model will be running on {execution_device}", print_color))
     
     return execution_device
