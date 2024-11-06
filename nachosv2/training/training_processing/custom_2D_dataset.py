@@ -3,8 +3,8 @@ import skimage.transform
 
 from torch.utils.data import Dataset
 
-from src.image_processing.image_crop import crop_image
-from src.image_processing.image_transformations import image_transformation_2D
+from nachosv2.image_processing.image_crop import crop_image
+from nachosv2.image_processing.image_transformations import image_transformation_2D
 
 
 class Custom2DDataset(Dataset):

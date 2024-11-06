@@ -1,6 +1,6 @@
 from termcolor import colored
 
-from src.data_processing.fold_generator import generate_folds
+from nachosv2.data_processing.fold_generator import generate_folds
 
 
 class TrainingVariables:

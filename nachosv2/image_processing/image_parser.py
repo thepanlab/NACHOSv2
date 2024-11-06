@@ -1,8 +1,8 @@
 from termcolor import colored
 
-from src.image_processing.image_utils import *
-from src.file_processing.file_name_utils import get_file_name, remove_file_extension
-from src.image_processing.image_crop import crop_image
+from nachosv2.image_processing.image_utils import *
+from nachosv2.file_processing.file_name_utils import get_file_name, remove_file_extension
+from nachosv2.image_processing.image_crop import crop_image
 
 
 def parse_image(filename, class_names, channels, do_cropping, offset_height, offset_width, target_height, target_width, label_position=None, use_labels=True): 

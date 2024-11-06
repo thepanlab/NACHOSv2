@@ -3,15 +3,15 @@ from termcolor import colored
 import torch.nn as nn
 import torch.optim as optim
 
-from src.log_processing.checkpointer import *
-from src.image_processing.image_crop import create_crop_box
-from src.image_processing.image_parser import *
-from src.log_processing.delete_log import *
-from src.model_processing.create_model import create_training_model
-from src.model_processing.get_metrics_dictionary import get_metrics_dictionary
-from src.model_processing.initialize_model_weights import initialize_model_weights
-from src.modules.early_stopping.early_stopping import create_early_stopping
-from src.modules.optimizer.optimizer_creator import create_optimizer
+from nachosv2.log_processing.checkpointer import *
+from nachosv2.image_processing.image_crop import create_crop_box
+from nachosv2.image_processing.image_parser import *
+from nachosv2.log_processing.delete_log import *
+from nachosv2.model_processing.create_model import create_training_model
+from nachosv2.model_processing.get_metrics_dictionary import get_metrics_dictionary
+from nachosv2.model_processing.initialize_model_weights import initialize_model_weights
+from nachosv2.modules.early_stopping.early_stopping import create_early_stopping
+from nachosv2.modules.optimizer.optimizer_creator import create_optimizer
 
 
 class _TrainingFoldInformations():

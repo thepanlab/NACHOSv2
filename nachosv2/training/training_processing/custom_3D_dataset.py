@@ -3,7 +3,7 @@ from skimage import io
 
 from torch.utils.data import Dataset
 
-from src.image_processing.image_transformations import image_transformation_3D
+from nachosv2.image_processing.image_transformations import image_transformation_3D
 
 
 class Custom3DDataset(Dataset):

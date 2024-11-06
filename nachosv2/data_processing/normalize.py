@@ -1,10 +1,10 @@
 from termcolor import colored
 
-from src.data_processing.calculate_mean_std import calculate_mean_std
-from src.file_processing.filter_files import filter_files_by_extension
-from src.data_processing.full_dataset import FullDataset
-from src.file_processing.get_from_directory import get_files_from_directory
-from src.data_processing.normalize_transform import NormalizeTransform
+from nachosv2.data_processing.calculate_mean_std import calculate_mean_std
+from nachosv2.file_processing.filter_files import filter_files_by_extension
+from nachosv2.data_processing.full_dataset import FullDataset
+from nachosv2.file_processing.get_from_directory import get_files_from_directory
+from nachosv2.data_processing.normalize_transform import NormalizeTransform
 
 
 def normalize(directory_path, current_configuration):

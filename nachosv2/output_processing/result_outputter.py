@@ -2,9 +2,9 @@ import fasteners
 import os
 from termcolor import colored
 
-from src.output_processing.result_outputter_utils import create_folders, save_history, save_outer_loop, save_inner_loop, metric_writer
-from src.model_processing.evaluate_model import evaluate_model
-from src.model_processing.save_model import save_model
+from nachosv2.output_processing.result_outputter_utils import create_folders, save_history, save_outer_loop, save_inner_loop, metric_writer
+from nachosv2.model_processing.evaluate_model import evaluate_model
+from nachosv2.model_processing.save_model import save_model
 
 
 def output_results(execution_device, output_path, testing_subject, validation_subject, trained_model, history, time_elapsed, datasets, class_names, job_name, config_name, loss_function, is_outer_loop, rank):

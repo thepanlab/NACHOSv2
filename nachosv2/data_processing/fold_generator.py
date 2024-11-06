@@ -1,6 +1,6 @@
 from random import shuffle
 
-from src.data_processing import get_list_of_epochs
+from nachosv2.data_processing import get_list_of_epochs
 
 
 def generate_pairs(test_subject_list, validation_subject_list, do_shuffle, param_epoch, is_outer):

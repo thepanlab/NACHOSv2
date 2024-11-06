@@ -1,6 +1,6 @@
 from termcolor import colored
 
-from src.log_processing.load_log_file import load_log_file
+from nachosv2.log_processing.load_log_file import load_log_file
 
 
 def read_item_list_in_log(log_directory, log_prefix, item_list_to_read, is_verbose_on = False, process_rank = None):

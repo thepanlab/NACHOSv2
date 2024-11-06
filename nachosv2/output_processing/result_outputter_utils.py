@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from termcolor import colored
 
-from src.model_processing.predict_model import predict_model
+from nachosv2.model_processing.predict_model import predict_model
 
 
 def create_folders(path, names = None):

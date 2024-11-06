@@ -1,7 +1,7 @@
 from termcolor import colored
 
-from scripts.training.training_processing.training_variables import TrainingVariables
-from scripts.training.training_processing.training_loop import training_loop
+from nachosv2.training.training_processing.training_variables import TrainingVariables
+from nachosv2.training.training_processing.training_loop import training_loop
 
 
 def sequential_subject_loop(execution_device, current_configuration, test_subject_name, data_dictionary, number_of_epochs, normalize_transform, is_outer_loop, is_3d = False, is_verbose_on = False):

@@ -3,9 +3,9 @@ import fasteners
 import os
 from termcolor import colored
 
-from src.log_processing.construct_log_file_path import construct_log_file_path
-from src.log_processing.load_log_file import load_log_file
-from src.log_processing.log_utils import *
+from nachosv2.log_processing.construct_log_file_path import construct_log_file_path
+from nachosv2.log_processing.load_log_file import load_log_file
+from nachosv2.log_processing.log_utils import *
 
 
 def write_log(config, testing_subject, rotation, log_directory, log_rotations = None, validation_subject = None, rank = None, is_outer_loop = False):

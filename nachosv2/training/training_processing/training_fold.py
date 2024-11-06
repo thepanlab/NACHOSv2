@@ -6,19 +6,19 @@ from torch.cuda.amp import autocast, GradScaler
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Subset
 
-from scripts.training.training_processing.custom_2D_dataset import Custom2DDataset
-from scripts.training.training_processing.custom_3D_dataset import Custom3DDataset
-from scripts.training.training_processing.training_fold_informations import _TrainingFoldInformations
-from src.data_processing.create_history import create_history
-from src.image_processing.image_parser import *
-from src.log_processing.checkpointer import *
-from src.log_processing.delete_log import *
-from src.log_processing.read_log import read_item_list_in_log
-from src.log_processing.write_log import write_log_to_file
-from src.model_processing.save_model import save_model
-from src.modules.timer.precision_timer import PrecisionTimer
-from src.output_processing.result_outputter import output_results
-from src.results_processing.class_recall.epoch_recall import epoch_class_recall
+from nachosv2.training.training_processing.custom_2D_dataset import Custom2DDataset
+from nachosv2.training.training_processing.custom_3D_dataset import Custom3DDataset
+from nachosv2.training.training_processing.training_fold_informations import _TrainingFoldInformations
+from nachosv2.data_processing.create_history import create_history
+from nachosv2.image_processing.image_parser import *
+from nachosv2.log_processing.checkpointer import *
+from nachosv2.log_processing.delete_log import *
+from nachosv2.log_processing.read_log import read_item_list_in_log
+from nachosv2.log_processing.write_log import write_log_to_file
+from nachosv2.model_processing.save_model import save_model
+from nachosv2.modules.timer.precision_timer import PrecisionTimer
+from nachosv2.output_processing.result_outputter import output_results
+from nachosv2.results_processing.class_recall.epoch_recall import epoch_class_recall
         
 
 class TrainingFold():

@@ -1,8 +1,8 @@
 from termcolor import colored
 
-from scripts.training.training_processing.training_fold import TrainingFold
-from src.log_processing.read_log import read_item_list_in_log
-from src.log_processing.write_log import write_log
+from nachosv2.training.training_processing.training_fold import TrainingFold
+from nachosv2.log_processing.read_log import read_item_list_in_log
+from nachosv2.log_processing.write_log import write_log
 
 
 def training_loop(execution_device, configuration, testing_subject, fold_list, number_of_rotations, data_dictionary, number_of_epochs, normalize_transform, is_outer_loop, is_3d = False, rank = None, is_verbose_on = False):

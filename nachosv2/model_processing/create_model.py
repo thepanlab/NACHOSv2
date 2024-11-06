@@ -1,11 +1,11 @@
 from termcolor import colored
 import sys
 
-from src.model_processing.models.cifar10ff import CIFAR10FF
-from src.model_processing.models.conv3D import Conv3DModel
-from src.model_processing.models.inceptionv3 import InceptionV3
-from src.model_processing.models.resnet3D import ResNet3D
-from src.model_processing.models.resnet18_3D import ResNet18_3D
+from nachosv2.model_processing.models.cifar10ff import CIFAR10FF
+from nachosv2.model_processing.models.conv3D import Conv3DModel
+from nachosv2.model_processing.models.inceptionv3 import InceptionV3
+from nachosv2.model_processing.models.resnet3D import ResNet3D
+from nachosv2.model_processing.models.resnet18_3D import ResNet18_3D
 
 
 # This is a dictionary of all possible models to create. There are not pre-trained

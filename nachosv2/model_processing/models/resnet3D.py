@@ -1,7 +1,7 @@
 import torch.nn as nn
 from torchvision.models.video import r3d_18
 
-from src.model_processing.custom_softmax import custom_softmax
+from nachosv2.model_processing.custom_softmax import custom_softmax
 
 
 class ResNet3D(nn.Module):

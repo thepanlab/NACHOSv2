@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torchvision.models as models
 
-from src.model_processing.custom_softmax import custom_softmax
+from nachosv2.model_processing.custom_softmax import custom_softmax
 
 
 class InceptionV3(nn.Module):
