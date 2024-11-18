@@ -1,20 +1,23 @@
 import random
 from termcolor import colored
+import pandas as pd
+from typing import Optional, Callable
 
 import torch
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Subset
 
-from nachosv2.training.training_processing.custom_2D_dataset import Custom2DDataset
+from nachosv2.training.training_processing.custom_2D_dataset import Dataset2D
 from nachosv2.training.training_processing.custom_3D_dataset import Custom3DDataset
-from nachosv2.training.training_processing.training_fold_informations import _TrainingFoldInformations
+from nachosv2.training.training_processing.training_fold_informations import TrainingFoldInformations
 from nachosv2.data_processing.create_history import create_history
+from nachosv2.data_processing.normalizer import normalizer
 from nachosv2.image_processing.image_parser import *
-from nachosv2.log_processing.checkpointer import *
-from nachosv2.log_processing.delete_log import *
-from nachosv2.log_processing.read_log import read_item_list_in_log
-from nachosv2.log_processing.write_log import write_log_to_file
+from nachosv2.checkpoint_processing.checkpointer import *
+from nachosv2.checkpoint_processing.delete_log import *
+from nachosv2.checkpoint_processing.read_log import read_item_list_in_log
+from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import save_metadata_checkpoint
 from nachosv2.model_processing.save_model import save_model
 from nachosv2.modules.timer.precision_timer import PrecisionTimer
 from nachosv2.output_processing.result_outputter import output_results
@@ -22,13 +25,28 @@ from nachosv2.results_processing.class_recall.epoch_recall import epoch_class_re
         
 
 class TrainingFold():
-    def __init__(self, execution_device, fold_index, current_configuration, testing_subject, validation_subject, fold_list, data_dictionary, number_of_epochs, normalize_transform, mpi_rank = None, is_outer_loop = False, is_3d = False, is_verbose_on = False):
+    def __init__(
+        self,
+        execution_device: str,
+        rotation_index: int,
+        configuration: dict,
+        test_subject: str,
+        validation_subject: str,
+        list_training_subjects: list,
+        df_metadata: pd.DataFrame,
+        number_of_epochs: int,
+        do_normalize_2d: bool=False,
+        mpi_rank: int = None,
+        is_outer_loop: bool = False,
+        is_3d: bool = False,
+        is_verbose_on: bool = False
+    ):
         """ Initializes a training fold object.
 
         Args:
             execution_device (str): The name of the device that will be use.
-            fold_index (int): The fold index within the loop.
-            current_configuration (dict): The training configuration.
+            rotation_index (int): The fold index within the loop.
+            configuration (dict): The training configuration.
             
             testing_subject (str): The test subject name.
             validation_subject (str): The validation_subject name.
@@ -43,15 +61,15 @@ class TrainingFold():
             is_verbose_on (bool): If the verbose mode is activated. Default is false. (Optional)
         """
             
-        self.fold_info = _TrainingFoldInformations(
-            fold_index,             # The fold index within the loop
-            current_configuration,  # The training configuration
-            testing_subject,        # The test subject name
+        self.fold_info = TrainingFoldInformations(
+            rotation_index,         # The fold index within the loop
+            configuration,          # The training configuration
+            test_subject,           # The test subject name
             validation_subject,     # The validation subject name
-            fold_list,              # A list of fold partitions
-            data_dictionary,        # The data dictionary
+            list_training_subjects, # A list of fold partitions
+            df_metadata,            # The data dictionary
             number_of_epochs,       # The number of epochs
-            normalize_transform,    #
+            do_normalize_2d,        #
             mpi_rank,               # An optional value of some MPI rank
             is_outer_loop,          # If this is of the outer loop
             is_3d,                  #
@@ -65,8 +83,7 @@ class TrainingFold():
         self.mpi_rank = mpi_rank
         self.is_outer_loop = is_outer_loop
         
-        
-        
+         
     def run_all_steps(self):
         """
         Runs all of the steps for the training process.
@@ -75,30 +92,31 @@ class TrainingFold():
         """
         
         # Loads in the previously saved fold info. Check if valid. If so, use it.
-        prev_info = self.load_state()
+        # prev_info = self.load_state()
 
-        if prev_info is not None and \
-        self.fold_info.testing_subject == prev_info.testing_subject and \
-        self.fold_info.validation_subject == prev_info.validation_subject:
-            self.fold_info = prev_info
-            self.load_checkpoint()
-            # Conditional if there is no checkpoint
+        # if prev_info is not None and \
+        # self.fold_info.testing_subject == prev_info.testing_subject and \
+        # self.fold_info.validation_subject == prev_info.validation_subject:
+        #     self.fold_info = prev_info
+        #     self.load_checkpoint()
+        #     # Conditional if there is no checkpoint
             
-            print(colored("Loaded previous existing state for testing subject " + 
-                          f"{prev_info.testing_subject} and subject {prev_info.validation_subject}.", 'cyan'))
+        #     print(colored("Loaded previous existing state for testing subject " + 
+        #                   f"{prev_info.testing_subject} and subject {prev_info.validation_subject}.", 'cyan'))
 
-        # Computes everything if no checkpoint
-        else:
-            self.fold_info._run_all_steps()
-            self.save_state()
+        # # Computes everything if no checkpoint
+        # else:
+        #     self.fold_info.run_all_steps()
+        #     self.save_state()
             
+        self.fold_info.run_all_steps()
+        self.save_state()
             
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
             self.train_model()
             self._output_results()
 
-    
     
     def load_state(self):
         """
@@ -120,32 +138,29 @@ class TrainingFold():
         else:
             logged_fold_info = log['fold_info']
         
-        
         return logged_fold_info
-            
 
 
     def save_state(self):
         """
         Saves the state of the fold to a log.
         """
-        
-        write_log_to_file(
-            self.fold_info.current_configuration['output_path'], 
-            self.fold_info.current_configuration['job_name'], 
-            {'fold_info': self.fold_info},
-            use_lock = self.fold_info.mpi_rank != None
+       
+        save_metadata_checkpoint(
+            output_directory=self.fold_info.configuration['output_path'],
+            prefix_filename=self.fold_info.configuration['job_name'],
+            new_key_dict={'fold_info': self.fold_info},
+            use_lock=self.fold_info.mpi_rank != None
         )
-    
-    
-    
+
+
     def load_checkpoint(self):
         """
         Loads the latest checkpoint to start from.
         """
         
         checkpoint = get_most_recent_checkpoint(
-            os.path.join(self.fold_info.current_configuration['output_path'], 'checkpoints'),
+            os.path.join(self.fold_info.configuration['output_path'], 'checkpoints'),
             self.fold_info.checkpoint_prefix,
             self.fold_info.model
         )
@@ -161,8 +176,7 @@ class TrainingFold():
             self.fold_info.create_model()
         
         
-        
-    def create_dataset(self):
+    def create_dataset(self) -> bool:
         """
         Creates the dataset needed to trains the model.
         It will map the image paths into their respective image and label pairs.
@@ -177,8 +191,7 @@ class TrainingFold():
             
             # If there is no files for the current dataset (= no validation = outer loop)
             if not self.fold_info.datasets_dictionary[dataset_type]['files']:
-                continue # Skips the rest of the loop
-            
+                continue  # Skips the rest of the loop
             
             drop_residual = False
             # If the current dataset is the training one
@@ -187,7 +200,6 @@ class TrainingFold():
                 # Calculates the residual
                 drop_residual = self._residual_compute_and_decide()
 
-
             # Creates the dataset
             if self.fold_info.is_3d:
                 dataset = Custom3DDataset(
@@ -195,20 +207,36 @@ class TrainingFold():
                     self.fold_info.datasets_dictionary[dataset_type],               # The data dictionary
                 )
                 
-                
             else:
-                dataset = Custom2DDataset(
-                    self.fold_info.current_configuration['data_input_directory'],   # The file path prefix = the path to the directory where the images are
+                
+                dataset = Dataset2D(
                     self.fold_info.datasets_dictionary[dataset_type],               # The data dictionary
-                    self.fold_info.hyperparameters['channels'],                     # The number of channels in an image
+                    self.fold_info.hyperparameters['number_channels'],                     # The number of channels in an image
                     self.fold_info.hyperparameters['do_cropping'],                  # Whether to crop the image
                     self.fold_info.crop_box,                                        # The dimensions after cropping
-                    self.fold_info.normalization                                    # The image normalization
+                    self.fold_info.normalizer                                    # The image normalization
                 )
+
+                # dataset = Custom2DDataset(
+                #     self.fold_info.current_configuration['data_input_directory'],   # The file path prefix = the path to the directory where the images are
+                #     self.fold_info.datasets_dictionary[dataset_type],               # The data dictionary
+                #     self.fold_info.hyperparameters['channels'],                     # The number of channels in an image
+                #     self.fold_info.hyperparameters['do_cropping'],                  # Whether to crop the image
+                #     self.fold_info.crop_box,                                        # The dimensions after cropping
+                #     self.fold_info.normalization                                    # The image normalization
+                # )
             
             # Shuffles the images
             dataset, do_shuffle = self._shuffle_dataset(dataset, dataset_type)
 
+            # Get normalize function from training
+            
+            
+            if self.fold_info.do_normalize_2d:
+                if dataset_type == 'training':
+                    normalize_function = normalizer(dataset)
+                dataset = normalize_function(dataset)
+            # Apply normalization to the dataset
 
             # Creates the data loader
             dataloader = DataLoader(
@@ -222,14 +250,11 @@ class TrainingFold():
             # Adds the dataloader to the dictionary
             self.fold_info.datasets_dictionary[dataset_type]['ds'] = dataloader
         
-        
         # If the datasets are empty, cannot train
         _is_dataset_created = self._check_create_dataset()
         
-        
         return _is_dataset_created
-    
-    
+
     
     def _residual_compute_and_decide(self):
         """
@@ -249,15 +274,12 @@ class TrainingFold():
             print("Residual discarded")
             drop_residual = True
         
-        
         # If the residual is ok, it is used
         else:
             print("Residual not discarded")
             drop_residual = False
         
-        
         return drop_residual
-
 
 
     def _shuffle_dataset(self, dataset, dataset_type):
@@ -288,7 +310,6 @@ class TrainingFold():
         return dataset, do_shuffle
 
 
-    
     def _check_create_dataset(self):
         """
         Checks if the datasets are created.
@@ -335,16 +356,14 @@ class TrainingFold():
             print(colored("Maximum number of epochs reached from checkpoint.", 'yellow'))
             return
         
-        
         # Fits the model        
         fold_timer = PrecisionTimer()
         
         self.fit_model()
         
         self.time_elapsed = fold_timer.get_elapsed_time() 
-        
-        
-    
+
+
     def fit_model(self):
         """
         Fits the model.
@@ -354,15 +373,12 @@ class TrainingFold():
         best_accuracy = 0.0
         best_model_path = "results/temp/temp_best_model.pth"
         
-        
         # Sends the model to the execution device
         self.fold_info.model.to(self.execution_device)
-        
         
         # Makes sure the temp directory exists
         if not os.path.exists("results/temp"):
             os.makedirs("results/temp")
-        
         
         # For each epoch
         for epoch in range(self.fold_info.number_of_epochs):
@@ -371,14 +387,11 @@ class TrainingFold():
             print('-' * 60)
             print(f'Epoch {epoch + 1}/{self.fold_info.number_of_epochs}')
             
-            
             # Defines the list of phases
             list_of_phases = self._get_list_of_phases()
             
-            
             # Creates the gradscaler
             scaler = GradScaler()
-            
             
             # For each phase
             for phase in list_of_phases:
@@ -413,7 +426,6 @@ class TrainingFold():
             self.fold_info.scheduler.step(epoch_loss)
 
     
-    
     def _get_list_of_phases(self):
         """
         Defines the list of phases.
@@ -434,7 +446,6 @@ class TrainingFold():
         return list_of_phases
 
 
-
     def _get_phase_dataloader(self, phase):
         """
         Defines the data loader for the fit depending of the phase.
@@ -450,15 +461,12 @@ class TrainingFold():
             self.fold_info.model.train()  # Sets model to training mode
             data_loader = self.fold_info.datasets_dictionary['training']['ds'] # Loads the training set
             
-            
         else: # Validation phase
             self.fold_info.model.eval()   # Sets model to evaluate mode
             data_loader = self.fold_info.datasets_dictionary['validation']['ds'] # Loads the validation set
-        
-        
+
         return data_loader
-
-
+    
 
     def _fit_loop(self, phase, inputs, labels, running_loss, running_corrects, scaler):
         """
