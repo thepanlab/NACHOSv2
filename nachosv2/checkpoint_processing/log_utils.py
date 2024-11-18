@@ -28,7 +28,6 @@ def get_job_name(config, testing_subject, validation_subject = None, rank = None
     return job_name
 
 
-
 def get_rotation_dict(testing_subject, rotation, log_rotations = None):
     """
     Updates the rotation dictionary with the current rotation for the testing subject.
@@ -42,17 +41,13 @@ def get_rotation_dict(testing_subject, rotation, log_rotations = None):
         rotation_dict (dict): The updated rotation dictionary.
     """
     
-    
     if not log_rotations:
-            rotation_dict = {testing_subject: rotation + 1}
-            
+            rotation_dict = {testing_subject: rotation + 1}        
     else:
         rotation_dict = log_rotations['current_rotation']
         rotation_dict[testing_subject] = rotation + 1
             
-            
     return rotation_dict
-
 
 
 def determine_use_lock(rank):
@@ -68,9 +63,7 @@ def determine_use_lock(rank):
 
     if rank is not None:
         use_lock = True
-        
     else:
         use_lock = False
-
 
     return use_lock

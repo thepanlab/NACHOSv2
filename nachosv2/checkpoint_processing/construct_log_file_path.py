@@ -18,14 +18,12 @@ def construct_log_file_path(log_directory, log_prefix, is_verbose_on = False, pr
     
     # Appends the rank to the job name if given for the log
     if process_rank is None:
-        log_filepath = os.path.join(log_directory, 'logging', f'{log_prefix}.log')
+        log_filepath = os.path.join(log_directory, 'logging', f'{log_prefix}.chk')
     
     else:
-        log_filepath = os.path.join(log_directory, 'logging', f'{log_prefix}_rank_{process_rank}.log')
-
+        log_filepath = os.path.join(log_directory, 'logging', f'{log_prefix}_rank_{process_rank}.chk')
 
     if is_verbose_on: # If the verbose mode is activated
         print(colored("Log file's path created.", 'cyan'))
-        
 
     return log_filepath

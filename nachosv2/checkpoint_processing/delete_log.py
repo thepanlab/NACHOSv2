@@ -1,6 +1,6 @@
 import os
 
-from nachosv2.log_processing.construct_log_file_path import construct_log_file_path
+from nachosv2.checkpoint_processing.construct_log_file_path import construct_log_file_path
         
         
 def delete_log_file(log_directory, log_prefix, process_rank = None):

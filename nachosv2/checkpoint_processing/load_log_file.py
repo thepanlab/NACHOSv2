@@ -2,7 +2,7 @@ import dill
 import os
 from termcolor import colored
 
-from nachosv2.log_processing.construct_log_file_path import construct_log_file_path
+from nachosv2.checkpoint_processing.construct_log_file_path import construct_log_file_path
 
 
 def load_log_file(log_directory, log_prefix, is_verbose_on = False, process_rank = None):
