@@ -1,4 +1,5 @@
-from random import shuffle
+from typing import Dict, List, Tuple, Optional
+from termcolor import colored
 
 from nachosv2.data_processing import get_list_of_epochs
 
@@ -40,6 +41,48 @@ def generate_pairs(test_subject_list, validation_subject_list, do_shuffle, param
         
     return folds   
 
+
+def generate_list_subjects_for_partitions(list_validation_subjects: Optional[List[str]],
+        list_subjects: List[str],
+        test_subject: str,
+        do_shuffle: bool) -> Tuple[List[Dict[str, List[str]]], int]:
+    """ Generates folds for the subject.
+    
+    Args:
+        test_subject_list (list of str): A list of test subject names.
+        validation_subject_list (list of str): A list of validation subject names.
+        test_subject (str): The current test subject name.
+        do_shuffle (bool): If the fold list should be shuffled or not.
+        
+    Returns:
+        (list of dict): A list of folds, containing the subjects for testing, validation, and training.
+        (int): The number of rotations for the training loop.
+    """
+    
+    # If outer loop, compare the test subjects.
+    if list_validation_subjects is None:        
+        partitions = [{
+            'training': _fill_training_partition(list_subjects, test_subject, None),
+            'testing': [test_subject],
+        }]
+        
+    # If inner loop, get the test-val combinations.
+    else:        
+        partitions = []
+       
+        for validation_subject in list_validation_subjects:
+            if validation_subject != test_subject:     
+                partitions.append({
+                    'training': _fill_training_partition(list_subjects, test_subject, validation_subject), 
+                    'validation': [validation_subject],
+                    'testing': [test_subject],
+                })
+        
+    # Shuffle the data and get the number of training rotations
+    if do_shuffle:
+        shuffle(partitions)
+
+    return partitions
 
 
 def generate_folds(test_subject_list, validation_subject_list, subject_list, test_subject, do_shuffle, validation_subject=None):
@@ -88,7 +131,11 @@ def generate_folds(test_subject_list, validation_subject_list, subject_list, tes
     return folds, len(folds)
 
 
-def _fill_training_fold(subject_list, test_subject, subject):
+def _fill_training_partition(
+        subject_list: List[str],
+        test_subject: str,
+        validation_subject: Optional[str]
+        ) -> List[str]:
     """
     Fills the training fold for some subject.
     
@@ -101,16 +148,8 @@ def _fill_training_fold(subject_list, test_subject, subject):
         (list of str): A list of subjects in the training fold.
     """
     
-    training_fold = []
-    
-    for s in subject_list:
-        
-        if s not in [test_subject, subject]:
-            
-            training_fold.append(s)
-            
-    
-    return training_fold
+    return [s for s in subject_list if s not in {test_subject, validation_subject}]
+
 
 
 def _get_training_combos(n_epochs, subject_list, test_subject):
@@ -132,4 +171,3 @@ def _get_training_combos(n_epochs, subject_list, test_subject):
             
             
     return folds
-    
