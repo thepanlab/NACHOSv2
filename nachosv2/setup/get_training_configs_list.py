@@ -35,11 +35,12 @@ def get_training_configs_list(config_file_path, config_folder_path):
     if config_file_path:
         if not Path(config_file_path).exists(): # Checks if the file exists
             raise Exception(colored(f"Error: The file '{configuration_file_path}' does not exist.", 'red'))
-        
-        verify_configuration_types(config_file_path)
-        
+               
         with open(config_file_path) as file:  # Guarantees that the file will be close, even if there is an reading error
-            list_of_configs.append(json.load(file))  # Add the file's path to the list that will be returned
+            dict_config = json.load(file)
+            verify_configuration_types(dict_config)
+            list_of_configs.append(dict_config)  # Add the file's path to the list that will be returned
+            
             # list_of_configs_paths.append(config_file_path)
     
     
