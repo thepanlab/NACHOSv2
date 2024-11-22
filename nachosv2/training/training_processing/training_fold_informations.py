@@ -76,10 +76,7 @@ class TrainingFoldInformations():
              ('test', {'files': [], 'labels': [], 'ds': None}),
             ]
             )
-        self.model = None
-        self.optimizer = None
-        self.scheduler = None
-
+        
         self.list_callbacks = None
         self.loss_function = nn.CrossEntropyLoss()
 
