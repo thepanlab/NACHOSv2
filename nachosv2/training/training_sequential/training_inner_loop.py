@@ -6,9 +6,10 @@ from nachosv2.training.training_sequential.sequential_processing import sequenti
 from nachosv2.modules.timer.precision_timer import PrecisionTimer
 from nachosv2.modules.timer.write_timing_file import write_timing_file
 from nachosv2.output_processing.memory_leak_check import initiate_memory_leak_check, end_memory_leak_check
-from nachosv2.setup.command_line_parser import command_line_parser
+from nachosv2.setup.command_line_parser import parse_command_line_args
 from nachosv2.setup.define_execution_device import define_execution_device
 from nachosv2.setup.get_training_configs_list import get_training_configs_list
+
 
 """
 Green: indications about where is the training
@@ -21,52 +22,48 @@ Red: errors, fatal or not
 
 def run_training():
     # Parses the command line arguments
-    command_line_arguments = command_line_parser()
+    args = parse_command_line_args()
     
     # Defines the arguments
-    list_of_configs, list_of_configs_paths = get_training_configs_list(
-        command_line_arguments['file'],
-        command_line_arguments['folder'])
+    list_dict_configs = get_training_configs_list(args['file'], args['folder'])
     
-    is_verbose_on = command_line_arguments['verbose']
-    wanted_execution_device = command_line_arguments['device']
+    is_verbose_on = args['verbose']
+    wanted_execution_device = args['device']
     
     # Defines the execution device
     execution_device = define_execution_device(wanted_execution_device)
     
-    
     # Starts a timer
-    all_programm_timer = PrecisionTimer()
-    
+    training_timer = PrecisionTimer()
     
     # Checks for memory leaks
-    check_memory_leak = False
+    memory_leak_check_enabled = False
     
-    if check_memory_leak:
-        snapshot1 = initiate_memory_leak_check()
-    
+    if memory_leak_check_enabled:
+        memory_snapshot = initiate_memory_leak_check()
     
     # Runs the job
     is_outer_loop = False
+    
     sequential_processing(
         execution_device,
-        list_of_configs,
-        list_of_configs_paths,
+        list_dict_configs,
         is_outer_loop,
         is_verbose_on
         )
     
     
     # Checks for memory leaks
-    if check_memory_leak:
-        end_memory_leak_check(snapshot1)
+    if memory_leak_check_enabled:
+        end_memory_leak_check(memory_snapshot)
     
     
     # Stops the timer and prints the elapsed time
-    elapsed_time = all_programm_timer.get_elapsed_time()
-    print(colored(f"\nElapsed time: {elapsed_time} seconds.", 'magenta'))
+    elapsed_time_seconds = training_timer.get_elapsed_time()
+    print(colored(f"\nElapsed time: {elapsed_time_seconds} seconds.", 'magenta'))
 
     # Creates a file and writes elapsed time in it
+    # Make the next line fit in 80 characters
     timing_directory_path = "../results/training_timings" # The directory's path where to put the timing file
     write_timing_file(all_programm_timer, timing_directory_path, is_verbose_on)
 
