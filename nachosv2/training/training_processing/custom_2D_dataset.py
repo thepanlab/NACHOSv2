@@ -2,20 +2,43 @@ from pathlib import Path
 from typing import Optional, Callable
 import skimage.io
 import skimage.transform
+from skimage.util import img_as_float
+from skimage.color import rgb2gray
+import numpy as np
 
+import torch
 from torch.utils.data import Dataset
 import pandas as pd
+from torchvision import transforms
 
 from nachosv2.image_processing.image_crop import crop_image
 from nachosv2.image_processing.image_transformations import image_transformation_2D
+
+
+def ToTensor(image, label, number_channels):
+    """Convert ndarrays in sample to Tensors.
+            class based from https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
+            Dataloader can automatically transform the data to tensor
+            but better to make sure that the data is in the right format in the first place
+    """
+    
+    if image.ndim == 2 and number_channels == 1:
+        image = image[np.newaxis, :, :]
+    elif image.ndim == 3 and number_channels == 3:
+        # swap color axis because
+        # numpy image: H x W x C
+        # torch image: C x H x W
+        image = image.transpose((2, 0, 1))
+    
+    return torch.from_numpy(image), torch.tensor(label, dtype=torch.int8)
 
 class Dataset2D(Dataset):
     def __init__(self,
                  dictionary_partition: dict,
                  number_channels: int,
-                 do_cropping: bool,
-                 crop_box: tuple,
-                 normalizer: Optional[Callable]):
+                 do_cropping: bool = False,
+                 crop_box: tuple = None,
+                 transform: Optional[Callable] = None):
         """
         Initializes a custom dataset object.
         
@@ -32,13 +55,10 @@ class Dataset2D(Dataset):
         """
         
         self.dictionary_partition = dictionary_partition
-        
         self.number_channels = number_channels
-        
         self.do_cropping = do_cropping
         self.crop_box = crop_box
-        
-        self.normalizer = normalizer
+        self.transform = transform
 
 
     def __len__(self):
@@ -46,8 +66,7 @@ class Dataset2D(Dataset):
         Returns the dataset len.
         """
         
-        return len(self.file_list)
-
+        return len(self.dictionary_partition['files'])
 
 
     def __getitem__(self, index):
@@ -64,34 +83,30 @@ class Dataset2D(Dataset):
             file_path (str): The file path.
         """
         
-        # Gets the image path
-        image_path = f"{self.prefix}/{self.file_list[index]}"
-        
         # Opens the image
-        image = skimage.io.imread(image_path)
+        image = skimage.io.imread(self.dictionary_partition['files'][index])
+        label = self.dictionary_partition['labels'][index]
         
+        image = img_as_float(image)
         # Transformes the image
-        image = image_transformation_2D(image)        
+        # conditional that image differ from number of dimensions
+        if self.number_channels == 1 and image.ndim == 3:
+            image = rgb2gray(image)
         
         # If asked, crops the image
         if self.do_cropping:
             image = crop_image(image, self.crop_box)
 
         # Converts the image into a tensor
-        image_tensor = self.normalizer(image)
 
-        # Gets the label
-        label_index = self.data_dictionary['labels'][index]
+        if self.transform:
+            image, label = self.transform(image, label)
+
+        image = transforms.ToTensor()(image)
+        label = torch.tensor(label, dtype=torch.int8)
         
-        # Gets the index
-        image_index = self.data_dictionary['indexes'][index]
-        
-        # Gets the file path
-        file_path = self.file_list[index]
-        
-        return image_tensor, label_index, image_index, file_path
-    
-    
+        return image, label
+
 
 class Custom2DDataset(Dataset):
     def __init__(self, prefix, data_dictionary, channels, do_cropping, crop_box, normalizer):
@@ -152,7 +167,8 @@ class Custom2DDataset(Dataset):
         image = skimage.io.imread(image_path)
         
         # Transformes the image
-        image = image_transformation_2D(image)        
+        image = transform_to_one_channel(image)        
+        # image = image_transformation_2D(image)        
         
         # If asked, crops the image
         if self.do_cropping:
