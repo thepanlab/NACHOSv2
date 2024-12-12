@@ -1,25 +1,53 @@
 from termcolor import colored
+import torchvision.models as models
+import torch.nn as nn
 import sys
 
-from nachosv2.model_processing.models.cifar10ff import CIFAR10FF
-from nachosv2.model_processing.models.conv3D import Conv3DModel
-from nachosv2.model_processing.models.inceptionv3 import InceptionV3
-from nachosv2.model_processing.models.resnet3D import ResNet3D
-from nachosv2.model_processing.models.resnet18_3D import ResNet18_3D
+# from nachosv2.model_processing.models.cifar10ff import CIFAR10FF
+# from nachosv2.model_processing.models.conv3D import Conv3DModel
+# from nachosv2.model_processing.models.inceptionv3 import InceptionV3
+# from nachosv2.model_processing.models.resnet3D import ResNet3D
+# from nachosv2.model_processing.models.resnet18_3D import ResNet18_3D
 
 
 # This is a dictionary of all possible models to create. There are not pre-trained
-models_dictionary = {
-    "Cifar10FF": CIFAR10FF,
-    "Conv3DModel": Conv3DModel,
-    "InceptionV3": InceptionV3,
-    "ResNet18-3D": ResNet18_3D,
-    "ResNet3D": ResNet3D,
-}
+# models_dictionary = {
+#     "Cifar10FF": CIFAR10FF,
+#     "Conv3DModel": Conv3DModel,
+#     "InceptionV3": InceptionV3,
+#     "ResNet18-3D": ResNet18_3D,
+#     "ResNet3D": ResNet3D,
+# }
+
+l_models = ["Cifar10FF", "Conv3DModel", "InceptionV3", "ResNet18-3D", "ResNet3D"]
+
+def get_model(model_name: str, number_classes:int, number_channels: int):
+    # https://github.com/pytorch/vision/blob/main/torchvision/models/inception.py
+    # https://pytorch.org/vision/0.12/generated/torchvision.models.inception_v3.html
+    if model_name == "InceptionV3":
+        # For the parameter aux_logits, which uses and additional branch
+        # to help with gradient flow, useful for vanishing gradient problem
+        # If images are less than 299x299, then aux_logits=False
+        # If images are at least 75x75, then aux_logits=True
+        model = models.inception_v3(weights=None,
+                                    init_weights=True,
+                                    num_classes=number_classes,
+                                    aux_logits=False)
+        
+
+        model.Conv2d_1a_3x3.conv = nn.Conv2d(
+            in_channels=number_channels,  # Change to 1 channel for grayscale
+            out_channels=model.Conv2d_1a_3x3.conv.out_channels,
+            kernel_size=model.Conv2d_1a_3x3.conv.kernel_size,
+            stride=model.Conv2d_1a_3x3.conv.stride,
+            padding=model.Conv2d_1a_3x3.conv.padding,
+            bias=model.Conv2d_1a_3x3.conv.bias is not None
+        )
+
+    return model
 
 
-
-def create_training_model(configuration_file):
+def create_model(configuration_file):
     """
     Creates and prepares a model for training.
         
@@ -31,21 +59,23 @@ def create_training_model(configuration_file):
         model (nn.Module): The prepared torch.nn model.
     """
 
-    try:            
-        # Sets the model definition
-        model_type = configuration_file["selected_model_name"]
-
-        # Gets the model
-        ModelClass = models_dictionary[model_type]
         
-        # Creates the model
-        training_model = ModelClass(configuration_file)
-        
+    # Sets the model definition
+    model_name = configuration_file["architecture_name"]
+    number_classes = len(configuration_file["class_names"])
+    number_channels = configuration_file["hyperparameters"]["number_channels"]
+    
+    if model_name not in l_models:
+        raise ValueError(colored(f"Error: Model '{model_name}' not found in the list of possible models: {l_models}.", 'red'))
 
-        return training_model
+    # # Gets the model
+    # ModelClass = models_dictionary[model_type]
+    
+    # # Creates the model
+    # training_model = ModelClass(configuration_file)
 
-            
-    # If the model type is not in the model list, error
-    except KeyError:
-        print(colored(f"Error: Model '{model_type}' not found in the list of possible models: {list(models_dictionary.keys())}.", 'red'))
-        sys.exit()
+    training_model = get_model(model_name=model_name,
+                                number_classes=number_classes,
+                                number_channels=number_channels)
+
+    return training_model
