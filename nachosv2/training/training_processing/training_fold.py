@@ -1,16 +1,18 @@
 import random
-from typing import Optional, Callable, Union, Tuple, List
-
 from collections import OrderedDict
+from typing import Optional, Callable, Union, Tuple, List
+from pathlib import Path
 
 from termcolor import colored
 import pandas as pd
-
+from datetime import datetime
 # import torch
 import torch
-from torch.cuda.amp import autocast, GradScaler
+# from torch.cuda.amp import autocast, GradScaler
+from torch import autocast, GradScaler
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Subset
+from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torch.optim as optim
 
@@ -21,20 +23,19 @@ from nachosv2.data_processing.create_history import create_history
 from nachosv2.data_processing.normalizer import normalizer
 from nachosv2.image_processing.image_crop import create_crop_box
 from nachosv2.image_processing.image_parser import *
-from nachosv2.checkpoint_processing.checkpointer import *
-from nachosv2.checkpoint_processing.delete_log import *
+from nachosv2.checkpoint_processing.checkpointer import Checkpointer
+from nachosv2.checkpoint_processing.delete_log import delete_log_file
 from nachosv2.checkpoint_processing.read_log import read_item_list_in_log
 from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import save_metadata_checkpoint
-from nachosv2.model_processing.save_model import save_model
+# from nachosv2.model_processing.save_model import save_model
 from nachosv2.modules.timer.precision_timer import PrecisionTimer
 from nachosv2.output_processing.result_outputter import output_results
 from nachosv2.results_processing.class_recall.epoch_recall import epoch_class_recall
 from nachosv2.model_processing.initialize_model_weights import initialize_model_weights        
-from nachosv2.model_processing.create_model import create_training_model
+from nachosv2.model_processing.create_model import create_model
 from nachosv2.model_processing.get_metrics_dictionary import get_metrics_dictionary
 from nachosv2.modules.optimizer.optimizer_creator import create_optimizer
 from typing import Union, List
-
 
 
 class TrainingFold():
@@ -43,12 +44,13 @@ class TrainingFold():
         execution_device: str,
         rotation_index: int,
         configuration: dict,
-        test_subject: str,
-        validation_subject: str,
-        list_training_subjects: list,
+        test_fold_name: str,
+        validation_fold_name: str,
+        training_folds_list: List[str],
         df_metadata: pd.DataFrame,
         number_of_epochs: int,
         do_normalize_2d: bool = False,
+        use_mixed_precision: bool = False,
         mpi_rank: int = None,
         is_outer_loop: bool = False,
         is_3d: bool = False,
@@ -77,9 +79,9 @@ class TrainingFold():
         self.fold_info = TrainingFoldInformations(
             rotation_index,         # The fold index within the loop
             configuration,          # The training configuration
-            test_subject,           # The test subject name
-            validation_subject,     # The validation subject name
-            list_training_subjects, # A list of fold partitions
+            test_fold_name,         # The test subject name
+            validation_fold_name,   # The validation subject name
+            training_folds_list,    # A list of fold partitions
             df_metadata,            # The data dictionary
             number_of_epochs,       # The number of epochs
             do_normalize_2d,        #
@@ -93,13 +95,13 @@ class TrainingFold():
         self.configuration = configuration
         self.hyperparameters = configuration['hyperparameters']
         
-        self.test_subject = test_subject
-        self.validation_subject = validation_subject
-        self.list_training_subjects = list_training_subjects
+        self.test_fold_name = test_fold_name
+        self.validation_fold_name = validation_fold_name
+        self.training_folds_list = training_folds_list
         
         self.df_metadata = df_metadata
         self.number_of_epochs = number_of_epochs
-        self.metrics_dictionary = get_metrics_dictionary(self.configuration['metrics'])
+        self.metrics_dictionary = get_metrics_dictionary(self.configuration['metrics_list'])
         
         self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
             [('training', {'files': [], 'labels': [], 'dataloader': None}),
@@ -109,6 +111,8 @@ class TrainingFold():
             )
         
         self.list_callbacks = None
+        # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
+        # The input is expected to contain the unnormalized logits for each class
         self.loss_function = nn.CrossEntropyLoss()
         
         self.model = None
@@ -116,7 +120,7 @@ class TrainingFold():
         self.scheduler = None
         
         self.execution_device = execution_device
-        self.history = create_history(self.fold_info.metrics_dictionary)
+        self.history = create_history(self.metrics_dictionary)
         self.time_elapsed = None
         
         self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
@@ -127,6 +131,7 @@ class TrainingFold():
             )
         
         self.checkpoint_epoch = 0
+        self.use_mixed_precision = use_mixed_precision
         self.mpi_rank = mpi_rank
         self.is_outer_loop = is_outer_loop
         self.is_3d = is_3d
@@ -140,21 +145,21 @@ class TrainingFold():
             is_verbose_on
         )
         
+        self.save_path = Path(self.configuration['output_path']) / 'checkpoints'
+        
         # If MPI, specifies the job name by task
         if self.mpi_rank:
             job_name = configuration['job_name'] # Only to put in the new job name
             
             # Checks if inner or outer loop
             if is_outer_loop: # Outer loop => no validation
-                new_job_name = f"{job_name}_test_{test_subject}" 
+                new_job_name = f"{job_name}_test_{test_fold_name}" 
             else: # Inner loop => validation
-                new_job_name = f"{job_name}_test_{test_subject}_val_{validation_subject}"
+                new_job_name = f"{job_name}_test_{test_fold_name}"+ \
+                               f"_val_{validation_fold_name}"
 
             # Updates the job name
             self.configuration['job_name'] = new_job_name
-            
-        if is_verbose_on:  # If the verbose mode is activated
-            print(colored("Fold of training informations created.", 'cyan'))
 
 
     def create_callbacks(self):
@@ -165,15 +170,15 @@ class TrainingFold():
         
         # Gets the job name to create the checkpoint prefix
         if self.is_outer_loop:          
-            self.checkpoint_prefix = f"{self.configuration['job_name']}_test_{ self.fold_info.test_subject}" + \
-                                     f"_config_{self.configuration['selected_model_name']}"
+            self.checkpoint_prefix = f"{self.configuration['job_name']}_test_{self.test_fold_name}" + \
+                                     f"_config_{self.configuration['architecture_name']}"
             
         else:
-            self.checkpoint_prefix = f"{self.configuration['job_name']}_test_{ self.fold_info.test_subject}" + \
-                                     f"_val_{self.validation_subject}_config_{self.configuration['selected_model_name']}"
+            self.checkpoint_prefix = f"{self.configuration['job_name']}_test_{self.test_fold_name}" + \
+                                     f"_val_{self.validation_subject}_config_{self.configuration['architecture_name']}"
         
         # Creates the path where to save the checkpoint
-        save_path = os.path.join(self.configuration['output_path'], 'checkpoints')
+        self.save_path = Path(self.configuration['output_path']) / 'checkpoints'
         
         # Creates the checkpoint
         checkpointer = Checkpointer(
@@ -210,19 +215,19 @@ class TrainingFold():
         for partition, value_dict in self.partitions_info_dict.items():
             if partition == 'testing':
                 value_dict['files'] = \
-                    self.df_metadata[self.df_metadata["subject"] == self.test_subject]["absolute_filepath"].tolist()
+                    self.df_metadata[self.df_metadata["fold_name"] == self.test_fold_name]["absolute_filepath"].tolist()
                 value_dict['labels'] = \
-                    self.df_metadata[self.df_metadata["subject"] == self.test_subject]["label"].tolist()
+                    self.df_metadata[self.df_metadata["fold_name"] == self.test_fold_name]["label"].tolist()
             elif partition == 'validation':
                 value_dict['files'] = \
-                    self.df_metadata[self.df_metadata["subject"] == self.validation_subject]["absolute_filepath"].tolist()
+                    self.df_metadata[self.df_metadata["fold_name"] == self.validation_fold_name]["absolute_filepath"].tolist()
                 value_dict['labels'] = \
-                    self.df_metadata[self.df_metadata["subject"] == self.validation_subject]["label"].tolist()
+                    self.df_metadata[self.df_metadata["fold_name"] == self.validation_fold_name]["label"].tolist()
             else:  # training
                 value_dict['files'] = \
-                    self.df_metadata[self.df_metadata["subject"].isin(self.list_training_subjects)]["absolute_filepath"].tolist()
+                    self.df_metadata[self.df_metadata["fold_name"].isin(self.training_folds_list)]["absolute_filepath"].tolist()
                 value_dict['labels'] = \
-                    self.df_metadata[self.df_metadata["subject"].isin(self.list_training_subjects)]["label"].tolist()  
+                    self.df_metadata[self.df_metadata["fold_name"].isin(self.training_folds_list)]["label"].tolist()  
 
 
     def run_preparations(self):
@@ -244,7 +249,7 @@ class TrainingFold():
         """
         
         # Creates the model
-        self.model = create_training_model(self.configuration)
+        self.model = create_model(self.configuration)
         
         # Initializes the weights
         initialize_model_weights(self.model)
@@ -272,17 +277,23 @@ class TrainingFold():
 
         # # Computes every thing if no checkpoint
         # else:
-        #     self.fold_i?state()
-            
-        # self.fold_info.run_all_steps()
-        # Replace for all substeps
+        #     self.fold_info.state()
+                
+       # Replace for all substeps
                 
         self.get_dataset_info()
         self.create_model()
         self.optimizer = create_optimizer(self.model,
                                           self.configuration['hyperparameters'])
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode = 'min', factor = 0.1, patience = self.configuration['hyperparameters']['patience'], verbose = True)
-        self.create_callbacks()
+        # scheduler https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+                                                              mode = 'min',
+                                                              factor = 0.1,
+                                                              patience = self.configuration['hyperparameters']['patience'],
+                                                              verbose = True)
+        # Callbacks are not necessary for Pytorch
+        # However, they should be place inside the training fun tions
+        # self.create_callbacks()
         self.save_state()
             
         # Creates the datasets and trains them (Datasets cannot be logged.)
@@ -551,7 +562,7 @@ class TrainingFold():
         
         
         # Checks if the validation dataset is empty or not
-        elif (not self.is_outer_loop and self.partitions_info_dict['validation']['ds'] is None):
+        elif (not self.is_outer_loop and self.partitions_info_dict['validation']['dataloader'] is None):
             print(colored(
                 f"Non-fatal Error: training was skipped for the Test Subject {self.testing_subject} and Subject {self.validation_subject}. " + 
                 f"There was no file in the validation dataset.\n",
@@ -574,36 +585,103 @@ class TrainingFold():
         """  
         
         if self.checkpoint_epoch != 0 and \
-           self.checkpoint_epoch == self.fold_info.number_of_epochs:
+           self.checkpoint_epoch == self.number_of_epochs:
             print(colored("Maximum number of epochs reached from checkpoint.", 'yellow'))
             return
         
-        # Fits the model        
+        # Fits the model     
         fold_timer = PrecisionTimer()
         
-        self.fit_model()
+        self.train()
         
         self.time_elapsed = fold_timer.get_elapsed_time() 
 
 
-    def fit_model(self):
+    def process_one_epoch(self, epoch_index, partition):       
+           
+        # Defines the data loader
+        data_loader = self.get_dataloader(partition)
+        
+        # Initializations
+        running_loss = 0.0
+        running_corrects = 0
+        
+        self.all_labels = []
+        self.all_predictions = []
+
+        # Source: https://pytorch.org/tutorials/beginner/introyt/trainingyt.html#per-epoch-activity
+        if partition == 'train':
+            # Make sure gradient tracking is on, and do a pass over the data
+            self.model.train(True)
+        elif partition == "validation":
+            # Set the model to evaluation mode, disabling dropout and using population
+            # statistics for batch normalization.
+            self.model.eval()
+            
+        # Iterates over data
+        for inputs, labels in data_loader:
+            
+            # Runs the fit loop
+            loss_update, corrects_update = self.process_batch(
+                partition, inputs, labels,
+                self.use_mixed_precision
+            )
+            
+            running_loss += loss_update
+            running_corrects += corrects_update
+
+
+        # Calculates the loss and accuracy for the epoch and adds them to the history
+        epoch_loss, epoch_accuracy = self.calculate_metrics_for_epoch(data_loader,
+                                                                      partition,
+                                                                      running_loss,
+                                                                      running_corrects)
+
+        self.loss_hist[partition][epoch_index] = epoch_loss
+        self.accuracy_hist[partition][epoch_index] = epoch_accuracy
+        
+        # Saves the best model
+        if partition == 'validation':
+            
+            # print epoch results
+            print(f' loss: {self.loss_hist["train"][epoch_index]:.4f} |"
+                  f'val_loss: {epoch_loss:.4f} |'
+                  f'accuracy: {self.accuracy_hist["train"][epoch_index]:.4f} |' f'val_accuracy: {epoch_accuracy:.4f}')
+            
+            # TODO: verify if the best model is saved
+            self.save_model(epoch_index, epoch_loss, epoch_accuracy)
+            if epoch_loss < self.best_valid_loss:
+                self.save_best_model(epoch_index, epoch_loss, epoch_accuracy)
+
+        return 
+
+
+    def train(self):
         """
         Fits the model.
         """
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.writer = SummaryWriter(log_dir=f'runs/nachosv2_{timestamp}')
         
+        self.loss_hist = {"train": [0.0] * self.number_of_epochs,
+                          "validation": [0.0] * self.number_of_epochs}
+        self.accuracy_hist = {"train": [0.0] * self.number_of_epochs,
+                              "validation": [0.0] * self.number_of_epochs}
+
         # Initializations
-        best_accuracy = 0.0
-        best_model_path = "results/temp/temp_best_model.pth"
+        self.best_valid_loss = 0.0
+        # self.best_accuracy = "results/temp/temp_best_model.pth"
         
         # Sends the model to the execution device
         self.model.to(self.execution_device)
         
-        # Makes sure the temp directory exists
-        if not os.path.exists("results/temp"):
-            os.makedirs("results/temp")
+        # # Makes sure the temp directory exists
+        # results_temp_path = Path("results/temp")
+        # if not results_temp_path.exists():
+        #     results_temp_path.mkdir(parents=True)
         
         # Read epoch from metadata checkpoint
-        
+        self.scaler = GradScaler() if self.use_mixed_precision else None
         # For each epoch
         for epoch in range(self.number_of_epochs):
             
@@ -611,150 +689,166 @@ class TrainingFold():
             print('-' * 60)
             print(f'Epoch {epoch + 1}/{self.fold_info.number_of_epochs}')
             
-            # Defines the list of phases
-            list_of_phases = self._get_list_of_phases()
+            # Defines the list of partitions
+            # AHPO/CV: ["train", "validation"]
+            # Cross-testing: ["train"]
+            partitions_list = self.get_partitions()
             
-            # Creates the gradscaler
-            scaler = GradScaler()
-            
-            # For each phase
-            for phase in list_of_phases:
-                
-                # Defines the data loader
-                data_loader = self._get_phase_dataloader(phase)
-                
-                # Initializations
-                running_loss = 0.0
-                running_corrects = 0
-                
-                self.all_labels = []
-                self.all_predictions = []
+            for partition in partitions_list:
+                self.process_one_epoch(epoch, partition)
 
-
-                # Iterates over data
-                for inputs, labels, in data_loader:
-                    
-                    # Runs the fit loop
-                    running_loss, running_corrects, scaler = self._fit_loop(phase, inputs, labels, running_loss, running_corrects, scaler)
-
-
-                # Calculates the loss and accuracy for the epoch and adds them to the history
-                epoch_loss, epoch_accuracy = self._calculating_epoch_metrics(data_loader, phase, running_loss, running_corrects, epoch)
-
-
-                # Saves the best model
-                if phase == 'validation':
-                    best_accuracy = self._save_best_model(best_model_path, epoch, epoch_loss, epoch_accuracy, best_accuracy)
-
-            self.scheduler.step(epoch_loss)
+            self.scheduler.step()
 
     
-    def _get_list_of_phases(self):
+    def get_partitions(self) -> List[str]:
         """
-        Defines the list of phases.
-        
+        Get a list of partitions based on loop context.
+
+        If the loop is not cross-testing loop, 'validation' is added to the partitions.
+
         Returns:
-            list_of_phases (list of str): The list of phases.
+            list[str]: A list containing the partitions 'train' and optionally 'validation'.
         """
-        
-        # Initializes the list of phases
-        list_of_phases = ['train']
-        
-        
-        # If inner loop
+    
+        partitions = ['train']
         if not self.is_outer_loop:
-            list_of_phases.append('validation') # Adds the validation phase
+            partitions.append('validation')
         
-        
-        return list_of_phases
+        return partitions
 
 
-    def _get_phase_dataloader(self, phase):
+    def get_dataloader(self, partition: str) -> DataLoader:
         """
-        Defines the data loader for the fit depending of the phase.
-        
+        Fetches the DataLoader for a given partition.
+
         Args:
-            phase (str): The training phase.
-        
+            partition (str): The partition type ("train" or "validation").
+
         Returns:
-            data_loader (): The data loader.
+            DataLoader: The DataLoader for the specified partition.
+
+        Raises:
+            ValueError: If the specified partition is not supported.
         """
         
-        if phase == 'train': # Training phase
-            self.model.train()  # Sets model to training mode
+        if partition == 'train': # Training phase
             data_loader = self.partitions_info_dict['training']['dataloader'] # Loads the training set
-            
-        else: # Validation phase
-            self.model.eval()   # Sets model to evaluate mode
+        elif partition == 'validation': # Validation phase
             data_loader = self.partitions_info_dict['validation']['dataloader'] # Loads the validation set
-
+        elif partition == 'test': # Validation phase
+            data_loader = self.partitions_info_dict['test']['dataloader'] # Loads the validation set
+        else:
+            raise ValueError(f"Partition {partition} is not valid.")
         return data_loader
     
+    def process_batch_mixed_precision(self, partition, inputs, labels):
+        # Uses mixed precision to use less memory
+        with autocast(enabled=True, dtype=torch.float16,
+                        cache_enabled=True):
+            # Make predictions for this batch
+            outputs = self.model(inputs)
+            
+            # Compute the loss
+            loss = self.loss_function(outputs, labels)
+        
+            # Backward pass and optimize only if in training phase
+            if partition == 'train':
+                # scale the loss to avoid underflow
+                # which can occur when using mixed precision float16
+                self.scaler.scale(loss).backward()
+                
+                # Gradient clipping to avoid exploding gradients
+                # it is required to unscale to float32
+                # float16 might be too small to update the weights
+                # scaler.unscale_(self.optimizer)
+                # torch.nn.utils.clip_grad_norm_(self.model.parameters(),
+                #                             max_norm=1.0)
+                
+                # because of mixed precision, optimizer.step()
+                # is replaced by
+                self.scaler.step(self.optimizer)
+                # Updates the scale for next iteration. 
+                self.scaler.update()
+        
+        return outputs, loss
 
-    def _fit_loop(self, phase, inputs, labels, running_loss, running_corrects, scaler):
+    
+    def process_batch_standard(self, partition, inputs, labels):
+        # forward + backward + optimize
+        # Make predictions for this batch
+        outputs = self.model(inputs)
+        # Compute the loss and its gradients
+        loss = self.loss_function(outputs, labels)
+        
+        if partition == "train":
+            loss.backward()
+            # Adjust learning weights
+            self.optimizer.step()
+        
+        return outputs, loss
+
+    def process_batch(self,
+                      partition: str,
+                      inputs,
+                      labels,
+                      use_mixed_precision: bool = False):
         """
         Runs the fit loop for the training or evaluation phase.
 
         Args:
-            phase (str): The phase of the model ('train' or 'eval').
+            partition (str): The phase of the model ('train' or 'eval').
             inputs (Tensor): The input data for the current batch.
             labels (Tensor): The true labels corresponding to the inputs.
             
             running_loss (float): The cumulative loss for the current phase.
             running_corrects (int): The cumulative number of correct predictions for the current phase.
-            scaler (GradScaler): A gradient scaler for mixed precision training.
 
         Returns:
             running_loss (float): The updated cumulative loss after processing the batch.
             running_corrects (int): The updated cumulative number of correct predictions.
-            scaler (GradScaler): The gradient scaler, potentially updated.
         """
 
-        with torch.set_grad_enabled(phase == 'train'):
+        if partition not in ['train', 'validation']:
+            raise ValueError(f"Unknown partition '{partition}'. Expected 'train' or 'validation'.")
+
+        # https://pytorch.org/docs/stable/generated/torch.autograd.grad_mode.set_grad_enabled.html
+        # sets gradient calculation on or off.
+        # On: training
+        # Off: validation, test
+        with torch.set_grad_enabled(partition == 'train'):
             # Sends the inputs and labels to the execution device
             inputs = inputs.to(self.execution_device)
             labels = labels.to(self.execution_device)
             
-            # Zeros the parameter gradients
+            # Zero your gradients for every batch!
             self.optimizer.zero_grad()
             
-            # Uses mixed precision to use less memory
-            with autocast():
-                # Passes the data into the model
-                outputs = self.model(inputs)
+            if use_mixed_precision:
+                outputs, loss = self.process_batch_mixed_precision(partition, inputs, labels)
+            else:
+                outputs, loss = self.process_batch_standard(partition, inputs, labels)
+            
+            # Converts the outputs to predictions 
+            # max returns a tuple of two output tensors max, max_indices
+            _, predictions = torch.max(outputs, dim=1)
                 
-                # Computes the loss
-                loss = self.fold_info.loss_function(outputs, labels)
-            
-            # Converts the outputs to predictions
-            _, predictions = torch.max(outputs, 1)
-
-            # Backward pass and optimize only if in training phase
-            if phase == 'train':
-                scaler.scale(loss).backward()
-                
-                # Gradient clipping
-                scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-    
-                scaler.step(self.optimizer)
-                scaler.update()
-            
-            
             # Saves informations to calculates the recall
-            if self.fold_info.metrics_dictionary['recall'] and phase == 'validation':
-                self.all_labels.append(labels)
-                self.all_predictions.append(predictions)
+            # if 'recall' in self.metrics_dictionary and partition == 'validation':
+            #     self.all_labels.append(labels)
+            #     self.all_predictions.append(predictions)
                 
-                
-        # Statistics
-        running_loss += loss.item() * inputs.size(0)
-        running_corrects += torch.sum(predictions == labels.data)
+            # Statistics
+            batch_loss = loss.item() * inputs.size(0)
+            batch_corrects = torch.sum(predictions == labels.data).item()
 
-        return running_loss, running_corrects, scaler
+            return batch_loss, batch_corrects
 
 
-    def _calculating_epoch_metrics(self, _data_loader, phase, running_loss, running_corrects, epoch):
+    def calculate_metrics_for_epoch(self,
+                                    data_loader: DataLoader,
+                                    partition: str,
+                                    running_loss: float,
+                                    running_corrects: int):
         """
         Calculates the loss and accuracy for the epoch and adds them to the history.
 
@@ -770,28 +864,67 @@ class TrainingFold():
         """
 
         # Calculates the loss and accuracy of the current epoch 
-        epoch_loss = running_loss / len(_data_loader.dataset)
-        epoch_accuracy = running_corrects.double() / len(_data_loader.dataset)
+        epoch_loss = running_loss / len(data_loader.dataset)
+        epoch_accuracy = float(running_corrects) / len(data_loader.dataset)
         
         
         # Saves the loss and accuracy of the current epoch into the history
-        self.history[f'{phase}_loss'].append(epoch_loss)
-        self.history[f'{phase}_accuracy'].append(epoch_accuracy.item())
+        self.history[f'{partition}_loss'].append(epoch_loss)
+        self.history[f'{partition}_accuracy'].append(epoch_accuracy)
         
-        
-        # Prints with 4 digits after the decimal point
-        print(f'{phase} loss: {epoch_loss:.4f} | accuracy: {epoch_accuracy:.4f}')
-        
-        
-        if self.fold_info.metrics_dictionary['recall'] and phase == 'validation':
-            epoch_class_recall(self.fold_info.current_configuration['class_names'], epoch, self.all_labels, self.all_predictions, self.history)
-        
+        # if self.metrics_dictionary['recall'] and partition == 'validation':
+        #     epoch_class_recall(self.fold_info.current_configuration['class_names'], epoch, self.all_labels, self.all_predictions, self.history)
         
         return epoch_loss, epoch_accuracy
+
+
+    def save_model(self, epoch_index:int, epoch_loss:float, epoch_accuracy:float):
+        """
+        Save model and other data.
+        
+        Args:
+            best_model_path (str): The path where to save the best model.
+            epoch (int): The current epoch.
+            epoch_loss (float): The loss of the epoch.
+            epoch_accuracy (float): The accuracy of the epoch.
+            best_accuracy (float): The best accuracy obtained in the training.
+        """       
+        
+        # If the epoch is within k steps, saves it
+        if (epoch_index+1) % self.configuration['checkpoint_epoch_frequency'] == 0:
+            
+            # If the directory does not exist, creates it
+            if not self.save_path.exists():
+                self.save_path.mkdir(mode=0o777, parents=True, exist_ok=True)
     
-    
-    
-    def _save_best_model(self, best_model_path, epoch, epoch_loss, epoch_accuracy, best_accuracy):
+            # Saves the checkpoint to file: Name_Current-epoch.pth
+            new_save_path = self.save_path / f"{self.file_name}_{epoch + 1}.pth"
+            
+            
+            torch.save({"model_state_dict": self.model.state_dict(),
+                        "optimizer_state_dict": self.optimizer.state_dict(),
+                        "epoch": epoch_index,
+                        "loss": epoch_loss,
+                        "accuracy_hist": self.accuracy_hist,
+                        "loss_hist": self.loss_hist
+                       }, new_save_path,
+                       pickle_module=pickle, pickle_protocol=DEFAULT_PROTOCOL, _use_new_zipfile_serialization=True)
+            
+            print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs}.", 'cyan'))
+            
+            # Keeps only the previous checkpoint for the most recent training fold, to save memory.           
+            # Delete previous checkpoint
+            if self.prev_save and self.prev_save.exists():
+                os.remove(self.prev_save)
+        
+            self.prev_save = new_save_path
+            
+            # torch.save(self.model.state_dict(), path)
+            # save_model(self.model, best_model_path)
+
+
+    def save_best_model(self, epoch_index:int, epoch_loss:float,
+                        epoch_accuracy: float):
         """
         Saves the best model.
         
@@ -800,23 +933,112 @@ class TrainingFold():
             epoch (int): The current epoch.
             epoch_loss (float): The loss of the epoch.
             epoch_accuracy (float): The accuracy of the epoch.
-            best_accuracy (float): The best accuracy obtained in the training.
         """
         
-        for callback in self.list_callbacks:
+        # for callback in self.list_callbacks:
             
-            if isinstance(callback, Checkpointer):
-                callback.on_epoch_end(epoch, self.model)
+        #     if isinstance(callback, Checkpointer):
+        #         callback.on_epoch_end(epoch, self.model)
                 
-            elif isinstance(callback, lr_scheduler.ReduceLROnPlateau):
-                callback.step(epoch_loss)
+        #     elif isinstance(callback, lr_scheduler.ReduceLROnPlateau):
+        #         callback.step(epoch_loss)
+                   
+        # If the directory does not exist, creates it
+        if not self.save_path.exists():
+            self.save_path.mkdir(mode=0o777, parents=True, exist_ok=True)
+    
+            # Saves the checkpoint to file: Name_Current-epoch.pth
+            new_save_path = self.save_path / f"{self.file_name}_{epoch + 1}_best.pth"
+            
+            
+            torch.save({"model_state_dict": self.model.state_dict(),
+                        "optimizer_state_dict": self.optimizer.state_dict(),
+                        "epoch": epoch_index,
+                        "loss": epoch_loss
+                       }, new_save_path,
+                       pickle_module=pickle, pickle_protocol=DEFAULT_PROTOCOL, _use_new_zipfile_serialization=True)
+            
+            print(colored(f"Saved checkpoint for best model at epoch {epoch + 1}/{self.number_of_epochs}.", 'cyan'))
+            
+            # Keeps only the previous checkpoint for the most recent training fold, to save memory.
+            self.clear_prev_save(new_save_path)
+            
+            # Delete previous checkpoint
+            if self.prev_save and self.prev_save.exists():
+                os.remove(self.prev_save)
         
+            self.prev_save = new_save_path
+                    
         # Saves the best model
         if epoch_accuracy > best_accuracy:
             best_accuracy = epoch_accuracy
-            save_model(self.model, best_model_path)    
+            
+            torch.save(self.model.state_dict(), path)
+            # save_model(self.model, best_model_path)    
         
         return best_accuracy
+    
+
+    # def save_best_model(self, epoch_index, epoch_loss, epoch_accuracy, best_accuracy):
+    #     """
+    #     Saves the best model.
+        
+    #     Args:
+    #         best_model_path (str): The path where to save the best model.
+    #         epoch (int): The current epoch.
+    #         epoch_loss (float): The loss of the epoch.
+    #         epoch_accuracy (float): The accuracy of the epoch.
+    #         best_accuracy (float): The best accuracy obtained in the training.
+    #     """
+        
+    #     # for callback in self.list_callbacks:
+            
+    #     #     if isinstance(callback, Checkpointer):
+    #     #         callback.on_epoch_end(epoch, self.model)
+                
+    #     #     elif isinstance(callback, lr_scheduler.ReduceLROnPlateau):
+    #     #         callback.step(epoch_loss)
+        
+        
+    #     # If the epoch is within k steps, saves it
+    #     if epoch_index % self.number_of_epochs == 0 or /
+    #         (epoch_index+1) == self.number_of_epochs:
+            
+    #         # If the directory does not exist, creates it
+    #         if not self.save_path.exists():
+    #             self.save_path.mkdir(mode=0o777, parents=True, exist_ok=True)
+    
+    #         # Saves the checkpoint to file: Name_Current-epoch.pth
+    #         new_save_path = self.save_path / f"{self.file_name}_{epoch + 1}.pth"
+            
+            
+    #         torch.save({"model_state_dict": self.model.state_dict(),
+    #                     "optimizer_state_dict": self.optimizer.state_dict(),
+    #                     "epoch": epoch_index,
+    #                     "loss": epoch_loss,
+                        
+    #                    }, new_save_path,
+    #                    pickle_module=pickle, pickle_protocol=DEFAULT_PROTOCOL, _use_new_zipfile_serialization=True)
+            
+    #         print(colored(f"Saved a checkpoint for epoch {epoch + 1}/{self.number_of_epochs}.", 'cyan'))
+            
+    #         # Keeps only the previous checkpoint for the most recent training fold, to save memory.
+    #         self.clear_prev_save(new_save_path)
+            
+    #         # Delete previous checkpoint
+    #         if self.prev_save and self.prev_save.exists():
+    #             os.remove(self.prev_save)
+        
+    #         self.prev_save = new_save_path
+                    
+    #     # Saves the best model
+    #     if epoch_accuracy > best_accuracy:
+    #         best_accuracy = epoch_accuracy
+            
+    #         torch.save(self.model.state_dict(), path)
+    #         # save_model(self.model, best_model_path)    
+        
+    #     return best_accuracy
 
 
     def _output_results(self):
