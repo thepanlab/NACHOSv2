@@ -128,9 +128,9 @@ def load_metadata_checkpoint(metadata_checkpoint_filepath: Path,
         # Tries loading it as a dictionary
         try:
             with open(metadata_checkpoint_filepath, 'rb') as file_pointer:
-                metadata_checkpoint_filepath = dill.load(file_pointer, encoding = 'latin1')
+                metadata_checkpoint = dill.load(file_pointer, encoding = 'latin1')
                 if is_verbose_on: # If the verbose mode is activated
-                    print(colored(f"Metada checkpoint from {log_file_path} successfully loaded.", 'cyan'))
+                    print(colored(f"Metada checkpoint from {metadata_checkpoint_filepathh} successfully loaded.", 'cyan'))
         except:  # If the loading fails
             print(colored(f"Warning: Unable to open '{metadata_checkpoint_filepath}'", 'yellow'))
             metadata_checkpoint = None
