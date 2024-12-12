@@ -1,7 +1,6 @@
 from typing import List
 from termcolor import colored
 
-from nachosv2.training.training_sequential.sequential_subject_loop import sequential_subject_loop
 from nachosv2.data_processing.check_unique_subjects import check_unique_subjects
 from nachosv2.data_processing.read_metadata_csv import read_metadata_csv
 # from nachosv2.log_processing.read_log import read_item_list_in_log
@@ -38,7 +37,7 @@ def sequential_processing(execution_device: str,
         is_3d = define_dimensions(dict_config)
 
         # Creates the path to the data CSV files
-        path_csv_metadata = dict_config["path_csv_metadata"]
+        path_csv_metadata = dict_config["path_metadata_csv"]
         
         do_normalize_2d = dict_config["do_normalize_2d"]
         # Creates the normalization
@@ -48,6 +47,8 @@ def sequential_processing(execution_device: str,
         
         # Gets the data from the CSV files
         df_metadata = read_metadata_csv(path_csv_metadata)
+        
+        use_mixed_precision = dict_config["use_mixed_precision"]
 
         # # Reads in the log's subject list, if it exists
         # log_list = read_item_list_in_log(
@@ -70,36 +71,37 @@ def sequential_processing(execution_device: str,
 
         # Double-checks that the validation subjects are unique
         if is_outer_loop == False:  # Only if we are in the inner loop
-            check_unique_subjects(dict_config["validation_subjects"], "validation")
+            check_unique_subjects(dict_config["validation_fold_list"], "validation")
         
         if is_verbose_on:  # If the verbose mode is activated
             print(colored("Double-checks of test and validation uniqueness successfully done.", 'cyan'))
         
         
         # Creates test_subjects_list as a list, regardless of its initial form
-        if not dict_config['test_subjects']: # If the test_subjects list is empty, uses all subjects
-            test_subjects_list = list(dict_config['subject_list'])
+        if not dict_config['test_fold_list']: # If the test_subjects list is empty, uses all subjects
+            test_fold_list = list(dict_config['fold_list'])
             
         else:
-            test_subjects_list = list(dict_config['test_subjects'])
+            test_fold_list = list(dict_config['test_fold_list'])
         
         
         # Gets the list of epochs
-        list_of_epochs = get_list_of_epochs(dict_config["hyperparameters"]["epochs"], test_subjects_list, is_outer_loop, is_verbose_on)
+        list_of_epochs = get_list_of_epochs(dict_config["hyperparameters"]["epochs"], test_fold_list, is_outer_loop, is_verbose_on)
         
         
         # Trains for each test subject
-        for test_subject_name, number_of_epochs in zip(test_subjects_list, list_of_epochs):
+        for test_fold_name, number_of_epochs in zip(test_fold_list, list_of_epochs):
 
             training_loop(
                 execution_device=execution_device,
                 configuration=dict_config,
-                test_subject=test_subject_name,
+                test_fold_name=test_fold_name,
                 df_metadata=df_metadata,
                 number_of_epochs=number_of_epochs,
                 do_normalize_2d=do_normalize_2d,
                 is_outer_loop=is_outer_loop,
                 is_3d=is_3d,
+                use_mixed_precision=use_mixed_precision,
                 rank=None,
                 is_verbose_on=False
             )

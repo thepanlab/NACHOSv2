@@ -3,7 +3,7 @@ from typing import Dict, Optional, Callable
 from termcolor import colored
 import pandas as pd
 
-from nachosv2.training.training_processing.partitions import generate_list_subjects_for_partitions
+from nachosv2.training.training_processing.partitions import generate_list_folds_for_partitions
 from nachosv2.training.training_processing.training_loop import training_loop
 
 
@@ -41,7 +41,7 @@ def sequential_subject_loop(
 
     # Gets the needed data for training
     
-    list_subjects_for_partitions = generate_list_subjects_for_partitions(
+    list_subjects_for_partitions = generate_list_folds_for_partitions(
         list_validation_subjects=current_configuration.get('validation_subjects', None),
         list_subjects=current_configuration['subject_list'],
         test_subject=test_subject,
@@ -53,7 +53,7 @@ def sequential_subject_loop(
     training_loop(
         execution_device=execution_device,
         configuration=current_configuration,
-        test_subject=test_subject,
+        test_fold_name==test_subject,
         list_subjects_for_partitions=list_subjects_for_partitions,
         df_metadata=df_metadata,
         number_of_epochs=number_of_epochs,
