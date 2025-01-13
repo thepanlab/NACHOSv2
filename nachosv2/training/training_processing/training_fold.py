@@ -1,7 +1,9 @@
 import random
+import os
 from collections import OrderedDict
 from typing import Optional, Callable, Union, Tuple, List
 from pathlib import Path
+import math
 
 from termcolor import colored
 import pandas as pd
@@ -97,6 +99,9 @@ class TrainingFold():
         
         self.test_fold_name = test_fold_name
         self.validation_fold_name = validation_fold_name
+        
+        self.prefix_name = f'{configuration["job_name"]}_{test_fold_name}_{validation_fold_name}'
+        
         self.training_folds_list = training_folds_list
         
         self.df_metadata = df_metadata
@@ -146,6 +151,8 @@ class TrainingFold():
         )
         
         self.save_path = Path(self.configuration['output_path']) / 'checkpoints'
+        self.prev_save = None
+        self.prev_best_save = None
         
         # If MPI, specifies the job name by task
         if self.mpi_rank:
@@ -286,11 +293,16 @@ class TrainingFold():
         self.optimizer = create_optimizer(self.model,
                                           self.configuration['hyperparameters'])
         # scheduler https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-                                                              mode = 'min',
-                                                              factor = 0.1,
-                                                              patience = self.configuration['hyperparameters']['patience'],
-                                                              verbose = True)
+        # self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
+        #                                                       mode = 'min',
+        #                                                       factor = 0.1,
+        #                                                       patience = self.configuration['hyperparameters']['patience'],
+        #                                                       verbose = True)
+        
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10,
+                                             eta_min=self.configuration['hyperparameters']['learning_rate']/10,
+                                             last_epoch=-1, verbose='deprecated')
+        
         # Callbacks are not necessary for Pytorch
         # However, they should be place inside the training fun tions
         # self.create_callbacks()
@@ -299,6 +311,7 @@ class TrainingFold():
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
             self.train_model()
+            # TODO
             self._output_results()
 
 
@@ -644,14 +657,15 @@ class TrainingFold():
         if partition == 'validation':
             
             # print epoch results
-            print(f' loss: {self.loss_hist["train"][epoch_index]:.4f} |"
+            print(f' loss: {self.loss_hist["train"][epoch_index]:.4f} |'
                   f'val_loss: {epoch_loss:.4f} |'
                   f'accuracy: {self.accuracy_hist["train"][epoch_index]:.4f} |' f'val_accuracy: {epoch_accuracy:.4f}')
             
             # TODO: verify if the best model is saved
             self.save_model(epoch_index, epoch_loss, epoch_accuracy)
             if epoch_loss < self.best_valid_loss:
-                self.save_best_model(epoch_index, epoch_loss, epoch_accuracy)
+                self.save_best_model(epoch_index)
+                self.best_valid_loss = epoch_loss
 
         return 
 
@@ -669,7 +683,7 @@ class TrainingFold():
                               "validation": [0.0] * self.number_of_epochs}
 
         # Initializations
-        self.best_valid_loss = 0.0
+        self.best_valid_loss = math.inf
         # self.best_accuracy = "results/temp/temp_best_model.pth"
         
         # Sends the model to the execution device
@@ -697,6 +711,7 @@ class TrainingFold():
             for partition in partitions_list:
                 self.process_one_epoch(epoch, partition)
 
+            # ReduceLROnPlateau requires the validation loss
             self.scheduler.step()
 
     
@@ -898,7 +913,7 @@ class TrainingFold():
                 self.save_path.mkdir(mode=0o777, parents=True, exist_ok=True)
     
             # Saves the checkpoint to file: Name_Current-epoch.pth
-            new_save_path = self.save_path / f"{self.file_name}_{epoch + 1}.pth"
+            new_save_path = self.save_path / f"{self.prefix_name}_{epoch_index + 1}.pth"
             
             
             torch.save({"model_state_dict": self.model.state_dict(),
@@ -907,10 +922,9 @@ class TrainingFold():
                         "loss": epoch_loss,
                         "accuracy_hist": self.accuracy_hist,
                         "loss_hist": self.loss_hist
-                       }, new_save_path,
-                       pickle_module=pickle, pickle_protocol=DEFAULT_PROTOCOL, _use_new_zipfile_serialization=True)
+                       }, new_save_path)
             
-            print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs}.", 'cyan'))
+            print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs} at {new_save_path}.", 'cyan'))
             
             # Keeps only the previous checkpoint for the most recent training fold, to save memory.           
             # Delete previous checkpoint
@@ -923,8 +937,7 @@ class TrainingFold():
             # save_model(self.model, best_model_path)
 
 
-    def save_best_model(self, epoch_index:int, epoch_loss:float,
-                        epoch_accuracy: float):
+    def save_best_model(self, epoch_index:int):
         """
         Saves the best model.
         
@@ -934,113 +947,31 @@ class TrainingFold():
             epoch_loss (float): The loss of the epoch.
             epoch_accuracy (float): The accuracy of the epoch.
         """
-        
-        # for callback in self.list_callbacks:
-            
-        #     if isinstance(callback, Checkpointer):
-        #         callback.on_epoch_end(epoch, self.model)
-                
-        #     elif isinstance(callback, lr_scheduler.ReduceLROnPlateau):
-        #         callback.step(epoch_loss)
                    
         # If the directory does not exist, creates it
         if not self.save_path.exists():
             self.save_path.mkdir(mode=0o777, parents=True, exist_ok=True)
     
-            # Saves the checkpoint to file: Name_Current-epoch.pth
-            new_save_path = self.save_path / f"{self.file_name}_{epoch + 1}_best.pth"
-            
-            
-            torch.save({"model_state_dict": self.model.state_dict(),
-                        "optimizer_state_dict": self.optimizer.state_dict(),
-                        "epoch": epoch_index,
-                        "loss": epoch_loss
-                       }, new_save_path,
-                       pickle_module=pickle, pickle_protocol=DEFAULT_PROTOCOL, _use_new_zipfile_serialization=True)
-            
-            print(colored(f"Saved checkpoint for best model at epoch {epoch + 1}/{self.number_of_epochs}.", 'cyan'))
-            
-            # Keeps only the previous checkpoint for the most recent training fold, to save memory.
-            self.clear_prev_save(new_save_path)
-            
-            # Delete previous checkpoint
-            if self.prev_save and self.prev_save.exists():
-                os.remove(self.prev_save)
+        # Saves the checkpoint to file: Name_Current-epoch.pth
+        new_save_path = self.save_path / f"{self.prefix_name}_{epoch_index + 1}_best.pth"
         
-            self.prev_save = new_save_path
-                    
-        # Saves the best model
-        if epoch_accuracy > best_accuracy:
-            best_accuracy = epoch_accuracy
-            
-            torch.save(self.model.state_dict(), path)
-            # save_model(self.model, best_model_path)    
+        torch.save({"model_state_dict": self.model.state_dict(),
+                    "optimizer_state_dict": self.optimizer.state_dict()},
+                    new_save_path)
         
-        return best_accuracy
+        print(colored(f"Saved a checkpoint for best model at epoch {epoch_index + 1}/{self.number_of_epochs} at {new_save_path}.", 'cyan'))
+        
+        # Keeps only the previous checkpoint for the most recent training fold, to save memory.
+        
+        # Delete previous checkpoint
+        if self.prev_best_save and self.prev_best_save.exists():
+            os.remove(self.prev_best_save)
+
+        self.prev_best_save = new_save_path
+       
+        return 
+
     
-
-    # def save_best_model(self, epoch_index, epoch_loss, epoch_accuracy, best_accuracy):
-    #     """
-    #     Saves the best model.
-        
-    #     Args:
-    #         best_model_path (str): The path where to save the best model.
-    #         epoch (int): The current epoch.
-    #         epoch_loss (float): The loss of the epoch.
-    #         epoch_accuracy (float): The accuracy of the epoch.
-    #         best_accuracy (float): The best accuracy obtained in the training.
-    #     """
-        
-    #     # for callback in self.list_callbacks:
-            
-    #     #     if isinstance(callback, Checkpointer):
-    #     #         callback.on_epoch_end(epoch, self.model)
-                
-    #     #     elif isinstance(callback, lr_scheduler.ReduceLROnPlateau):
-    #     #         callback.step(epoch_loss)
-        
-        
-    #     # If the epoch is within k steps, saves it
-    #     if epoch_index % self.number_of_epochs == 0 or /
-    #         (epoch_index+1) == self.number_of_epochs:
-            
-    #         # If the directory does not exist, creates it
-    #         if not self.save_path.exists():
-    #             self.save_path.mkdir(mode=0o777, parents=True, exist_ok=True)
-    
-    #         # Saves the checkpoint to file: Name_Current-epoch.pth
-    #         new_save_path = self.save_path / f"{self.file_name}_{epoch + 1}.pth"
-            
-            
-    #         torch.save({"model_state_dict": self.model.state_dict(),
-    #                     "optimizer_state_dict": self.optimizer.state_dict(),
-    #                     "epoch": epoch_index,
-    #                     "loss": epoch_loss,
-                        
-    #                    }, new_save_path,
-    #                    pickle_module=pickle, pickle_protocol=DEFAULT_PROTOCOL, _use_new_zipfile_serialization=True)
-            
-    #         print(colored(f"Saved a checkpoint for epoch {epoch + 1}/{self.number_of_epochs}.", 'cyan'))
-            
-    #         # Keeps only the previous checkpoint for the most recent training fold, to save memory.
-    #         self.clear_prev_save(new_save_path)
-            
-    #         # Delete previous checkpoint
-    #         if self.prev_save and self.prev_save.exists():
-    #             os.remove(self.prev_save)
-        
-    #         self.prev_save = new_save_path
-                    
-    #     # Saves the best model
-    #     if epoch_accuracy > best_accuracy:
-    #         best_accuracy = epoch_accuracy
-            
-    #         torch.save(self.model.state_dict(), path)
-    #         # save_model(self.model, best_model_path)    
-        
-    #     return best_accuracy
-
-
     def _output_results(self):
         """
         Outputs the training results in files.
