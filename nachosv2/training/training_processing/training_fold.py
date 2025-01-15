@@ -977,28 +977,39 @@ class TrainingFold():
         Outputs the training results in files.
         """
         
-        best_model_path = "results/temp/temp_best_model.pth"
+        # best_model_path = "results/temp/temp_best_model.pth"
         
         # Loads the best model weights
-        self.model.load_state_dict(torch.load(best_model_path))
         
+        checkpoint = torch.load(self.prev_best_save,
+                                weights_only=True)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
-        print(colored(f"Finished training for testing subject {self.fold_info.testing_subject} and subject {self.fold_info.validation_subject}.", 'green'))
+        # Sets the model to evaluation mode
+        self.model.eval()
+        
+        # self.model.load_state_dict(torch.load(best_model_path))
+                
+        print(colored(f"Finished training for test subject {self.test_fold_name}"
+                      f"and validation subject {self.validation_fold_name}.", 'green'))
+        
+        path_output_results = Path(self.configuration['output_path']) / 'training_results'
         
         output_results(
             execution_device = self.execution_device,
-            output_path = os.path.join(self.fold_info.current_configuration['output_path'], 'training_results'), 
-            testing_subject = self.fold_info.testing_subject, 
-            validation_subject = self.fold_info.validation_subject, 
-            trained_model = self.fold_info.model, 
+            output_path = path_output_results, 
+            test_fold_name = self.test_fold_name, 
+            validation_fold_name = self.validation_fold_name, 
+            model = self.model, 
             history = self.history, 
             time_elapsed = self.time_elapsed, 
             datasets = self.partitions_info_dict, 
-            class_names = self.fold_info.current_configuration['class_names'],
-            job_name = self.fold_info.current_configuration['job_name'],
-            config_name = self.fold_info.current_configuration['selected_model_name'],
-            loss_function = self.fold_info.loss_function,
+            class_names = self.configuration['class_names'],
+            job_name = self.configuration['job_name'],
+            architecture_name = self.configuration['architecture_name'],
+            loss_function = self.loss_function,
             is_outer_loop = self.is_outer_loop,
-            rank = self.fold_info.mpi_rank
+            rank = self.mpi_rank
         )
         
