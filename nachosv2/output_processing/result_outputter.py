@@ -1,13 +1,30 @@
 import fasteners
 import os
 from termcolor import colored
+from pathlib import Path
+from typing import Optional, Callable, Union, Tuple, List
 
-from nachosv2.output_processing.result_outputter_utils import create_folders, save_history, save_outer_loop, save_inner_loop, metric_writer
+from torch import nn
+
+from nachosv2.output_processing.result_outputter_utils import create_folders, save_history, save_outer_loop, save_inner_loop, metric_writer, metric_writer2
 from nachosv2.model_processing.evaluate_model import evaluate_model
 from nachosv2.model_processing.save_model import save_model
 
 
-def output_results(execution_device, output_path, testing_subject, validation_subject, trained_model, history, time_elapsed, datasets, class_names, job_name, config_name, loss_function, is_outer_loop, rank):
+def output_results(execution_device: str,
+                   output_path: Path,
+                   test_fold_name: str,
+                   validation_fold_name: str,
+                   model: nn.Module,
+                   history: dict,
+                   time_elapsed: float,
+                   datasets: dict,
+                   class_names: List[str],
+                   job_name: str,
+                   architecture_name: str,
+                   loss_function: nn.CrossEntropyLoss,
+                   is_outer_loop: bool,
+                   rank: int):
     """
     Outputs results from the trained model.
         
@@ -36,36 +53,38 @@ def output_results(execution_device, output_path, testing_subject, validation_su
 
     # Creates the file prefix
     if is_outer_loop:
-        file_prefix = f"{trained_model.model_type}_test_{testing_subject}"
+        file_prefix = f"{architecture_name}_test_{test_fold_name}"
     
     else:
-        file_prefix = f"{trained_model.model_type}_test_{testing_subject}_val_{validation_subject}"
+        file_prefix = f"{architecture_name}_test_{test_fold_name}_val_{validation_fold_name}"
     
     # Creates the path prefix
-    path_prefix = os.path.join(output_path, f'Test_subject_{testing_subject}', f'config_{job_name}_{config_name}', file_prefix)
+    path_folder_output = output_path / f'Test_subject_{test_fold_name}' / \
+                  f'config_{architecture_name}' / file_prefix
     
     
     # Creates the folders to output into
     if rank is not None: # If MPI, lock this section else the processes may error out
-        with fasteners.InterProcessLock(os.path.join(os.path.dirname(output_path), 'output_lock.tmp')):
-            create_folders(path_prefix, ['prediction', 'true_label', 'file_name', 'model'])
-      
+        with fasteners.InterProcessLock(output_path / 'output_lock.tmp'):
+            create_folders(path_folder_output, ['prediction', 'true_label', 'file_name', 'model'])
     else:
-        create_folders(path_prefix, ['prediction', 'true_label', 'file_name', 'model'])
-    
+        create_folders(path_folder_output, ['prediction', 'true_label', 'file_name', 'model'])
     
     # Saves the model
-    save_model(trained_model, f"{path_prefix}/model/{file_prefix}_{trained_model.model_type}.pth")
-    
+    # save_model(trained_model, f"{path_prefix}/model/{file_prefix}_{trained_model.model_type}.pth")
     
     # Saves the history
-    save_history(history, path_prefix, file_prefix)
-    
-    
-    # Writes the class names
-    class_output = {class_names[indexes]: indexes for indexes in range(len(class_names))}
-    metric_writer(f"{file_prefix}_class_names.json", class_output, path_prefix)
-    
+    # save_history(history, path_folder_output, file_prefix)
+    metric_writer2(history,
+                   path_folder_output,
+                   f"{file_prefix}_history.csv")
+    # Writes the class names   
+    categories_info =[{"index": indexes, "class_name": class_names[indexes]} \
+                       for indexes in range(len(class_names))]
+   
+    metric_writer2(categories_info,
+                   path_folder_output,
+                   f"{file_prefix}_class_names.csv")    
     
     # Creates the metrics dictionary and adds the training time
     metrics = {f"{file_prefix}_time_total.csv": [time_elapsed]}
