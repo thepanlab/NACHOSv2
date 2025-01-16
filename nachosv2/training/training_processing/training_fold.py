@@ -893,7 +893,8 @@ class TrainingFold():
         return epoch_loss, epoch_accuracy
 
 
-    def save_model(self, epoch_index:int, epoch_loss:float, epoch_accuracy:float):
+    def save_model(self, epoch_index:int,
+                   epoch_loss:float, epoch_accuracy:float):
         """
         Save model and other data.
         
@@ -1004,7 +1005,7 @@ class TrainingFold():
             model = self.model, 
             history = self.history, 
             time_elapsed = self.time_elapsed, 
-            datasets = self.partitions_info_dict, 
+            partitions_info_dict = self.partitions_info_dict, 
             class_names = self.configuration['class_names'],
             job_name = self.configuration['job_name'],
             architecture_name = self.configuration['architecture_name'],
