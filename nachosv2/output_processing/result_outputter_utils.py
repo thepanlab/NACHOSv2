@@ -90,67 +90,6 @@ def metric_writer(path, values, path_prefix):
 
 
 
-def save_outer_loop(execution_device, trained_model, datasets, metrics, file_prefix):
-    """
-    Saves the results of the outer loop to the metrics dictionary.
-
-    Args:
-        execution_device (str): The device on which the model is executed.
-        trained_model (nn.Module): The trained model to be used for predictions.
-        datasets (dict): Dictionary containing 'testing' datasets.
-        metrics (dict): Dictionary to store the metrics and results.
-        file_prefix (str): Prefix for the file names used in saving the results.
-    """
-    
-    # Predicts probability results for the testing dataset
-    predicted_labels_in_testing, predicted_probabilities_in_testing, true_labels_list_in_testing, file_names_list = predict_model(execution_device, trained_model, datasets['testing']['ds'])
-    
-    
-    # Saves predicted probabilities for the testing dataset
-    metrics[f"prediction/{file_prefix}_predicted_labels.csv"] = [l for l in predicted_labels_in_testing]
-    metrics[f"prediction/{file_prefix}_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_testing]
-    
-    # Saves true labels for the testing dataset
-    metrics[f"true_label/{file_prefix}_true_label.csv"] = true_labels_list_in_testing
-    
-    # Saves file names for the testing dataset
-    metrics[f'file_name/{file_prefix}_file.csv'] = file_names_list
-       
-    
-def save_inner_loop(execution_device,
-                    trained_model,
-                    datasets,
-                    metrics,
-                    file_prefix):
-    """
-    Saves the results of the inner loop to the metrics dictionary.
-
-    Args:
-        execution_device (str): The device on which the model is executed.
-        trained_model (nn.Module): The trained model to be used for predictions.
-        datasets (dict): Dictionary containing 'testing' and 'validation' datasets.
-        metrics (dict): Dictionary to store the metrics and results.
-        file_prefix (str): Prefix for the file names used in saving the results.
-    """
-    
-    # Predicts probability results for the testing and validation datasets
-    predicted_labels_in_testing, predicted_probabilities_in_testing, true_labels_list_in_testing, file_names_list_in_testing = predict_model(execution_device, trained_model, datasets['testing']['ds'])
-    predicted_labels_in_validation, predicted_probabilities_in_validation, true_labels_list_in_validation, file_names_list_in_validation = predict_model(execution_device, trained_model, datasets['validation']['ds'])
-    
-    
-    # Saves predicted probabilities for the testing and validation datasets
-    metrics[f"prediction/{file_prefix}_test_predicted_labels.csv"] = [l for l in predicted_labels_in_testing]
-    metrics[f"prediction/{file_prefix}_test_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_testing]
-    metrics[f"prediction/{file_prefix}_val_predicted_labels.csv"] = [l for l in predicted_labels_in_validation]
-    metrics[f"prediction/{file_prefix}_val_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_validation]
-    
-    # Saves true labels for the testing and validation datasets
-    metrics[f"true_label/{file_prefix}_test_true_label.csv"] = true_labels_list_in_testing
-    metrics[f"true_label/{file_prefix}_val_true_label.csv"] = true_labels_list_in_validation
-    
-    # Saves file names for the testing and validation datasets
-    metrics[f'file_name/{file_prefix}_test_file.csv'] = file_names_list_in_testing
-    metrics[f'file_name/{file_prefix}_val_file.csv'] =  file_names_list_in_validation
 
 
 def generate_inner_loop_results(execution_device:str,

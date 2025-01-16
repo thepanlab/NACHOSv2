@@ -5,10 +5,114 @@ from pathlib import Path
 from typing import Optional, Callable, Union, Tuple, List
 
 from torch import nn
-
-from nachosv2.output_processing.result_outputter_utils import create_folders, save_history, save_outer_loop, save_inner_loop, metric_writer, metric_writer2
+import pandas as pd
+# from nachosv2.output_processing.result_outputter_utils import create_folders, save_history, save_outer_loop, save_inner_loop, metric_writer, metric_writer2
 from nachosv2.model_processing.evaluate_model import evaluate_model
 from nachosv2.model_processing.save_model import save_model
+from nachosv2.model_processing.predict_model import predict_model
+
+def create_folders(path: Path,
+                   names: Optional[List[str]] = None):
+    """
+    Creates folder(s) if they do not exist.
+
+    Args:
+        path (Path): Path to the folder.
+        names (list): The folder name(s). (Optional)
+    """
+    
+    if names is not None:
+        for name in names:
+            folder_path = path / name
+            if not folder_path.exists():
+                folder_path.mkdir(mode=0o777, parents=True, exist_ok=True)
+    else:
+        if not path.exists():
+            path.mkdir(mode=0o777, parents=True, exist_ok=True)
+
+def metric_writer(values: List[dict],
+                  path: Path,
+                  filename: str):
+    """
+    Writes some list in a file.
+
+    Args:
+        path (str): A file path.
+        values (list): A list of values.
+        path_prefix (str): The prefix of the file name and directory.
+    """
+    values_df = pd.DataFrame(values)   
+    values_df.to_csv(path / filename)
+
+
+def save_outer_loop(execution_device, trained_model,
+                    partitions_info_dict, metrics,
+                    file_prefix):
+    """
+    Saves the results of the outer loop to the metrics dictionary.
+
+    Args:
+        execution_device (str): The device on which the model is executed.
+        trained_model (nn.Module): The trained model to be used for predictions.
+        partitions_info_dict (dict): Dictionary containing 'testing' datasets.
+        metrics (dict): Dictionary to store the metrics and results.
+        file_prefix (str): Prefix for the file names used in saving the results.
+    """
+    
+    # Predicts probability results for the testing dataset
+    # predicted_labels_in_testing, predicted_probabilities_in_testing, true_labels_list_in_testing, file_names_list = predict_model(execution_device, trained_model, partitions_info_dict['test']['ds'])
+    
+    prediction_list, prediction_probabilities_list, true_labels_list = \
+        predict_model(execution_device, trained_model, partitions_info_dict['test']['ds'])
+    
+    
+    # Saves predicted probabilities for the testing dataset
+    metrics[f"prediction/{file_prefix}_predicted_labels.csv"] = [l for l in predicted_labels_in_testing]
+    metrics[f"prediction/{file_prefix}_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_testing]
+    
+    # Saves true labels for the testing dataset
+    metrics[f"true_label/{file_prefix}_true_label.csv"] = true_labels_list_in_testing
+    
+    # Saves file names for the testing dataset
+    metrics[f'file_name/{file_prefix}_file.csv'] = file_names_list
+       
+    
+def save_inner_loop(execution_device: str,
+                    trained_model: nn.Module,
+                    partitions_info_dict: dict,
+                    output_path: Path,
+                    file_prefix: str):
+    """
+    Saves the results of the inner loop to the metrics dictionary.
+
+    Args:
+        execution_device (str): The device on which the model is executed.
+        trained_model (nn.Module): The trained model to be used for predictions.
+        datasets (dict): Dictionary containing 'testing' and 'validation' datasets.
+        metrics (dict): Dictionary to store the metrics and results.
+        file_prefix (str): Prefix for the file names used in saving the results.
+    """
+    
+    # Predicts probability results for the testing and validation datasets    
+    preds, pred_probs, true_labels = predict_model(
+                                        execution_device,
+                                        trained_model,
+                                        partitions_info_dict['validation']['dataloader'])
+   
+    prediction_rows = []
+    num_classes = len(pred_probs[0])
+    
+    for index in range(len(preds)):
+        dict_temp = {}
+        dict_temp["index"] = index
+        dict_temp["predicted_class"] = preds[index]
+        for i in range(num_classes):
+            dict_temp[f"class_{i}_prob"] = pred_probs[index][i]
+        prediction_rows.append(dict_temp)
+
+    metric_writer(prediction_rows,
+                   output_path,
+                   f"{file_prefix}_prediction_results.csv")    
 
 
 def output_results(execution_device: str,
@@ -18,7 +122,7 @@ def output_results(execution_device: str,
                    model: nn.Module,
                    history: dict,
                    time_elapsed: float,
-                   datasets: dict,
+                   partitions_info_dict: dict,
                    class_names: List[str],
                    job_name: str,
                    architecture_name: str,
@@ -62,57 +166,45 @@ def output_results(execution_device: str,
     path_folder_output = output_path / f'Test_subject_{test_fold_name}' / \
                   f'config_{architecture_name}' / file_prefix
     
-    
-    # Creates the folders to output into
-    if rank is not None: # If MPI, lock this section else the processes may error out
-        with fasteners.InterProcessLock(output_path / 'output_lock.tmp'):
-            create_folders(path_folder_output, ['prediction', 'true_label', 'file_name', 'model'])
-    else:
-        create_folders(path_folder_output, ['prediction', 'true_label', 'file_name', 'model'])
-    
     # Saves the model
     # save_model(trained_model, f"{path_prefix}/model/{file_prefix}_{trained_model.model_type}.pth")
     
     # Saves the history
     # save_history(history, path_folder_output, file_prefix)
-    metric_writer2(history,
-                   path_folder_output,
-                   f"{file_prefix}_history.csv")
+    metric_writer(history,
+                  path_folder_output,
+                  f"{file_prefix}_history.csv")
     # Writes the class names   
     categories_info =[{"index": indexes, "class_name": class_names[indexes]} \
                        for indexes in range(len(class_names))]
    
-    metric_writer2(categories_info,
-                   path_folder_output,
-                   f"{file_prefix}_class_names.csv")    
+    metric_writer(categories_info,
+                  path_folder_output,
+                  f"{file_prefix}_class_names.csv") 
     
     # Creates the metrics dictionary and adds the training time
-    metrics = {f"{file_prefix}_time_total.csv": [time_elapsed]}
+    time_info = [{"time_total": time_elapsed}]
 
+    metric_writer(time_info,
+                  path_folder_output,
+                  f"{file_prefix}_time_total.csv.csv")
+
+    # TODO: add filename to save_inner_loop
+    # Change names and functions in this script: result_outputter.py
+    # modify save_outer_loop
 
     # Adds the predictions et true labels to the metric dictionary
     if is_outer_loop: # For the outer loop
-        save_outer_loop(execution_device, trained_model, datasets, metrics, file_prefix)
-
+        save_outer_loop(execution_device, model,
+                        partitions_info_dict, metric,
+                        file_prefix)
     else: # For the inner loop
-        save_inner_loop(execution_device, trained_model, datasets, metrics, file_prefix)
-
-
-    # If possible, writes the metrics using the testing dataset
-    if datasets['testing']['ds'] is None:
-        print(colored(
-            f"Non-fatal Error: evaluation was skipped for the test subject {testing_subject} and validation subject {validation_subject}. " + 
-            f"There were no files in the testing dataset.",
-            'yellow'
-        ))
+        save_inner_loop(execution_device,
+                        model,
+                        partitions_info_dict,
+                        path_folder_output,
+                        file_prefix)
     
-    else:
-        metrics[f"{file_prefix}_test_evaluation.csv"] = evaluate_model(execution_device, trained_model, datasets['testing']['ds'], loss_function) # The evaluation results           
-
-
-    # Writes all metrics to file
-    for metric in metrics:
-        metric_writer(metric, metrics[metric], path_prefix)
-    
-    
-    print(colored(f"Finished writing results to file for {trained_model.model_type}'s testing subject {testing_subject} and validation subject {validation_subject}.\n", 'green'))
+    print(colored(f"Finished writing results to file for {architecture_name}'s "
+                  f"test fold name {test_fold_name} and validation subject "
+                  f"{validation_fold_name}.\n", 'green'))
