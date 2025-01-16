@@ -311,7 +311,7 @@ class TrainingFold():
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
             self.train_model()
-            # TODO
+            # TODO reorganize and rename functions to make it more understandable
             self._output_results()
 
 
