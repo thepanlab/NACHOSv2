@@ -51,12 +51,10 @@ def run_training():
         is_outer_loop,
         is_verbose_on
         )
-    
-    
+
     # Checks for memory leaks
     if memory_leak_check_enabled:
-        end_memory_leak_check(memory_snapshot)
-    
+        end_memory_leak_check(memory_snapshot)   
     
     # Stops the timer and prints the elapsed time
     elapsed_time_seconds = training_timer.get_elapsed_time()
