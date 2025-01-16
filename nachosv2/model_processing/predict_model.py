@@ -1,7 +1,12 @@
 import torch
+from torch import nn
+from torch.utils.data import DataLoader
 
+# TODO: should it work with mixed precision?
 
-def predict_model(execution_device, model, test_dataloader):
+def predict_model(execution_device: str, 
+                  model: nn.Module,
+                  dataloader: DataLoader):
     """
     Makes the model do predictions on the test dataset.
 
@@ -16,35 +21,30 @@ def predict_model(execution_device, model, test_dataloader):
         file_names_list (list): The list of the file names for each image in the test data.
     """
     
-    # Sets the model to evaluation mode
-    model.eval()
-    
     # Initializations
     file_names_list = []
-    predictions_labels_list = []
-    predictions_probabilities_list = []
+    prediction_list = []
+    prediction_probabilities_list = []
     true_labels_list = []
 
-
-    with torch.no_grad():
+    with torch.set_grad_enabled(False):
         
-        for inputs, labels, _, file_names in test_dataloader:
+        for inputs, labels in dataloader:
             
             # Sends inputs and labels to the execution device  
             inputs = inputs.to(execution_device)
             labels = labels.to(execution_device)
             
             # Does the test
-            probabilities_output_tensor = model(inputs)
-            
+            outputs = model(inputs)
+            probabilities = torch.softmax(outputs, dim=1)
             # Gets the predicted class indices
-            _, predicted_indices = torch.max(probabilities_output_tensor, 1)
+            _, class_predictions = torch.max(outputs, 1)
 
             # Formats the predictions and real labels into lists
-            file_names_list.append(file_names)
-            predictions_labels_list.extend(predicted_indices.tolist())
-            predictions_probabilities_list.extend(probabilities_output_tensor.tolist())
+            # file_names_list.append(file_names)
+            prediction_list.extend(class_predictions.tolist())
+            prediction_probabilities_list.extend(probabilities.tolist())
             true_labels_list.extend(labels.tolist())
 
-
-    return predictions_labels_list, predictions_probabilities_list, true_labels_list, file_names_list
+    return prediction_list, prediction_probabilities_list, true_labels_list
