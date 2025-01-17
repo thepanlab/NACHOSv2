@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional, Callable
 import skimage.io
 import skimage.transform
-from skimage.util import img_as_float
+from skimage.util import img_as_float32
 from skimage.color import rgb2gray
 import numpy as np
 
@@ -84,10 +84,11 @@ class Dataset2D(Dataset):
         """
         
         # Opens the image
-        image = skimage.io.imread(self.dictionary_partition['files'][index])
+        filepath = self.dictionary_partition['files'][index]
+        image = skimage.io.imread(filepath)
         label = self.dictionary_partition['labels'][index]
         
-        image = img_as_float(image)
+        image = img_as_float32(image)
         # Transformes the image
         # conditional that image differ from number of dimensions
         if self.number_channels == 1 and image.ndim == 3:
@@ -98,14 +99,16 @@ class Dataset2D(Dataset):
             image = crop_image(image, self.crop_box)
 
         # Converts the image into a tensor
+        image = transforms.ToTensor()(image)
 
         if self.transform:
-            image, label = self.transform(image, label)
+            # Error here
+            image = self.transform(image)
 
-        image = transforms.ToTensor()(image)
-        label = torch.tensor(label, dtype=torch.int8)
+        # Dataset loader will automatically convert label to torch.LongTensor
+        # i.e. sign integer 64-bit integer
         
-        return image, label
+        return image, label, filepath
 
 
 class Custom2DDataset(Dataset):
