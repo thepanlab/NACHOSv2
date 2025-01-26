@@ -1,8 +1,11 @@
 import os
 from termcolor import colored
 
+from nachosv2.modules.timer.precision_timer import PrecisionTimer
 
-def write_timing_file(timer, directory_path, is_verbose_on = False):
+def write_timing_file(timer: PrecisionTimer,
+                      directory_path: str,
+                      is_verbose_on: bool = False):
     """
     Creates a timing file and writes in it the elapsed time.
     
@@ -20,7 +23,7 @@ def write_timing_file(timer, directory_path, is_verbose_on = False):
         elapsed_time = timer.get_elapsed_time()
         timer_name = timer.get_timer_name()
         
-        os.makedirs(directory_path, exist_ok = True)
+        os.makedirs(directory_path, exist_ok=True)
 
         timing_file = f"_TIME_SEQ_INNER_{timer_name}.txt"
         timing_path = os.path.join(directory_path, timing_file)
