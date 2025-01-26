@@ -11,28 +11,10 @@ from nachosv2.model_processing.evaluate_model import evaluate_model
 from nachosv2.model_processing.save_model import save_model
 from nachosv2.model_processing.predict_model import predict_model
 
-def create_folders(path: Path,
-                   names: Optional[List[str]] = None):
-    """
-    Creates folder(s) if they do not exist.
 
-    Args:
-        path (Path): Path to the folder.
-        names (list): The folder name(s). (Optional)
-    """
-    
-    if names is not None:
-        for name in names:
-            folder_path = path / name
-            if not folder_path.exists():
-                folder_path.mkdir(mode=0o777, parents=True, exist_ok=True)
-    else:
-        if not path.exists():
-            path.mkdir(mode=0o777, parents=True, exist_ok=True)
-
-def metric_writer(values: List[dict],
-                  path: Path,
-                  filename: str):
+def save_csv_from_list_dict(values: List[dict],
+                           path: Path,
+                           filename: str):
     """
     Writes some list in a file.
 
@@ -41,47 +23,18 @@ def metric_writer(values: List[dict],
         values (list): A list of values.
         path_prefix (str): The prefix of the file name and directory.
     """
+    path.mkdir(parents=True, exist_ok=True)
+    # create directory for path
     values_df = pd.DataFrame(values)   
     values_df.to_csv(path / filename)
-
-
-def save_outer_loop(execution_device, trained_model,
-                    partitions_info_dict, metrics,
-                    file_prefix):
-    """
-    Saves the results of the outer loop to the metrics dictionary.
-
-    Args:
-        execution_device (str): The device on which the model is executed.
-        trained_model (nn.Module): The trained model to be used for predictions.
-        partitions_info_dict (dict): Dictionary containing 'testing' datasets.
-        metrics (dict): Dictionary to store the metrics and results.
-        file_prefix (str): Prefix for the file names used in saving the results.
-    """
+     
     
-    # Predicts probability results for the testing dataset
-    # predicted_labels_in_testing, predicted_probabilities_in_testing, true_labels_list_in_testing, file_names_list = predict_model(execution_device, trained_model, partitions_info_dict['test']['ds'])
-    
-    prediction_list, prediction_probabilities_list, true_labels_list = \
-        predict_model(execution_device, trained_model, partitions_info_dict['test']['ds'])
-    
-    
-    # Saves predicted probabilities for the testing dataset
-    metrics[f"prediction/{file_prefix}_predicted_labels.csv"] = [l for l in predicted_labels_in_testing]
-    metrics[f"prediction/{file_prefix}_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_testing]
-    
-    # Saves true labels for the testing dataset
-    metrics[f"true_label/{file_prefix}_true_label.csv"] = true_labels_list_in_testing
-    
-    # Saves file names for the testing dataset
-    metrics[f'file_name/{file_prefix}_file.csv'] = file_names_list
-       
-    
-def save_inner_loop(execution_device: str,
-                    trained_model: nn.Module,
-                    partitions_info_dict: dict,
-                    output_path: Path,
-                    file_prefix: str):
+def save_prediction_results(partition_type: str,
+                            execution_device: str,
+                            trained_model: nn.Module,
+                            partitions_info_dict: dict,
+                            output_path: Path,
+                            file_prefix: str):
     """
     Saves the results of the inner loop to the metrics dictionary.
 
@@ -93,11 +46,16 @@ def save_inner_loop(execution_device: str,
         file_prefix (str): Prefix for the file names used in saving the results.
     """
     
-    # Predicts probability results for the testing and validation datasets    
-    preds, pred_probs, true_labels = predict_model(
-                                        execution_device,
-                                        trained_model,
-                                        partitions_info_dict['validation']['dataloader'])
+    if partition_type not in ["validation", "test"]:
+        raise ValueError(f"partition_type should be either 'validation' or 'test', but got {partition_type}.")
+    
+    # Predicts probability results for the testing and validation datasets
+    # TODO: stored filepath
+    # verify full filepath and filename !!!
+    preds, pred_probs, true_labels, filepaths = predict_model(
+                                                execution_device,
+                                                trained_model,
+                                                partitions_info_dict[partition_type]['dataloader'])
    
     prediction_rows = []
     num_classes = len(pred_probs[0])
@@ -105,30 +63,56 @@ def save_inner_loop(execution_device: str,
     for index in range(len(preds)):
         dict_temp = {}
         dict_temp["index"] = index
+        dict_temp["filepath"] = filepaths[index]
+        dict_temp["true_label"] = true_labels[index]
         dict_temp["predicted_class"] = preds[index]
         for i in range(num_classes):
             dict_temp[f"class_{i}_prob"] = pred_probs[index][i]
         prediction_rows.append(dict_temp)
 
-    metric_writer(prediction_rows,
-                   output_path,
-                   f"{file_prefix}_prediction_results.csv")    
+    get_csv_from_list_dict(prediction_rows,
+                           output_path,
+                           f"{file_prefix}_prediction_results.csv")    
 
 
-def output_results(execution_device: str,
-                   output_path: Path,
-                   test_fold_name: str,
-                   validation_fold_name: str,
-                   model: nn.Module,
-                   history: dict,
-                   time_elapsed: float,
-                   partitions_info_dict: dict,
-                   class_names: List[str],
-                   job_name: str,
-                   architecture_name: str,
-                   loss_function: nn.CrossEntropyLoss,
-                   is_outer_loop: bool,
-                   rank: int):
+def save_history_to_csv(history: dict,
+                        output_path: Path,
+                        test_fold_name: str,
+                        validation_fold_name: str,
+                        architecture_name: str,
+                        is_outer_loop: bool,
+                        rank: int=None):
+    
+    if is_outer_loop:
+        file_prefix = f"{architecture_name}_test_{test_fold_name}"
+    
+    else:
+        file_prefix = f"{architecture_name}_test_{test_fold_name}" \
+                    f"_val_{validation_fold_name}"
+    
+    # Creates the path prefix
+    path_folder_output = output_path / f'Test_subject_{test_fold_name}' / \
+                        f'config_{architecture_name}' / file_prefix
+        
+    # Saves the history
+    save_csv_from_list_dict(history,
+                            path_folder_output,
+                            f"{file_prefix}_history.csv")
+
+
+def predict_and_save_results(execution_device: str,
+                             output_path: Path,
+                             test_fold_name: str,
+                             validation_fold_name: str,
+                             model: nn.Module,
+                             history: dict,
+                             time_elapsed: float,
+                             partitions_info_dict: dict,
+                             class_names: List[str],
+                             job_name: str,
+                             architecture_name: str,
+                             is_outer_loop: bool,
+                             rank: int):
     """
     Outputs results from the trained model.
         
@@ -160,50 +144,43 @@ def output_results(execution_device: str,
         file_prefix = f"{architecture_name}_test_{test_fold_name}"
     
     else:
-        file_prefix = f"{architecture_name}_test_{test_fold_name}_val_{validation_fold_name}"
+        file_prefix = f"{architecture_name}_test_{test_fold_name}" \
+                      f"_val_{validation_fold_name}"
     
     # Creates the path prefix
     path_folder_output = output_path / f'Test_subject_{test_fold_name}' / \
-                  f'config_{architecture_name}' / file_prefix
+                        f'config_{architecture_name}' / file_prefix
+            
+    # Saves Class/Categories indices with corresponding names   
+    categories_info =[{"index": index, "class_name": class_names[index]} \
+                      for index in range(len(class_names))]
+    save_csv_from_list_dict(categories_info,
+                           path_folder_output,
+                           f"{file_prefix}_class_names.csv") 
     
-    # Saves the model
-    # save_model(trained_model, f"{path_prefix}/model/{file_prefix}_{trained_model.model_type}.pth")
-    
-    # Saves the history
-    # save_history(history, path_folder_output, file_prefix)
-    metric_writer(history,
-                  path_folder_output,
-                  f"{file_prefix}_history.csv")
-    # Writes the class names   
-    categories_info =[{"index": indexes, "class_name": class_names[indexes]} \
-                       for indexes in range(len(class_names))]
-   
-    metric_writer(categories_info,
-                  path_folder_output,
-                  f"{file_prefix}_class_names.csv") 
-    
-    # Creates the metrics dictionary and adds the training time
+    # Saves Total time of training
     time_info = [{"time_total": time_elapsed}]
-
-    metric_writer(time_info,
-                  path_folder_output,
-                  f"{file_prefix}_time_total.csv.csv")
+    save_csv_from_list_dict(time_info,
+                           path_folder_output,
+                           f"{file_prefix}_time_total.csv.csv")
 
     # TODO: add filename to save_inner_loop
-    # Change names and functions in this script: result_outputter.py
-    # modify save_outer_loop
 
     # Adds the predictions et true labels to the metric dictionary
     if is_outer_loop: # For the outer loop
-        save_outer_loop(execution_device, model,
-                        partitions_info_dict, metric,
-                        file_prefix)
+        save_prediction_results("test",
+                                execution_device,
+                                model,
+                                partitions_info_dict,
+                                path_folder_output,
+                                file_prefix)
     else: # For the inner loop
-        save_inner_loop(execution_device,
-                        model,
-                        partitions_info_dict,
-                        path_folder_output,
-                        file_prefix)
+        save_prediction_results("validation",
+                                execution_device,
+                                model,
+                                partitions_info_dict,
+                                path_folder_output,
+                                file_prefix)
     
     print(colored(f"Finished writing results to file for {architecture_name}'s "
                   f"test fold name {test_fold_name} and validation subject "
