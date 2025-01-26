@@ -3,7 +3,11 @@ from termcolor import colored
 from nachosv2.checkpoint_processing.load_log_file import load_log_file
 
 
-def read_item_list_in_log(log_directory, log_prefix, item_list_to_read, is_verbose_on = False, process_rank = None):
+def read_item_list_in_log(log_directory,
+                          log_prefix,
+                          item_list_to_read,
+                          is_verbose_on = False,
+                          process_rank = None):
     """
     Reads a list of items in a log file.
 
@@ -42,3 +46,4 @@ def read_item_list_in_log(log_directory, log_prefix, item_list_to_read, is_verbo
                     
             
     return extracted_items
+
