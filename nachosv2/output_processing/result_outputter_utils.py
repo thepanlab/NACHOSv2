@@ -57,72 +57,72 @@ def metric_writer2(values: List[Dict],
     values_df.to_csv(path / filename)
 
 
-def metric_writer(path, values, path_prefix):
-    """
-    Writes some list in a file.
+# def metric_writer(path, values, path_prefix):
+#     """
+#     Writes some list in a file.
 
-    Args:
-        path (str): A file path.
-        values (list): A list of values.
-        path_prefix (str): The prefix of the file name and directory.
-    """
+#     Args:
+#         path (str): A file path.
+#         values (list): A list of values.
+#         path_prefix (str): The prefix of the file name and directory.
+#     """
     
-    with open(f"{path_prefix}/{path}", 'w', encoding = 'utf-8') as file_pointer:
+#     with open(f"{path_prefix}/{path}", 'w', encoding = 'utf-8') as file_pointer:
         
-        # Predicted values
-        if path.endswith('predicted.csv'):
-            writer = csv.writer(file_pointer)
+#         # Predicted values
+#         if path.endswith('predicted.csv'):
+#             writer = csv.writer(file_pointer)
             
-            for item in values:
-                writer.writerow(item)
+#             for item in values:
+#                 writer.writerow(item)
                 
-        # Class names
-        elif path.endswith('_class_names.json'): 
-            json.dump(values, file_pointer)
+#         # Class names
+#         elif path.endswith('_class_names.json'): 
+#             json.dump(values, file_pointer)
             
             
-        # Everything else
-        else:
-            writer = csv.writer(file_pointer)
+#         # Everything else
+#         else:
+#             writer = csv.writer(file_pointer)
             
-            for item in values:
-                writer.writerow([item])
+#             for item in values:
+#                 writer.writerow([item])
 
 
 
 
 
-def generate_inner_loop_results(execution_device:str,
-                                trained_model: nn.Module,
-                                datasets: dict,
-                                metrics: dict,
-                                file_prefix: str):
-    """
-    Saves the results of the inner loop to the metrics dictionary.
+# def generate_inner_loop_results(execution_device:str,
+#                                 trained_model: nn.Module,
+#                                 datasets: dict,
+#                                 metrics: dict,
+#                                 file_prefix: str):
+#     """
+#     Saves the results of the inner loop to the metrics dictionary.
 
-    Args:
-        execution_device (str): The device on which the model is executed.
-        trained_model (nn.Module): The trained model to be used for predictions.
-        datasets (dict): Dictionary containing 'testing' and 'validation' datasets.
-        metrics (dict): Dictionary to store the metrics and results.
-        file_prefix (str): Prefix for the file names used in saving the results.
-    """
+#     Args:
+#         execution_device (str): The device on which the model is executed.
+#         trained_model (nn.Module): The trained model to be used for predictions.
+#         datasets (dict): Dictionary containing 'testing' and 'validation' datasets.
+#         metrics (dict): Dictionary to store the metrics and results.
+#         file_prefix (str): Prefix for the file names used in saving the results.
+#     """
     
-    # Predicts probability results for the testing and validation datasets
-    # predicted_labels_in_testing, predicted_probabilities_in_testing, true_labels_list_in_testing, file_names_list_in_testing = predict_model(execution_device, trained_model, datasets['testing']['ds'])
-    predicted_labels_in_validation, predicted_probabilities_in_validation, true_labels_list_in_validation, file_names_list_in_validation = predict_model(execution_device, trained_model, datasets['validation']['ds'])
+#     # Predicts probability results for the testing and validation datasets
+#     # predicted_labels_in_testing, predicted_probabilities_in_testing, true_labels_list_in_testing, file_names_list_in_testing = predict_model(execution_device, trained_model, datasets['testing']['ds'])
+#     predicted_labels_in_validation, predicted_probabilities_in_validation, true_labels_list_in_validation, file_names_list_in_validation = predict_model(execution_device, trained_model, datasets['validation']['ds'])
     
     
-    # Saves predicted probabilities for the testing and validation datasets
-    metrics[f"prediction/{file_prefix}_test_predicted_labels.csv"] = [l for l in predicted_labels_in_testing]
-    metrics[f"prediction/{file_prefix}_test_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_testing]
-    metrics[f"prediction/{file_prefix}_val_predicted_labels.csv"] = [l for l in predicted_labels_in_validation]
-    metrics[f"prediction/{file_prefix}_val_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_validation]
+#     # Saves predicted probabilities for the testing and validation datasets
+#     metrics[f"prediction/{file_prefix}_test_predicted_labels.csv"] = [l for l in predicted_labels_in_testing]
+#     metrics[f"prediction/{file_prefix}_test_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_testing]
+#     metrics[f"prediction/{file_prefix}_val_predicted_labels.csv"] = [l for l in predicted_labels_in_validation]
+#     metrics[f"prediction/{file_prefix}_val_predicted_probabilities.csv"] = [l for l in predicted_probabilities_in_validation]
     
-    # Saves true labels for the testing and validation datasets
-    metrics[f"true_label/{file_prefix}_test_true_label.csv"] = true_labels_list_in_testing
-    metrics[f"true_label/{file_prefix}_val_true_label.csv"] = true_labels_list_in_validation
+#     # Saves true labels for the testing and validation datasets
+#     metrics[f"true_label/{file_prefix}_test_true_label.csv"] = true_labels_list_in_testing
+#     metrics[f"true_label/{file_prefix}_val_true_label.csv"] = true_labels_list_in_validation
     
-    # Saves file names for the testing and validation datasets
-    metrics[f'file_name/{file_prefix}_test_file.csv'] = file_names_list_in_testing
-    metrics[f'file_name/{file_prefix}_val_file.csv'] =  file_names_list_in_validation
+#     # Saves file names for the testing and validation datasets
+#     metrics[f'file_name/{file_prefix}_test_file.csv'] = file_names_list_in_testing
+#     metrics[f'file_name/{file_prefix}_val_file.csv'] =  file_names_list_in_validation
