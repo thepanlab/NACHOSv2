@@ -76,7 +76,8 @@ class FullDataset(torch.utils.data.Dataset):
         # Transforms the image
         if self.is_3d:
             # Traitement pour les images 3D
-            image = skimage.transform.resize(image, (299, 299, 299), anti_aliasing = True)
+            image = skimage.transform.resize(image, (299, 299, 299),
+                                             anti_aliasing = True)
             transformed_image = torch.from_numpy(image).float()
             
             if transformed_image.ndim == 3:
@@ -87,7 +88,8 @@ class FullDataset(torch.utils.data.Dataset):
             if image.ndim == 2:
                 image = skimage.color.gray2rgb(image)
                 
-            image = skimage.transform.resize(image, (299, 299), anti_aliasing = True)
+            image = skimage.transform.resize(image, (299, 299),
+                                             anti_aliasing = True)
             transformed_image = torch.from_numpy(image).float().permute(2, 0, 1)
 
         
