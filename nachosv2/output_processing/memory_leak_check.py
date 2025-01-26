@@ -13,16 +13,13 @@ def initiate_memory_leak_check():
     # Forces garbage collection to free unused memory
     gc.collect()
     
-    
     # Starts memory tracking
     tracemalloc.start()
     
     # Takes an initial snapshot of memory allocation
     snapshot1 = tracemalloc.take_snapshot()
     
-    
     return snapshot1
-    
     
     
 def end_memory_leak_check(snapshot1):
