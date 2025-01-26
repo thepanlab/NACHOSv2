@@ -46,10 +46,10 @@ def create_crop_box(offset_height, offset_width, target_height, target_width, is
     """
     
     # Defines the dimensions with better names for understanding purpose
-    left = offset_width
     upper = offset_height
-    right = left + target_width
+    left = offset_width
     lower = upper + target_height
+    right = left + target_width
     
     # Creates the crop box
     crop_box = (left, upper, right, lower)
