@@ -4,6 +4,7 @@ import pandas as pd
 from termcolor import colored
 from nachosv2.training.training_processing.training_fold import TrainingFold
 from nachosv2.checkpoint_processing.read_log import read_item_list_in_log
+from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import read_log
 from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import write_log
 from nachosv2.training.training_processing.partitions import generate_list_folds_for_partitions
 
@@ -38,10 +39,15 @@ def training_loop(
     """
     
     print(colored(f'Beginning the training loop for {test_fold_name}.', 'green'))
+       
+    # Read checkpoint to determine rotation and rank?
     
+    log_dict = read_log(configuration,
+                        test_fold_name, 
+                        configuration['output_path'],
+                        rank,
+                        is_outer_loop)
     
-    # Gets the current rotation progress
-    current_rotation = 0
     # log_rotations = read_item_list_in_log(
     #     configuration['output_path'],
     #     configuration['job_name'], 
@@ -55,6 +61,16 @@ def training_loop(
     #     current_rotation = log_rotations['current_rotation'][testing_subject]
     #     print(colored(f'Starting off from rotation {current_rotation + 1} for testing subject {testing_subject}.', 'cyan'))
     
+    # if log_rotations:
+    #     print(colored(f"Test fold: {log_rotations['test_fold_name']} "
+    #                   f"Current rotation: {log_rotations['current_rotation']}", 'cyan'))
+    
+    if log_dict and test_fold_name in log_dict.keys():
+        current_rotation = log_dict[test_fold_name]["rotation"]
+        if log_dict[test_fold_name]["is_rotation_finished"]:
+            current_rotation += 1
+    else:
+        current_rotation = 0
     
     # Trains for every current_rotation specified
     
@@ -68,16 +84,31 @@ def training_loop(
     number_of_rotations = len(folds_for_partitions_list)
     
     for rotation in range(current_rotation, number_of_rotations):
-        
+
         # Outer loop
         if is_outer_loop:
             validation_fold_name = None
-            print(colored(f'--- Rotation {rotation + 1}/{number_of_rotations} for test subject {test_fold_name} ---', 'magenta'))
+            print(colored(f'--- Rotation {rotation + 1}/{number_of_rotations} '+
+                          f'for test subject {test_fold_name} ---',
+                          'magenta'))
         
         # Inner loop will use the validation subjects
         else:
             validation_fold_name = folds_for_partitions_list[rotation]['validation'][0]
-            print(colored(f'--- Rotation {rotation + 1}/{number_of_rotations} for test subject {test_fold_name} and val subject {validation_fold_name} ---', 'magenta'))
+            print(colored(f'--- Rotation {rotation + 1}/{number_of_rotations} ' +
+                          f'for test subject {test_fold_name} and '+
+                          f'val subject {validation_fold_name} ---', 'magenta'))
+        
+        write_log(
+            config=configuration,
+            test_fold=test_fold_name,
+            rotation_index=rotation,
+            validation_fold=validation_fold_name,
+            is_rotation_finished=False,
+            output_directory=configuration['output_path'],
+            rank=None,
+            is_outer_loop=False
+        )
         
         training_folds_list = folds_for_partitions_list[rotation]['training']
         
@@ -101,15 +132,20 @@ def training_loop(
         
         training_fold.run_all_steps()
         
-        # Writes the index to log
         write_log(
-            config = configuration,
-            test_fold_name = test_fold_name,
-            rotation = rotation,
-            log_directory = configuration['output_path'],
-            log_rotations = None,
-            validation_subject = None,
-            rank = None,
-            is_outer_loop = False
+            config=configuration,
+            test_fold=test_fold_name,
+            rotation_index=rotation,
+            validation_fold=validation_fold_name,
+            is_rotation_finished=True,
+            output_directory=configuration['output_path'],
+            rank=None,
+            is_outer_loop=False
         )
         
+        # Writes the index to log
+        # TODO: fix write_Log-
+        # Determine if it is necessary
+        # since the model it is already and other variables are already 
+        # stored in the checkpoint
+
