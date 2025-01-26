@@ -1,6 +1,6 @@
 
 
-def create_history(metrics_dictionary):
+def create_empty_history(metrics_dictionary):
     """
     TODO
     """
@@ -8,13 +8,10 @@ def create_history(metrics_dictionary):
     # Creates the base history
     history = {'train_loss': [], 'validation_loss': [], 'train_accuracy': [], 'validation_accuracy': []}
     
-    
     # Adds the wanted metrics to the history dictionary
     add_lists_to_history(history, metrics_dictionary)
-    
 
     return history
-
 
 
 def add_lists_to_history(history, metrics_dictionary):
