@@ -1,4 +1,10 @@
-def get_job_name(config, testing_subject, validation_subject = None, rank = None, is_outer_loop = False):
+from pathlib import Path
+import dill
+
+def get_job_name(config: dict,
+                 test_fold: str,
+                 rank: int = None,
+                 is_outer_loop: bool = False):
     """
     Generates a job name based on the provided configuration, testing, and validation subjects.
 
@@ -14,21 +20,22 @@ def get_job_name(config, testing_subject, validation_subject = None, rank = None
         job_name (str): The generated job name.
     """
     
-    if rank:
-        if is_outer_loop:
-            job_name = f"{config['job_name']}_test_{testing_subject}"
-            
-        else:
-            job_name = f"{config['job_name']}_test_{testing_subject}_val_{validation_subject}"
-            
-    else:
-        job_name = config['job_name']
-        
+    # if rank:
+    #     if is_outer_loop:
+    #         job_name = f"{config['job_name']}_test_{test_fold}" 
+    #     else:
+    #         job_name = f"{config['job_name']}_test_{test_fold}" + \
+    #                    f"_val_{validation_fold}"
+    # else:
+    #     job_name = config['job_name']     
+
+    job_name = config['job_name']     
         
     return job_name
 
 
-def get_rotation_dict(testing_subject, rotation, log_rotations = None):
+def get_rotation_dict(test_fold: str,
+                      rotation_index: int):
     """
     Updates the rotation dictionary with the current rotation for the testing subject.
 
@@ -40,14 +47,8 @@ def get_rotation_dict(testing_subject, rotation, log_rotations = None):
     Returns:
         rotation_dict (dict): The updated rotation dictionary.
     """
-    
-    if not log_rotations:
-            rotation_dict = {testing_subject: rotation + 1}        
-    else:
-        rotation_dict = log_rotations['current_rotation']
-        rotation_dict[testing_subject] = rotation + 1
-            
-    return rotation_dict
+
+    return {test_fold: rotation_index}
 
 
 def determine_use_lock(rank):
@@ -67,3 +68,25 @@ def determine_use_lock(rank):
         use_lock = False
 
     return use_lock
+
+
+def write_log_to_file(log_folder: str,
+                      log_filename: str,
+                      dict_to_save: dict):
+    """_summary_
+
+    Args:
+        log_folder (str): folder to store the log file
+        log_filename (str): filename of log file
+        dict_to_save (dict): dictionary to be saved
+    """
+    
+    folder_logs_path = Path(log_folder) / 'logs'
+    folder_logs_path.mkdir(parents=True, exist_ok=True)
+    filepath = folder_logs_path / f"{log_filename}.dill"
+    
+    # Open a file in write-binary mode
+    with open(filepath, 'wb') as file:
+        # Use dill to dump the dictionary into the file
+        dill.dump(dict_to_save, file)
+    
