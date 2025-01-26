@@ -22,14 +22,14 @@ def predict_model(execution_device: str,
     """
     
     # Initializations
-    file_names_list = []
+    file_name_list = []
     prediction_list = []
     prediction_probabilities_list = []
-    true_labels_list = []
+    true_label_list = []
 
     with torch.set_grad_enabled(False):
         
-        for inputs, labels in dataloader:
+        for inputs, labels, filepaths in dataloader:
             
             # Sends inputs and labels to the execution device  
             inputs = inputs.to(execution_device)
@@ -45,6 +45,8 @@ def predict_model(execution_device: str,
             # file_names_list.append(file_names)
             prediction_list.extend(class_predictions.tolist())
             prediction_probabilities_list.extend(probabilities.tolist())
-            true_labels_list.extend(labels.tolist())
+            true_label_list.extend(labels.tolist())
+            file_name_list.extend(list(filepaths))
 
-    return prediction_list, prediction_probabilities_list, true_labels_list
+    return prediction_list, prediction_probabilities_list, \
+           true_label_list, file_name_list
