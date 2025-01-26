@@ -9,6 +9,7 @@ from nachosv2.setup.verify_configuration_types import verify_configuration_types
 from nachosv2.setup.define_dimensions import define_dimensions
 from nachosv2.data_processing.get_list_of_epochs import get_list_of_epochs
 from nachosv2.training.training_processing.training_loop import training_loop
+from nachosv2.checkpoint_processing.log_utils import write_log_to_file
 
 
 def sequential_processing(execution_device: str,
@@ -70,7 +71,7 @@ def sequential_processing(execution_device: str,
         # check_unique_subjects(test_subjects_list, "test")
 
         # Double-checks that the validation subjects are unique
-        if is_outer_loop == False:  # Only if we are in the inner loop
+        if not is_outer_loop:  # Only if we are in the inner loop
             check_unique_subjects(dict_config["validation_fold_list"], "validation")
         
         if is_verbose_on:  # If the verbose mode is activated
@@ -80,17 +81,17 @@ def sequential_processing(execution_device: str,
         # Creates test_subjects_list as a list, regardless of its initial form
         if not dict_config['test_fold_list']: # If the test_subjects list is empty, uses all subjects
             test_fold_list = list(dict_config['fold_list'])
-            
         else:
             test_fold_list = list(dict_config['test_fold_list'])
-        
         
         # Gets the list of epochs
         list_of_epochs = get_list_of_epochs(dict_config["hyperparameters"]["epochs"], test_fold_list, is_outer_loop, is_verbose_on)
         
+        # TODO: split directly to test and validation, not only test
         
         # Trains for each test subject
-        for test_fold_name, number_of_epochs in zip(test_fold_list, list_of_epochs):
+        for test_fold_name, number_of_epochs in zip(test_fold_list,
+                                                    list_of_epochs):
 
             training_loop(
                 execution_device=execution_device,
@@ -105,26 +106,14 @@ def sequential_processing(execution_device: str,
                 rank=None,
                 is_verbose_on=False
             )
-
-            # sequential_subject_loop(
-            #     execution_device,       # The name of the device that will be use
-            #     dict_config,  # The training configuration
-            #     test_subject_name,      # The test subject name
-            #     df_metadata,        # The data dictionary
-            #     number_of_epochs,       # The number of epochs
-            #     do_normalize_2d,    # The normalization transformation
-            #     is_outer_loop,          # If this is of the outer loop
-            #     is_3d,
-            #     is_verbose_on           # If the verbose mode is activated
-            # )
-              
-            test_subjects_dictionary = {'test_subjects': [t for t in test_subjects_list if t != test_subject_name]}
+             
+            # test_subjects_dictionary = {'test_subjects': [t for t in test_subjects_list if t != test_subject_name]}
             
-            write_log_to_file(
-                dict_config['output_path'],   # The directory containing the log files
-                dict_config['job_name'],      # The prefix of the log
-                test_subjects_dictionary,               # A dictionary of the relevant status info
-                False, # use_lock                       # whether to use a lock or not when writing results
-                is_verbose_on                           # If the verbose mode is activated
-            )
+            # write_log_to_file(
+            #     dict_config['output_path'],   # The directory containing the log files
+            #     dict_config['job_name'],      # The prefix of the log
+            #     test_subjects_dictionary,               # A dictionary of the relevant status info
+            #     False, # use_lock                       # whether to use a lock or not when writing results
+            #     is_verbose_on                           # If the verbose mode is activated
+            # )
     
