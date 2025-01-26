@@ -18,7 +18,7 @@ class CIFAR10FF(nn.Module):
         """
 
         # Sets the model definition
-        self.model_type = configuration_file["selected_model_name"]
+        self.model_type = configuration_file["architecture_name"]
 
         input_channels = 3
         kernel_size = 5
