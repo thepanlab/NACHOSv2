@@ -19,7 +19,7 @@ class ResNet3D(nn.Module):
         """
 
         # Sets the model definition
-        self.model_type = configuration_file["selected_model_name"]
+        self.model_type = configuration_file["architecture_name"]
 
         # Gets the model base
         self.base_model = r3d_18(pretrained = True)

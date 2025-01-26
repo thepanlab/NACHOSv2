@@ -47,7 +47,7 @@ class ResNet18_3D(nn.Module):
         """
         
         # Sets the model definition
-        self.model_type = configuration_file["selected_model_name"]
+        self.model_type = configuration_file["architecture_name"]
         
         self.block = BasicBlock3D
         self.layers = [2, 2, 2, 2]
