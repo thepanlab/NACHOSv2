@@ -2,12 +2,54 @@ import dill
 import fasteners
 import os
 from typing import Optional, List
-from termcolor import colored
 from pathlib import Path
-from nachosv2.checkpoint_processing.log_utils import *
+
+from termcolor import colored
+from nachosv2.checkpoint_processing.log_utils import get_rotation_dict, get_job_name, determine_use_lock, write_log_to_file
 
 
-def write_log(config, testing_subject, rotation, log_directory, log_rotations = None, validation_subject = None, rank = None, is_outer_loop = False):
+def read_log(config,
+             test_fold: str,
+             output_directory: str,
+             rank: int = None,
+             is_outer_loop: bool = False) -> Optional[dict]:
+    """
+    Reads a list of items in a log file.
+
+    Args:
+        log_directory (str): The directory containing the log files. In our case it's the output path of the training results.
+        log_prefix (str): The prefix of the log. In our case it's the job's name.
+        item_list_to_read (list of str): The list of dictionary keys to read.
+        is_verbose_on (bool): If the verbose mode is activated. Default is false. (Optional)
+        process_rank (int): The process rank. Default is none. (Optional)
+
+    Returns:
+        extracted_items (dict): The dictionary of the specified items.
+    """
+    
+    # Loads the log file
+    log_filename = get_job_name(config, test_fold,
+                                rank, is_outer_loop)
+
+    log_filepath = Path(output_directory) / 'logs' / f"{log_filename}.dill"
+    
+    if log_filepath.exists() and log_filepath.stat().st_size > 0:
+        with open(log_filepath, 'rb') as f:
+            log_dict = dill.load(f)
+    else:
+        log_dict = None    
+                          
+    return log_dict
+
+
+def write_log(config,
+              test_fold: str,
+              rotation_index: int,
+              validation_fold: str,
+              is_rotation_finished: bool,
+              output_directory: str,
+              rank: int = None,
+              is_outer_loop: bool = False):
     """
     Writes a log entry to a file with information about the current rotation and job.
 
@@ -23,21 +65,26 @@ def write_log(config, testing_subject, rotation, log_directory, log_rotations = 
         is_outer_loop (bool, optional): Indicates if this is the outer loop. Default is False.
     """
     
-    rotation_dict = get_rotation_dict(testing_subject, rotation, log_rotations)
+    rotation_dict = {test_fold: {"rotation":rotation_index,
+                                 "validation_fold":validation_fold,
+                                 "is_rotation_finished":is_rotation_finished}}
     
-    job_name = get_job_name(config, testing_subject, validation_subject, rank, is_outer_loop)
+    log_filename = get_job_name(config, test_fold,
+                                rank, is_outer_loop)
     
-    use_lock = determine_use_lock(rank)
+    # use_lock = determine_use_lock(rank)
 
-    write_log_to_file(log_directory, job_name, {'current_rotation': rotation_dict}, use_lock, is_verbose_on = False, process_rank = None)
+    write_log_to_file(output_directory,
+                      log_filename,
+                      rotation_dict)
 
 
 def save_metadata_checkpoint(output_directory: str,
                              prefix_filename: str,
-                             new_key_dict: dict,
+                             dict_to_save: dict,
                              use_lock: bool = True,
                              is_verbose_on: bool = False,
-                             process_rank = Optional[int]):
+                             rank=Optional[int]):
     """
     Writes a log of the state to file. Can add individual items.
 
@@ -54,9 +101,9 @@ def save_metadata_checkpoint(output_directory: str,
     # Gets the log's path and value
         
     metadata_checkpoint_filepath = create_metadata_checkpoint_path(output_directory,
-                                                               prefix_filename,
-                                                               use_lock,
-                                                               process_rank)
+                                                                   prefix_filename,
+                                                                   use_lock,
+                                                                   rank)
     
     current_metadata_checkpoint = load_metadata_checkpoint(metadata_checkpoint_filepath,
                                                            is_verbose_on)
@@ -67,8 +114,8 @@ def save_metadata_checkpoint(output_directory: str,
     with open(metadata_checkpoint_filepath, 'wb') as file_pointer:
         
         # Writes each element given in the data dictionary to the output dictionary 
-        for key in new_key_dict:
-            current_metadata_checkpoint[key] = new_key_dict[key]
+        for key in dict_to_save:
+            current_metadata_checkpoint[key] = dict_to_save[key]
         
         # Actually writes in the log file
         dill.dump(current_metadata_checkpoint, file_pointer)
@@ -79,7 +126,7 @@ def save_metadata_checkpoint(output_directory: str,
 
 def create_name_metadata_checkpoint(prefix_filename: str,
                                     is_verbose_on: bool = False,
-                                    process_rank: Optional[int] = None) -> str:
+                                    rank: Optional[int] = None) -> str:
     """
     Gets a log name for the given conditions.
 
@@ -94,7 +141,7 @@ def create_name_metadata_checkpoint(prefix_filename: str,
     """
 
     # Appends the rank to the job name if given for the log
-    if process_rank is None:
+    if rank is None:
         filename = f'{prefix_filename}.chk'    
     else:
         filename = f'{prefix_filename}_rank_{process_rank}.chk'
@@ -122,7 +169,8 @@ def load_metadata_checkpoint(metadata_checkpoint_filepath: Path,
     
     # Checks if the log file exists
     if not metadata_checkpoint_filepath.exists() or \
-        os.path.getsize(metadata_checkpoint_filepath) == 0:
+        metadata_checkpoint_filepath.stat().st_size == 0:
+            
         metadata_checkpoint = None
     else: # If it exists
         # Tries loading it as a dictionary
@@ -130,7 +178,7 @@ def load_metadata_checkpoint(metadata_checkpoint_filepath: Path,
             with open(metadata_checkpoint_filepath, 'rb') as file_pointer:
                 metadata_checkpoint = dill.load(file_pointer, encoding = 'latin1')
                 if is_verbose_on: # If the verbose mode is activated
-                    print(colored(f"Metada checkpoint from {metadata_checkpoint_filepathh} successfully loaded.", 'cyan'))
+                    print(colored(f"Metada checkpoint from {metadata_checkpoint_filepath} successfully loaded.", 'cyan'))
         except:  # If the loading fails
             print(colored(f"Warning: Unable to open '{metadata_checkpoint_filepath}'", 'yellow'))
             metadata_checkpoint = None
@@ -141,7 +189,7 @@ def load_metadata_checkpoint(metadata_checkpoint_filepath: Path,
 def create_metadata_checkpoint_path(output_directory: str,
                                     prefix: str,
                                     use_lock: bool = True,
-                                    process_rank=Optional[int]) -> Path:
+                                    rank=Optional[int]) -> Path:
     """
     Gets the logging path and the current log.
 
@@ -169,7 +217,7 @@ def create_metadata_checkpoint_path(output_directory: str,
         
     # Checks if the log already exists and gets the path to write to.
     metadata_checkpoint_filename = create_name_metadata_checkpoint(prefix,
-                                                                   process_rank) # Returns the formatted log file's path
+                                                                   rank) # Returns the formatted log file's path
     metadata_checkpoint_filepath = metadata_checkpoint_directory_path / metadata_checkpoint_filename
     
     return metadata_checkpoint_filepath
@@ -242,7 +290,7 @@ def read_key_in_metadata_checkpoint(output_directory: str,
     
     # If there is a log file, gets the items within by key and returns them as a sub-dictionary
     else:
-        extracted_items = {} # Creates the sub-dictionary that will b returned
+        extracted_items = {} # Creates the sub-dictionary that will be returned
         
         # For each asked key 
         for key in keys_list_to_read:
