@@ -63,7 +63,9 @@ def run_training():
     # Creates a file and writes elapsed time in it
     # Make the next line fit in 80 characters
     timing_directory_path = "../results/training_timings" # The directory's path where to put the timing file
-    write_timing_file(all_programm_timer, timing_directory_path, is_verbose_on)
+    write_timing_file(training_timer,
+                      timing_directory_path,
+                      is_verbose_on)
 
 
 # Sequential Inner Loop
