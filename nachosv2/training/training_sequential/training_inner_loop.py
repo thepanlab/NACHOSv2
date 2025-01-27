@@ -8,7 +8,7 @@ from nachosv2.modules.timer.write_timing_file import write_timing_file
 from nachosv2.output_processing.memory_leak_check import initiate_memory_leak_check, end_memory_leak_check
 from nachosv2.setup.command_line_parser import parse_command_line_args
 from nachosv2.setup.define_execution_device import define_execution_device
-from nachosv2.setup.get_training_configs_list import get_training_configs_list
+from nachosv2.setup.get_config_list import get_config_list
 
 
 """
@@ -25,7 +25,7 @@ def run_training():
     args = parse_command_line_args()
     
     # Defines the arguments
-    list_dict_configs = get_training_configs_list(args['file'], args['folder'])
+    list_dict_configs = get_config_list(args['file'], args['folder'])
     
     is_verbose_on = args['verbose']
     wanted_execution_device = args['device']
