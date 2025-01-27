@@ -19,7 +19,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from nachosv2.training.training_processing.custom_2D_dataset import Dataset2D
-from nachosv2.training.training_processing.custom_3D_dataset import Custom3DDataset
+# from nachosv2.training.training_processing.custom_3D_dataset import Custom3DDataset
 from nachosv2.training.training_processing.training_fold_informations import TrainingFoldInformations
 from nachosv2.data_processing.create_empty_history import create_empty_history
 from nachosv2.data_processing.normalizer import normalizer
