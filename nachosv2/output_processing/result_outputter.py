@@ -70,9 +70,9 @@ def save_prediction_results(partition_type: str,
             dict_temp[f"class_{i}_prob"] = pred_probs[index][i]
         prediction_rows.append(dict_temp)
 
-    get_csv_from_list_dict(prediction_rows,
-                           output_path,
-                           f"{file_prefix}_prediction_results.csv")    
+    save_csv_from_list_dict(prediction_rows,
+                            output_path,
+                            f"{file_prefix}_prediction_results.csv")    
 
 
 def save_history_to_csv(history: dict,
@@ -89,9 +89,9 @@ def save_history_to_csv(history: dict,
     else:
         file_prefix = f"{architecture_name}_test_{test_fold_name}" \
                     f"_val_{validation_fold_name}"
-    
-    # Creates the path prefix
-    path_folder_output = output_path / f'Test_subject_{test_fold_name}' / \
+     
+    path_folder_output = output_path / 'training_results' / \
+                        f'Test_subject_{test_fold_name}' / \
                         f'config_{architecture_name}' / file_prefix
         
     # Saves the history
