@@ -12,7 +12,7 @@ import pandas as pd
 from torchvision import transforms
 
 from nachosv2.image_processing.image_crop import crop_image
-from nachosv2.image_processing.image_transformations import image_transformation_2D
+# from nachosv2.image_processing.image_transformations import image_transformation_2D
 
 
 def ToTensor(image, label, number_channels):
