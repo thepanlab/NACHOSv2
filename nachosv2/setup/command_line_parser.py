@@ -8,7 +8,7 @@ DEFAULT_VERBOSE = False
 DEFAULT_EXECUTION_DEVICE = "cuda:1"
 
 
-def _add_arguments(parser):
+def add_arguments_to_parser(parser):
     """
     Given an existing parActually parses the arguments.
     
@@ -55,7 +55,7 @@ def parse_command_line_args():
     parser = argparse.ArgumentParser()
     
     # Actually parses the arguments
-    _add_arguments(parser)
+    add_arguments_to_parser(parser)
     
     # Splits the recognized arguments from the unrecognized ones
     recognized_arguments, unrecognized_arguments = parser.parse_known_args()
