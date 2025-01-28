@@ -33,4 +33,3 @@ def write_timing_file(timer: PrecisionTimer,
 
         if is_verbose_on: # If the verbose mode is activated
             print(colored("Timing file succesfully created.", "cyan"))
-            
