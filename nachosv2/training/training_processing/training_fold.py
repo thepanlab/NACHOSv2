@@ -956,7 +956,7 @@ class TrainingFold():
         # If the epoch is within the frequency steps, saves it
         checkpoint_frequency = self.configuration['checkpoint_epoch_frequency']
         is_frequency_checkpoint = ( (epoch_index+1) % checkpoint_frequency == 0)
-        if is_frequency_checkpoint == 0 or is_best:
+        if is_frequency_checkpoint or is_best:
 
             l_path_to_save = []
             if is_frequency_checkpoint:
@@ -977,7 +977,7 @@ class TrainingFold():
                             "history": self.history
                            }, path)
             
-            print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs} at {checkpoint_file_path}.", 'cyan'))
+                print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs} at {path}.", 'cyan'))
             
             # Keeps only the previous checkpoint for the most recent training fold, to save memory.           
             # Delete previous checkpoint
