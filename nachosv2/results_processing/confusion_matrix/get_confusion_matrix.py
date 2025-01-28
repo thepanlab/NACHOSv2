@@ -108,10 +108,19 @@ def generate_individual_confusion_matrix(config: dict,
 
     df_class_names = get_class_names_from_prediction_path(config, path)
     df_class_names.set_index('index', inplace=True)
+    series_class_names = df_class_names['class_name']
+    series_class_names.name = None
+    
     # Transform to dataframe with column names
+    row_indices = pd.MultiIndex.from_product([['Ground truth'], series_class_names],
+                                                 names=[None, None])
+    column_indices = pd.MultiIndex.from_product([['Predicted'], series_class_names],
+                                                   names=[None, None])
+    
     confusion_matrix_df = pd.DataFrame(data=confusion_matrix,
-                                       index=df_class_names['class_name'],
-                                       columns=df_class_names['class_name'])
+                                       index=row_indices,
+                                       columns=column_indices)
+    
     
     return confusion_matrix_df
 
