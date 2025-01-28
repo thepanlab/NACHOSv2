@@ -2,13 +2,14 @@ import os
 import json
 from pathlib import Path
 from termcolor import colored
+from typing import List
 
 from nachosv2.setup.command_line_parser import DEFAULT_CONFIGURATION_PATH
 from nachosv2.setup.verify_configuration_types import verify_configuration_types
 
 
 def get_config_list(config_file_path: str,
-                    config_folder_path: str):
+                    config_folder_path: str) -> List[dict]:
     """
     Gets the configuration file(s), whatever it's one file or a folder.
     
@@ -22,7 +23,6 @@ def get_config_list(config_file_path: str,
     """
     
     config_list = [] # The list of config file
-    # list_of_configs_paths = [] # The list of config file's paths
     
     # Checks for command line errors
     # Shouldn't be used because a default configuration folder path exists
