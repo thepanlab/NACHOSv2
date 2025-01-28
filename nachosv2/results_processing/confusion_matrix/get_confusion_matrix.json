@@ -1,0 +1,12 @@
+{
+  "data_path": "/home/pcallec/NACHOS/results/pig_kidney_subset/training_results",
+  "output_path": "/home/pcallec/NACHOS/results/pig_kidney_subset/confusion_matrix",
+
+  "label_types": {
+    "cortex": 0, 
+    "medulla": 1, 
+    "pelvis": 2
+  },
+
+  "is_outer": false
+}
