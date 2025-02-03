@@ -28,6 +28,8 @@ def run_training():
     list_dict_configs = get_config_list(args['file'], args['folder'])
     
     is_verbose_on = args['verbose']
+    
+    # default "cuda:1" if not specified
     wanted_execution_device = args['device']
     
     # Defines the execution device
@@ -42,9 +44,10 @@ def run_training():
     if memory_leak_check_enabled:
         memory_snapshot = initiate_memory_leak_check()
     
-    # Runs the job
-    is_outer_loop = False
-    
+    # Default to is_cross_testing = False, i.e. cross-validation loop
+    # is enabled
+    is_outer_loop = args.get('is_cross_testing', False)
+        
     sequential_processing(
         execution_device,
         list_dict_configs,
