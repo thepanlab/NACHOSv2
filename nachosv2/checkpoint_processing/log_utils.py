@@ -4,7 +4,7 @@ import dill
 def get_job_name(config: dict,
                  test_fold: str,
                  rank: int = None,
-                 is_outer_loop: bool = False):
+                 is_cv_loop: bool = False):
     """
     Generates a job name based on the provided configuration, testing, and validation subjects.
 

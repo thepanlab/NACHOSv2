@@ -80,10 +80,10 @@ def save_history_to_csv(history: dict,
                         test_fold_name: str,
                         validation_fold_name: str,
                         architecture_name: str,
-                        is_outer_loop: bool,
+                        is_cv_loop: bool,
                         rank: int=None):
     
-    if is_outer_loop:
+    if is_cv_loop:
         file_prefix = f"{architecture_name}_test_{test_fold_name}"
     
     else:
@@ -93,6 +93,7 @@ def save_history_to_csv(history: dict,
     path_folder_output = output_path / 'training_results' / \
                         f'Test_subject_{test_fold_name}' / \
                         f'config_{architecture_name}' / file_prefix
+
         
     # Saves the history
     save_csv_from_list_dict(history,
@@ -111,7 +112,7 @@ def predict_and_save_results(execution_device: str,
                              class_names: List[str],
                              job_name: str,
                              architecture_name: str,
-                             is_outer_loop: bool,
+                             is_cv_loop: bool,
                              rank: int):
     """
     Outputs results from the trained model.
@@ -140,7 +141,7 @@ def predict_and_save_results(execution_device: str,
     """
 
     # Creates the file prefix
-    if is_outer_loop:
+    if is_cv_loop:
         file_prefix = f"{architecture_name}_test_{test_fold_name}"
     
     else:
@@ -167,15 +168,15 @@ def predict_and_save_results(execution_device: str,
     # TODO: add filename to save_inner_loop
 
     # Adds the predictions et true labels to the metric dictionary
-    if is_outer_loop: # For the outer loop
-        save_prediction_results("test",
+    if is_cv_loop: # For the outer loop
+        save_prediction_results("validation",
                                 execution_device,
                                 model,
                                 partitions_info_dict,
                                 path_folder_output,
                                 file_prefix)
     else: # For the inner loop
-        save_prediction_results("validation",
+        save_prediction_results("test",
                                 execution_device,
                                 model,
                                 partitions_info_dict,

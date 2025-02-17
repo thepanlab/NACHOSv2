@@ -4,7 +4,7 @@ from termcolor import colored
 
 def get_list_of_epochs(epoch_values: Union[int, list],
                        test_subjects: List[str],
-                       is_outer_loop: bool = False,
+                       is_cv_loop: bool = False,
                        is_verbose_on: bool = False):
     """
     Returns list of epochs. If unique value is given it repeats
@@ -31,11 +31,11 @@ def get_list_of_epochs(epoch_values: Union[int, list],
 
     elif isinstance(epoch_values, list):
         # Handle list of epoch values
-        if len(epoch_values) == 1 and not is_outer_loop:
+        if len(epoch_values) == 1 and is_cv_loop:
             # Single value in the list, use it for all test subjects (inner loop)
             return [epoch_values[0]] * len(test_subjects)
 
-        if len(epoch_values) > 1 and not is_outer_loop:
+        if len(epoch_values) > 1 and is_cv_loop:
             # Multiple values in the list for the inner loop is not allowed
             raise ValueError(colored("For inner loop, you should have only one value for epochs.", 'red'))
 

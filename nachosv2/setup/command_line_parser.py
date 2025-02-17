@@ -6,7 +6,8 @@ from termcolor import colored
 DEFAULT_CONFIGURATION_PATH = 'scripts/config_files'
 DEFAULT_VERBOSE = False
 DEFAULT_EXECUTION_DEVICE = "cuda:1"
-
+# alternative is: "cross-testing"
+DEFAULT_LOOP = "cross-validation"  
 
 def add_arguments_to_parser(parser):
     """
@@ -39,6 +40,12 @@ def add_arguments_to_parser(parser):
         '--device', '--d',
         type = str, default = DEFAULT_EXECUTION_DEVICE, required = False,
         help = 'Change the execution device'
+    )
+    
+    parser.add_argument( # Allows to specify the execution device in command line
+        '--loop', '--l',
+        type = str, default = DEFAULT_LOOP, required = False,
+        help = 'Determine the type of loop'
     )
     
     

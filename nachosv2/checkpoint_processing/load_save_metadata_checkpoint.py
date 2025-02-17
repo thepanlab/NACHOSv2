@@ -45,11 +45,11 @@ def read_log(config,
 def write_log(config,
               test_fold: str,
               rotation_index: int,
-              validation_fold: str,
+              validation_fold: Optional[str],
               is_rotation_finished: bool,
               output_directory: str,
               rank: int = None,
-              is_outer_loop: bool = False):
+              is_cv_loop: bool = False):
     """
     Writes a log entry to a file with information about the current rotation and job.
 
@@ -65,12 +65,12 @@ def write_log(config,
         is_outer_loop (bool, optional): Indicates if this is the outer loop. Default is False.
     """
     
-    rotation_dict = {test_fold: {"rotation":rotation_index,
-                                 "validation_fold":validation_fold,
-                                 "is_rotation_finished":is_rotation_finished}}
+    rotation_dict = {test_fold: {"rotation": rotation_index,
+                                 "validation_fold": validation_fold,
+                                 "is_rotation_finished": is_rotation_finished}}
     
     log_filename = get_job_name(config, test_fold,
-                                rank, is_outer_loop)
+                                rank, is_cv_loop)
     
     # use_lock = determine_use_lock(rank)
 

@@ -43,9 +43,10 @@ def generate_pairs(test_subject_list, validation_subject_list, do_shuffle, param
 
 
 def generate_list_folds_for_partitions(validation_fold_list: Optional[List[str]],
-        fold_list: List[str],
-        test_fold_name: str,
-        do_shuffle: bool) -> List[Dict[str, List[str]]]:
+                                       is_cv_loop: bool,
+                                       fold_list: List[str],
+                                       test_fold_name: str,
+                                       do_shuffle: bool) -> List[Dict[str, List[str]]]:
     """ Generates folds for the subject.
     
     Args:
@@ -59,17 +60,9 @@ def generate_list_folds_for_partitions(validation_fold_list: Optional[List[str]]
         (int): The number of rotations for the training loop.
     """
     
-    # If outer loop, compare the test subjects.
-    if validation_fold_list is None:        
-        partitions = [{
-            'training': _fill_training_partition(fold_list, test_fold_name, None),
-            'testing': [test_fold_name],
-        }]
-        
-    # If inner loop, get the test-val combinations.
-    else:        
-        partitions = []
-       
+    # If cross-validation loop.
+    if is_cv_loop:        
+        partitions = []       
         for validation_fold_name in validation_fold_list:
             if validation_fold_name != test_fold_name:     
                 partitions.append({
@@ -77,6 +70,14 @@ def generate_list_folds_for_partitions(validation_fold_list: Optional[List[str]]
                     'validation': [validation_fold_name],
                     'testing': [test_fold_name],
                 })
+
+        
+    # If cross-testing loop.
+    else:        
+        partitions = [{
+            'training': _fill_training_partition(fold_list, test_fold_name, None),
+            'testing': [test_fold_name],
+        }]
         
     # Shuffle the data and get the number of training rotations
     if do_shuffle:

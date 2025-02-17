@@ -1,15 +1,20 @@
 
 
-def create_empty_history(metrics_dictionary):
+def create_empty_history(is_cv_loop,
+                         metrics_dictionary):
     """
     TODO
     """
     
     # Creates the base history
-    history = {'train_loss': [], 'validation_loss': [], 'train_accuracy': [], 'validation_accuracy': []}
+    if is_cv_loop:
+        history = {'train_loss': [], 'validation_loss': [],
+                   'train_accuracy': [], 'validation_accuracy': []}
+    else:
+        history = {'train_loss': [], 'train_accuracy': []}
     
     # Adds the wanted metrics to the history dictionary
-    add_lists_to_history(history, metrics_dictionary)
+    # add_lists_to_history(history, metrics_dictionary)
 
     return history
 
