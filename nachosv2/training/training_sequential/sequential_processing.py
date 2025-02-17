@@ -14,7 +14,7 @@ from nachosv2.checkpoint_processing.log_utils import write_log_to_file
 
 def sequential_processing(execution_device: str,
                           list_dict_configs: List[dict],
-                          is_outer_loop: bool = False,
+                          is_cv_loop: bool = True,
                           is_verbose_on: bool = False):
     """
     Runs the sequential training process for each configuration and test subject.
@@ -71,8 +71,9 @@ def sequential_processing(execution_device: str,
         # check_unique_subjects(test_subjects_list, "test")
 
         # Double-checks that the validation subjects are unique
-        if not is_outer_loop:  # Only if we are in the inner loop
-            check_unique_subjects(dict_config["validation_fold_list"], "validation")
+        if is_cv_loop:  # Only if we are in the inner loop
+            check_unique_subjects(dict_config["validation_fold_list"],
+                                  "validation")
         
         if is_verbose_on:  # If the verbose mode is activated
             print(colored("Double-checks of test and validation uniqueness successfully done.", 'cyan'))
@@ -85,7 +86,9 @@ def sequential_processing(execution_device: str,
             test_fold_list = list(dict_config['test_fold_list'])
         
         # Gets the list of epochs
-        list_of_epochs = get_list_of_epochs(dict_config["hyperparameters"]["epochs"], test_fold_list, is_outer_loop, is_verbose_on)
+        list_of_epochs = get_list_of_epochs(dict_config["hyperparameters"]["epochs"],
+                                            test_fold_list, is_cv_loop,
+                                            is_verbose_on)
         
         # TODO: split directly to test and validation, not only test
         
@@ -100,9 +103,9 @@ def sequential_processing(execution_device: str,
                 df_metadata=df_metadata,
                 number_of_epochs=number_of_epochs,
                 do_normalize_2d=do_normalize_2d,
-                is_outer_loop=is_outer_loop,
-                is_3d=is_3d,
+                is_cv_loop=is_cv_loop,
                 use_mixed_precision=use_mixed_precision,
+                is_3d=is_3d,
                 rank=None,
                 is_verbose_on=False
             )
