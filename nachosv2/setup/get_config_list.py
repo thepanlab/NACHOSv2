@@ -4,6 +4,8 @@ from pathlib import Path
 from termcolor import colored
 from typing import List
 
+import yaml
+
 from nachosv2.setup.command_line_parser import DEFAULT_CONFIGURATION_PATH
 from nachosv2.setup.verify_configuration_types import verify_configuration_types
 
@@ -38,9 +40,12 @@ def get_config_list(config_file_path: str,
         if not Path(config_file_path).exists(): # Checks if the file exists
             raise Exception(colored(f"Error: The file '{config_file_path}' does not exist.", 'red'))
                
-        with open(config_file_path) as file:  # Guarantees that the file will be close, even if there is an reading error
-            dict_config = json.load(file)
-            verify_configuration_types(dict_config)
+        # with open(config_file_path) as file:  # Guarantees that the file will be close, even if there is an reading error
+        #     dict_config = json.load(file)
+        #     verify_configuration_types(dict_config)
+        with open(config_file_path, 'r') as f:
+            dict_config = yaml.load(f, Loader=yaml.SafeLoader)            
+            
             config_list.append(dict_config)  # Add the file's path to the list that will be returned
             
             # list_of_configs_paths.append(config_file_path)
