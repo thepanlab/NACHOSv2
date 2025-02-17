@@ -46,12 +46,17 @@ def run_training():
     
     # Default to is_cross_testing = False, i.e. cross-validation loop
     # is enabled
-    is_outer_loop = args.get('is_cross_testing', False)
+    loop = args["loop"]
+    
+    if loop == 'cross-testing':
+        is_cv_loop = False
+    else:
+        is_cv_loop = True
         
     sequential_processing(
         execution_device,
         list_dict_configs,
-        is_outer_loop,
+        is_cv_loop,
         is_verbose_on
         )
 
