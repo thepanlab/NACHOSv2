@@ -16,7 +16,7 @@ def training_loop(
     df_metadata: pd.DataFrame,
     number_of_epochs: int,
     do_normalize_2d: bool,
-    is_outer_loop: bool,
+    is_cv_loop: bool,
     use_mixed_precision: bool=False,
     is_3d: bool = False,
     rank: Optional[int] = None,
@@ -43,10 +43,10 @@ def training_loop(
     # Read checkpoint to determine rotation and rank?
     
     log_dict = read_log(configuration,
-                        test_fold_name, 
+                        test_fold_name,
                         configuration['output_path'],
                         rank,
-                        is_outer_loop)
+                        is_cv_loop)
     
     # log_rotations = read_item_list_in_log(
     #     configuration['output_path'],
@@ -76,6 +76,7 @@ def training_loop(
     
     folds_for_partitions_list = generate_list_folds_for_partitions(
         validation_fold_list=configuration.get('validation_fold_list', None),
+        is_cv_loop=is_cv_loop,
         fold_list=configuration['fold_list'],
         test_fold_name=test_fold_name,
         do_shuffle=configuration.get('shuffle_the_folds', False)
@@ -86,19 +87,19 @@ def training_loop(
     for rotation in range(current_rotation, number_of_rotations):
 
         # Outer loop
-        if is_outer_loop:
-            validation_fold_name = None
-            print(colored(f'--- Rotation {rotation + 1}/{number_of_rotations} '+
-                          f'for test subject {test_fold_name} ---',
-                          'magenta'))
-        
-        # Inner loop will use the validation subjects
-        else:
+        if is_cv_loop:
             validation_fold_name = folds_for_partitions_list[rotation]['validation'][0]
             print(colored(f'--- Rotation {rotation + 1}/{number_of_rotations} ' +
                           f'for test subject {test_fold_name} and '+
                           f'val subject {validation_fold_name} ---', 'magenta'))
         
+        # Inner loop will use the validation subjects
+        else:
+            validation_fold_name = None
+            print(colored(f'--- Rotation {rotation + 1}/{number_of_rotations} '+
+                          f'for test subject {test_fold_name} ---',
+                          'magenta'))
+
         write_log(
             config=configuration,
             test_fold=test_fold_name,
@@ -107,7 +108,7 @@ def training_loop(
             is_rotation_finished=False,
             output_directory=configuration['output_path'],
             rank=None,
-            is_outer_loop=False
+            is_cv_loop=True
         )
         
         training_folds_list = folds_for_partitions_list[rotation]['training']
@@ -125,7 +126,7 @@ def training_loop(
             do_normalize_2d,         # 
             use_mixed_precision,
             rank,                    # An optional value of some MPI rank. Default is none. (Optional)
-            is_outer_loop,           # If this is of the outer loop. Default is false. (Optional)
+            is_cv_loop,           # If this is of the outer loop. Default is false. (Optional)
             is_3d,                   # 
             is_verbose_on            # If the verbose mode is activated. Default is false. (Optional)
         )
@@ -140,7 +141,7 @@ def training_loop(
             is_rotation_finished=True,
             output_directory=configuration['output_path'],
             rank=None,
-            is_outer_loop=False
+            is_cv_loop=False
         )
         
         # Writes the index to log

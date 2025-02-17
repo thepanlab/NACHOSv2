@@ -55,7 +55,7 @@ class TrainingFold():
         do_normalize_2d: bool = False,
         use_mixed_precision: bool = False,
         mpi_rank: int = None,
-        is_outer_loop: bool = False,
+        is_cv_loop: bool = False,
         is_3d: bool = False,
         is_verbose_on: bool = False
     ):
@@ -89,7 +89,7 @@ class TrainingFold():
             number_of_epochs,       # The number of epochs
             do_normalize_2d,        #
             mpi_rank,               # An optional value of some MPI rank
-            is_outer_loop,          # If this is of the outer loop
+            is_cv_loop,          # If this is of the outer loop
             is_3d,                  #
             is_verbose_on           # If the verbose mode is activated
         )
@@ -101,7 +101,7 @@ class TrainingFold():
         self.test_fold_name = test_fold_name
         self.validation_fold_name = validation_fold_name
         
-        if is_outer_loop:
+        if is_cv_loop:
             self.prefix_name = f"{configuration['job_name']}" + \
                                f"_{test_fold_name}"
         else:
@@ -131,7 +131,11 @@ class TrainingFold():
         self.scheduler = None
         
         self.execution_device = execution_device
-        self.history = create_empty_history(self.metrics_dictionary)
+        
+        self.is_cv_loop = is_cv_loop
+        
+        self.history = create_empty_history(self.is_cv_loop, 
+                                            self.metrics_dictionary)
         self.time_elapsed = None
         
         self.counter_early_stopping = 0
@@ -145,7 +149,7 @@ class TrainingFold():
         
         self.use_mixed_precision = use_mixed_precision
         self.mpi_rank = mpi_rank
-        self.is_outer_loop = is_outer_loop
+
         self.is_3d = is_3d
         self.do_normalize_2d = do_normalize_2d
         
@@ -168,7 +172,7 @@ class TrainingFold():
             job_name = configuration['job_name'] # Only to put in the new job name
             
             # Checks if inner or outer loop
-            if is_outer_loop: # Outer loop => no validation
+            if is_cv_loop: # Outer loop => no validation
                 new_job_name = f"{job_name}_test_{test_fold_name}" 
             else: # Inner loop => validation
                 new_job_name = f"{job_name}_test_{test_fold_name}"+ \
@@ -249,19 +253,6 @@ class TrainingFold():
                     self.df_metadata[are_training_rows_series_bool]["label"].tolist()  
 
 
-    def run_preparations(self):
-        """
-        Runs all of the steps in order to create the basic training information.
-        """
-        
-        self.get_dataset_info()
-        self.create_model()
-        self.optimizer = create_optimizer(self.model,
-                                          self.configuration['hyperparameters'])
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode = 'min', factor = 0.1, patience = self.configuration['hyperparameters']['patience'], verbose = True)
-        self.create_callbacks()
-
-
     def create_model(self):
         """
         Creates the initial model for training and initializes its weights.
@@ -273,6 +264,7 @@ class TrainingFold():
         # Initializes the weights
         # initialize_model_weights(self.model)
         self.model.apply(initialize_model_weights)
+
 
     def run_all_steps(self):
         """
@@ -306,15 +298,13 @@ class TrainingFold():
                                           self.configuration['hyperparameters'])
         
         # scheduler https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
-        # self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,
-        #                                                       mode = 'min',
-        #                                                       factor = 0.1,
-        #                                                       patience = self.configuration['hyperparameters']['patience'],
-        #                                                       verbose = True)
-        
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10,
-                                             eta_min=self.configuration['hyperparameters']['learning_rate']/10,
-                                             last_epoch=-1, verbose='deprecated')
+
+        # eta_min=self.configuration['hyperparameters']['learning_rate']/10,        
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
+                                                              T_max=10,
+                                                              eta_min=self.configuration['hyperparameters']['learning_rate']/100,
+                                                              last_epoch=-1,
+                                                              verbose='deprecated')
         
         # self.save_state()
             
@@ -583,7 +573,7 @@ class TrainingFold():
             ))
             _is_dataset_created = False
         # Checks if the validation dataset is empty or not
-        elif (not self.is_outer_loop and 
+        elif (self.is_cv_loop and 
               not self.partitions_info_dict['validation']['dataloader']):
             print(colored(
                 f"Non-fatal Error: training was skipped for the Test Subject "
@@ -661,13 +651,13 @@ class TrainingFold():
         self.loss_hist[partition][epoch_index] = epoch_loss
         self.accuracy_hist[partition][epoch_index] = epoch_accuracy
         
-        if partition == 'validation':
+        if partition == 'validation' or not self.is_cv_loop:
             save_history_to_csv(self.history,
                                 Path(self.configuration['output_path']),
                                 self.test_fold_name,
                                 self.validation_fold_name,
                                 self.configuration["architecture_name"],
-                                self.is_outer_loop)
+                                self.is_cv_loop)
 
         
         
@@ -692,7 +682,13 @@ class TrainingFold():
             self.save_model(epoch_index, epoch_loss,
                             epoch_accuracy, is_best)
         
-            # Early stopping call
+        elif not self.is_cv_loop:
+            # print epoch results
+            print(f' loss: {self.loss_hist["train"][epoch_index]:.4f} |'
+                  f'accuracy: {self.accuracy_hist["train"][epoch_index]:.4f} |')
+
+            self.save_model(epoch_index, epoch_loss,
+                            epoch_accuracy, False)
             
         return 
 
@@ -754,7 +750,7 @@ class TrainingFold():
             # ReduceLROnPlateau requires the validation loss
             self.scheduler.step()
             
-            if self.do_early_stop:
+            if self.is_cv_loop and self.do_early_stop:
                 print("Early stopping")
                 break
      
@@ -770,7 +766,7 @@ class TrainingFold():
         """
     
         partitions = ['train']
-        if not self.is_outer_loop:
+        if self.is_cv_loop:
             partitions.append('validation')
         
         return partitions
@@ -1085,9 +1081,12 @@ class TrainingFold():
         # best_model_path = "results/temp/temp_best_model.pth"
         
         # Loads the best model weights
-        
-        checkpoint = torch.load(self.prev_best_checkpoint_file_path,
-                                weights_only=True)
+        if self.is_cv_loop:
+            checkpoint = torch.load(self.prev_best_checkpoint_file_path,
+                                    weights_only=True)
+        else:
+            checkpoint = torch.load(self.prev_checkpoint_file_path,
+                                    weights_only=True)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
@@ -1113,7 +1112,7 @@ class TrainingFold():
             class_names=self.configuration['class_names'],
             job_name=self.configuration['job_name'],
             architecture_name=self.configuration['architecture_name'],
-            is_outer_loop=self.is_outer_loop,
+            is_cv_loop=self.is_cv_loop,
             rank=self.mpi_rank
         )
         
