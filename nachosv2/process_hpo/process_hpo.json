@@ -1,0 +1,6 @@
+{
+    "data_path": "/home/pcallec/NACHOS/results/pig_kidney_subset_all_folds/training_results",
+    "output_path": "/home/pcallec/NACHOS/results/pig_kidney_subset/hpo",
+    "metric": "accuracy",
+    "is_outer": false
+  }
