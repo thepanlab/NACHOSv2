@@ -42,6 +42,42 @@ def generate_pairs(test_subject_list, validation_subject_list, do_shuffle, param
     return folds   
 
 
+def generate_dict_folds_for_partitions(validation_fold_name: str,
+                                       is_cv_loop: bool,
+                                       fold_list: List[str],
+                                       test_fold_name: str) -> Dict[str, List[str]]:
+    """ Generates folds for the subject.
+    
+    Args:
+        fold_list (list of str): A list of fold names.
+        validation_fold_list (list of str): A list of validation fold names.
+        test_fold_name (str): The  test fold name.
+        do_shuffle (bool): If the fold list should be shuffled or not.
+        
+    Returns:
+        (list of dict): A list of folds, containing the subjects for testing, validation, and training.
+        (int): The number of rotations for the training loop.
+    """
+    
+    # If cross-validation loop.
+    if is_cv_loop:
+        partitions_dict = {
+            'training': _fill_training_partition(fold_list, test_fold_name,
+                                                 validation_fold_name), 
+            'validation': [validation_fold_name],
+            'testing': [test_fold_name],
+            }
+
+    # If cross-testing loop.
+    else:        
+        partitions_dict = {
+            'training': _fill_training_partition(fold_list, test_fold_name, None),
+            'testing': [test_fold_name],
+            }
+
+    return partitions_dict
+
+
 def generate_list_folds_for_partitions(validation_fold_list: Optional[List[str]],
                                        is_cv_loop: bool,
                                        fold_list: List[str],
