@@ -20,7 +20,6 @@ import torch.optim as optim
 
 from nachosv2.training.training_processing.custom_2D_dataset import Dataset2D
 # from nachosv2.training.training_processing.custom_3D_dataset import Custom3DDataset
-from nachosv2.training.training_processing.training_fold_informations import TrainingFoldInformations
 from nachosv2.data_processing.create_empty_history import create_empty_history
 from nachosv2.data_processing.normalizer import normalizer
 from nachosv2.image_processing.image_crop import create_crop_box
@@ -45,7 +44,7 @@ class TrainingFold():
     def __init__(
         self,
         execution_device: str,
-        rotation_index: int,
+        training_index: int,
         configuration: dict,
         test_fold_name: str,
         validation_fold_name: str,
@@ -54,7 +53,6 @@ class TrainingFold():
         number_of_epochs: int,
         do_normalize_2d: bool = False,
         use_mixed_precision: bool = False,
-        mpi_rank: int = None,
         is_cv_loop: bool = False,
         is_3d: bool = False,
         is_verbose_on: bool = False
@@ -78,23 +76,8 @@ class TrainingFold():
             is_outer_loop (bool): If this is of the outer loop. Default is false. (Optional)
             is_verbose_on (bool): If the verbose mode is activated. Default is false. (Optional)
         """
-            
-        self.fold_info = TrainingFoldInformations(
-            rotation_index,         # The fold index within the loop
-            configuration,          # The training configuration
-            test_fold_name,         # The test subject name
-            validation_fold_name,   # The validation subject name
-            training_folds_list,    # A list of fold partitions
-            df_metadata,            # The data dictionary
-            number_of_epochs,       # The number of epochs
-            do_normalize_2d,        #
-            mpi_rank,               # An optional value of some MPI rank
-            is_cv_loop,          # If this is of the outer loop
-            is_3d,                  #
-            is_verbose_on           # If the verbose mode is activated
-        )
-        
-        self.rotation_index = rotation_index
+                
+        self.training_index = training_index
         self.configuration = configuration
         self.hyperparameters = configuration['hyperparameters']
         
@@ -103,10 +86,11 @@ class TrainingFold():
         
         if is_cv_loop:
             self.prefix_name = f"{configuration['job_name']}" + \
-                               f"_{test_fold_name}"
+                               f"_test_{test_fold_name}" + \
+                               f"_val_{validation_fold_name}"
         else:
             self.prefix_name = f"{configuration['job_name']}" + \
-                               f"_{test_fold_name}_{validation_fold_name}"
+                               f"_{test_fold_name}"
 
         self.training_folds_list = training_folds_list
         
@@ -120,8 +104,7 @@ class TrainingFold():
              ('test', {'files': [], 'labels': [], 'dataloader': None}),
             ]
             )
-        
-        self.list_callbacks = None
+
         # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
         # The input is expected to contain the unnormalized logits for each class
         self.loss_function = nn.CrossEntropyLoss()
@@ -148,7 +131,6 @@ class TrainingFold():
             )
         
         self.use_mixed_precision = use_mixed_precision
-        self.mpi_rank = mpi_rank
 
         self.is_3d = is_3d
         self.do_normalize_2d = do_normalize_2d
@@ -167,47 +149,13 @@ class TrainingFold():
         self.prev_checkpoint_file_path = None
         self.prev_best_checkpoint_file_path = None
         
-        # If MPI, specifies the job name by task
-        if self.mpi_rank:
-            job_name = configuration['job_name'] # Only to put in the new job name
-            
-            # Checks if inner or outer loop
-            if is_cv_loop: # Outer loop => no validation
-                new_job_name = f"{job_name}_test_{test_fold_name}" 
-            else: # Inner loop => validation
-                new_job_name = f"{job_name}_test_{test_fold_name}"+ \
-                               f"_val_{validation_fold_name}"
+        if is_cv_loop: 
+            new_job_name = f"{configuration['job_name']}_test_{test_fold_name}"+ \
+                            f"_val_{validation_fold_name}"
+        else: 
+            new_job_name = f"{configuration['job_name']}_test_{test_fold_name}" 
 
-            # Updates the job name
             self.configuration['job_name'] = new_job_name
-
-
-    # def create_callbacks(self):
-    #     """
-    #     Creates the training callbacks. 
-    #     This includes early stopping and checkpoints.
-    #     """
-        
-    #     # Gets the job name to create the checkpoint prefix
-    #     if self.is_outer_loop:          
-    #         self.checkpoint_prefix = f"{self.configuration['job_name']}_test_{self.test_fold_name}" + \
-    #                                  f"_config_{self.configuration['architecture_name']}"
-            
-    #     else:
-    #         self.checkpoint_prefix = f"{self.configuration['job_name']}_test_{self.test_fold_name}" + \
-    #                                  f"_val_{self.validation_subject}_config_{self.configuration['architecture_name']}"
-        
-    #     # Creates the path where to save the checkpoint
-    #     self.save_path = Path(self.configuration['output_path']) / 'checkpoints'
-        
-    #     # Creates the checkpoint
-    #     checkpointer = Checkpointer(
-    #         self.number_of_epochs,
-    #         self.configuration['k_epoch_checkpoint_frequency'],
-    #         self.checkpoint_prefix,
-    #         self.mpi_rank,
-    #         save_path
-    #     )
 
 
     def get_normalizer(self):
@@ -271,27 +219,7 @@ class TrainingFold():
         Runs all of the steps for the training process.
         Training itself depends on the state of the training fold.
         Checks for insufficient dataset.
-        """
-        
-        # Loads in the previously saved fold info. Check if valid. If so, use it.
-        # prev_info = self.load_state()
-
-        # if prev_info is not None and \
-        # self.fold_info.testing_subject == prev_info.testing_subject and \
-        # self.fold_info.validation_subject == prev_info.validation_subject:
-        #     self.fold_info = prev_info
-        #     self.load_checkpoint()
-        #     # Conditional if there is no checkpoint
-            
-        #     print(colored("Loaded previous existing state for testing subject " + 
-        #                   f"{prev_info.testing_subject} and subject {prev_info.validation_subject}.", 'cyan'))
-
-        # # Computes every thing if no checkpoint
-        # else:
-        #     self.fold_info.state()
-                
-       # Replace for all substeps
-                
+        """               
         self.get_dataset_info()
         self.create_model()
         self.optimizer = create_optimizer(self.model,
@@ -310,7 +238,9 @@ class TrainingFold():
             
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
-            self.train_model()
+            fold_timer = PrecisionTimer()
+            self.train()
+            self.time_elapsed = fold_timer.get_elapsed_time() 
             # TODO reorganize and rename functions to make it more understandable
             self.process_results()
 
@@ -588,25 +518,6 @@ class TrainingFold():
             
         return _is_dataset_created
     
-    
-    def train_model(self):
-        """
-        Trains the model, assuming the given dataset is valid.
-        """  
-        
-        
-        # load model too
-        
-        # if self.checkpoint_epoch != 0 and \
-        #    self.checkpoint_epoch == self.number_of_epochs:
-        #     print(colored("Maximum number of epochs reached from checkpoint.", 'yellow'))
-        #     return
-        
-        # Fits the model     
-        fold_timer = PrecisionTimer()
-        self.train()
-        self.time_elapsed = fold_timer.get_elapsed_time() 
-
 
     def process_one_epoch(self, epoch_index, partition):       
            
@@ -956,10 +867,10 @@ class TrainingFold():
 
             l_path_to_save = []
             if is_frequency_checkpoint:
-                checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_{epoch_index + 1}.pth"
+                checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}.pth"
                 l_path_to_save.append(checkpoint_file_path)
             if is_best:            
-                best_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_{epoch_index + 1}_best.pth"
+                best_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}_best.pth"
                 l_path_to_save.append(best_checkpoint_file_path)
             
             for path in l_path_to_save:
@@ -1053,7 +964,7 @@ class TrainingFold():
         """
         checkpoint = None
         # get list of checkpoints
-        checkpoint_list = list(self.checkpoint_folder_path.glob(f"*{ self.prefix_name}*.pth"))
+        checkpoint_list = list(self.checkpoint_folder_path.glob(f"*{self.prefix_name}*.pth"))
         
         # TODO: regex to obtain specific epoch
         last_checkpoint_path, last_checkpoint_epoch, best_checkpoint_path = self.get_checkpoint_info(checkpoint_list)
@@ -1095,14 +1006,12 @@ class TrainingFold():
         
         # self.model.load_state_dict(torch.load(best_model_path))
                 
-        print(colored(f"Finished training for test subject {self.test_fold_name}"
-                      f"and validation subject {self.validation_fold_name}.", 'green'))
-        
-        path_output_results = Path(self.configuration['output_path']) / 'training_results'
+        print(colored(f"Finished training for test fold '{self.test_fold_name}'"
+                      f" and validation fold '{self.validation_fold_name}'.", 'green'))
         
         predict_and_save_results(
             execution_device=self.execution_device,
-            output_path=path_output_results, 
+            output_path=Path(self.configuration['output_path']), 
             test_fold_name=self.test_fold_name, 
             validation_fold_name=self.validation_fold_name, 
             model=self.model, 
@@ -1112,7 +1021,5 @@ class TrainingFold():
             class_names=self.configuration['class_names'],
             job_name=self.configuration['job_name'],
             architecture_name=self.configuration['architecture_name'],
-            is_cv_loop=self.is_cv_loop,
-            rank=self.mpi_rank
-        )
+            is_cv_loop=self.is_cv_loop)
         
