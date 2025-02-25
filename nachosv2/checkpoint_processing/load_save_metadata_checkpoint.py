@@ -44,9 +44,9 @@ def read_log(config,
 
 def write_log(config,
               test_fold: str,
-              rotation_index: int,
+              training_index: int,
               validation_fold: Optional[str],
-              is_rotation_finished: bool,
+              is_training_finished: bool,
               output_directory: str,
               rank: int = None,
               is_cv_loop: bool = False):
@@ -65,18 +65,21 @@ def write_log(config,
         is_outer_loop (bool, optional): Indicates if this is the outer loop. Default is False.
     """
     
-    rotation_dict = {test_fold: {"rotation": rotation_index,
-                                 "validation_fold": validation_fold,
-                                 "is_rotation_finished": is_rotation_finished}}
+    log_dict = {"test_fold": test_fold,
+                "rotation": training_index,
+                "validation_fold": validation_fold,
+                "is_training_finished": is_training_finished}
     
-    log_filename = get_job_name(config, test_fold,
-                                rank, is_cv_loop)
+    log_filename = get_job_name(config,
+                                test_fold,
+                                rank,
+                                is_cv_loop)
     
     # use_lock = determine_use_lock(rank)
 
     write_log_to_file(output_directory,
                       log_filename,
-                      rotation_dict)
+                      log_dict)
 
 
 def save_metadata_checkpoint(output_directory: str,
