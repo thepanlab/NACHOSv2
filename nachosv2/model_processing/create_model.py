@@ -19,9 +19,17 @@ import sys
 #     "ResNet3D": ResNet3D,
 # }
 
-l_models = ["Cifar10FF", "Conv3DModel", "InceptionV3", "ResNet18-3D", "ResNet3D"]
+l_models = [
+            "Cifar10FF",
+            "Conv3DModel",
+            "InceptionV3",
+            "ResNet18-3D",
+            "ResNet50",
+            ]
 
-def get_model(model_name: str, number_classes:int, number_channels: int):
+def get_model(model_name: str,
+              number_classes: int,
+              number_channels: int):
     # https://github.com/pytorch/vision/blob/main/torchvision/models/inception.py
     # https://pytorch.org/vision/0.12/generated/torchvision.models.inception_v3.html
     if model_name == "InceptionV3":
@@ -41,13 +49,27 @@ def get_model(model_name: str, number_classes:int, number_channels: int):
             kernel_size=model.Conv2d_1a_3x3.conv.kernel_size,
             stride=model.Conv2d_1a_3x3.conv.stride,
             padding=model.Conv2d_1a_3x3.conv.padding,
-            bias=model.Conv2d_1a_3x3.conv.bias is not None
+            bias=model.Conv2d_1a_3x3.conv.bias  # is not None
         )
-
+        
+    elif model_name == "ResNet50":
+        # ResNet50-specific logic
+        model = models.resnet50(weights=None,
+                                num_classes=number_classes)
+        # Adjust the first convolutional layer to handle a different number of input channels
+        model.conv1 = nn.Conv2d(
+            in_channels=number_channels,
+            out_channels=model.conv1.out_channels,
+            kernel_size=model.conv1.kernel_size,
+            stride=model.conv1.stride,
+            padding=model.conv1.padding,
+            bias=model.conv1.bias  # is not None
+        )
     return model
 
 
-def create_model(configuration_file):
+def create_model(configuration_file:dict,
+                 hyperparameters:dict):
     """
     Creates and prepares a model for training.
         
@@ -61,9 +83,9 @@ def create_model(configuration_file):
 
         
     # Sets the model definition
-    model_name = configuration_file["architecture_name"]
+    model_name = hyperparameters["architecture"]
     number_classes = len(configuration_file["class_names"])
-    number_channels = configuration_file["hyperparameters"]["number_channels"]
+    number_channels = configuration_file["number_channels"]
     
     if model_name not in l_models:
         raise ValueError(colored(f"Error: Model '{model_name}' not found in the list of possible models: {l_models}.", 'red'))
