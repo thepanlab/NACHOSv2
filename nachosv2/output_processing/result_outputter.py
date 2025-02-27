@@ -27,8 +27,26 @@ def save_csv_from_list_dict(values: List[dict],
     # create directory for path
     values_df = pd.DataFrame(values)   
     values_df.to_csv(path / filename)
-     
+
+def get_prefix_and_folder_path(test_fold_name: str,
+                               validation_fold_name: Optional[str],
+                               is_cv_loop: bool,
+                               output_path: Path) -> tuple[str, Path]:
     
+    prefix = f'test_{test_fold_name}'
+
+    path_folder_output = output_path / 'training_results' / \
+                        f'test_{test_fold_name}'      
+    
+    if is_cv_loop:
+        val_folder = f"val_{validation_fold_name}" 
+        path_folder_output = path_folder_output / val_folder
+        
+        prefix += f"_{val_folder}"
+        
+    return prefix, path_folder_output
+
+
 def save_prediction_results(partition_type: str,
                             execution_device: str,
                             trained_model: nn.Module,
@@ -79,26 +97,18 @@ def save_history_to_csv(history: dict,
                         output_path: Path,
                         test_fold_name: str,
                         validation_fold_name: str,
-                        architecture_name: str,
                         is_cv_loop: bool,
                         rank: int=None):
     
-    if is_cv_loop:
-        file_prefix = f"{architecture_name}_test_{test_fold_name}"
-    
-    else:
-        file_prefix = f"{architecture_name}_test_{test_fold_name}" \
-                    f"_val_{validation_fold_name}"
-     
-    path_folder_output = output_path / 'training_results' / \
-                        f'Test_subject_{test_fold_name}' / \
-                        f'config_{architecture_name}' / file_prefix
-
+    prefix, path_folder_output = get_prefix_and_folder_path(test_fold_name,
+                                                            validation_fold_name,
+                                                            is_cv_loop,
+                                                            output_path)
         
     # Saves the history
     save_csv_from_list_dict(history,
                             path_folder_output,
-                            f"{file_prefix}_history.csv")
+                            f"{prefix}_history.csv")
 
 
 def predict_and_save_results(execution_device: str,
@@ -112,8 +122,7 @@ def predict_and_save_results(execution_device: str,
                              class_names: List[str],
                              job_name: str,
                              architecture_name: str,
-                             is_cv_loop: bool,
-                             rank: int):
+                             is_cv_loop: bool):
     """
     Outputs results from the trained model.
         
@@ -140,49 +149,42 @@ def predict_and_save_results(execution_device: str,
         rank (int): The process rank. May be None.
     """
 
-    # Creates the file prefix
-    if is_cv_loop:
-        file_prefix = f"{architecture_name}_test_{test_fold_name}"
     
-    else:
-        file_prefix = f"{architecture_name}_test_{test_fold_name}" \
-                      f"_val_{validation_fold_name}"
-    
-    # Creates the path prefix
-    path_folder_output = output_path / f'Test_subject_{test_fold_name}' / \
-                        f'config_{architecture_name}' / file_prefix
+    prefix, path_folder_output = get_prefix_and_folder_path(test_fold_name,
+                                                            validation_fold_name,
+                                                            is_cv_loop,
+                                                            output_path)
             
     # Saves Class/Categories indices with corresponding names   
     categories_info =[{"index": index, "class_name": class_names[index]} \
                       for index in range(len(class_names))]
     save_csv_from_list_dict(categories_info,
-                           path_folder_output,
-                           f"{file_prefix}_class_names.csv") 
+                            path_folder_output,
+                            f"{prefix}_class_names.csv") 
     
     # Saves Total time of training
     time_info = [{"time_total": time_elapsed}]
     save_csv_from_list_dict(time_info,
-                           path_folder_output,
-                           f"{file_prefix}_time_total.csv.csv")
+                            path_folder_output,
+                            f"{prefix}_time_total.csv.csv")
 
-    # TODO: add filename to save_inner_loop
 
     # Adds the predictions et true labels to the metric dictionary
-    if is_cv_loop: # For the outer loop
+    if is_cv_loop: # For the cross-testing loop
         save_prediction_results("validation",
                                 execution_device,
                                 model,
                                 partitions_info_dict,
                                 path_folder_output,
-                                file_prefix)
-    else: # For the inner loop
+                                prefix)
+    else: # For the cross-validation loop
         save_prediction_results("test",
                                 execution_device,
                                 model,
                                 partitions_info_dict,
                                 path_folder_output,
-                                file_prefix)
+                                prefix)
     
-    print(colored(f"Finished writing results to file for {architecture_name}'s "
-                  f"test fold name {test_fold_name} and validation subject "
-                  f"{validation_fold_name}.\n", 'green'))
+    print(colored(f"Finished writing results to file "
+                  f"test fold '{test_fold_name}' and validation subject "
+                  f"'{validation_fold_name}'.\n", 'green'))
