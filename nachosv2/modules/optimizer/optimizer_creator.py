@@ -3,7 +3,9 @@ from termcolor import colored
 import torch.optim as optim
 
 
-def create_optimizer(model, hyperparameters, is_verbose_on = False):
+def create_optimizer(model,
+                     hyperparameters: dict,
+                     is_verbose_on = False):
     '''
     Creates and returns a custom optimizer
     
@@ -16,12 +18,13 @@ def create_optimizer(model, hyperparameters, is_verbose_on = False):
         optimizer (torch.optim.SGD): The custom optimizer.
     '''
     
+    
+    
     optimizer = optim.SGD(
         model.parameters(),
         lr=hyperparameters['learning_rate'], 
-        momentum=hyperparameters['momentum'], 
-        nesterov=hyperparameters['bool_nesterov'], 
-        weight_decay=hyperparameters['decay']
+        momentum=hyperparameters.get('momentum',0), 
+        nesterov=hyperparameters['enable_nesterov']
     )
     
     

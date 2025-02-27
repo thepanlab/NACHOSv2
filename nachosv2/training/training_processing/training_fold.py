@@ -46,11 +46,9 @@ class TrainingFold():
         execution_device: str,
         training_index: int,
         configuration: dict,
-        test_fold_name: str,
-        validation_fold_name: str,
+        indices_loop_dict: dict,
         training_folds_list: List[str],
         df_metadata: pd.DataFrame,
-        number_of_epochs: int,
         do_normalize_2d: bool = False,
         use_mixed_precision: bool = False,
         is_cv_loop: bool = False,
@@ -79,23 +77,26 @@ class TrainingFold():
                 
         self.training_index = training_index
         self.configuration = configuration
-        self.hyperparameters = configuration['hyperparameters']
         
-        self.test_fold_name = test_fold_name
-        self.validation_fold_name = validation_fold_name
+        self.indices_loop_dict = indices_loop_dict
+        
+        self.test_fold_name = indices_loop_dict["test"]
+        self.validation_fold_name = indices_loop_dict["validation"]
+        self.hyperparameters = indices_loop_dict["hpo_configuration"]
         
         if is_cv_loop:
             self.prefix_name = f"{configuration['job_name']}" + \
-                               f"_test_{test_fold_name}" + \
-                               f"_val_{validation_fold_name}"
+                               f"_test_{self.test_fold_name}" + \
+                               f"_val_{self.validation_fold_name}"
         else:
             self.prefix_name = f"{configuration['job_name']}" + \
-                               f"_{test_fold_name}"
+                               f"_{self.test_fold_name}"
 
         self.training_folds_list = training_folds_list
         
         self.df_metadata = df_metadata
-        self.number_of_epochs = number_of_epochs
+        # hyperparameter
+        self.number_of_epochs = self.hyperparameters["n_epochs"]
         self.metrics_dictionary = get_metrics_dictionary(self.configuration['metrics_list'])
         
         self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
@@ -135,13 +136,16 @@ class TrainingFold():
         self.is_3d = is_3d
         self.do_normalize_2d = do_normalize_2d
         
-        self.crop_box = create_crop_box(
-            self.hyperparameters['cropping_position'][0], # The height of the offset
-            self.hyperparameters['cropping_position'][1], # The width of the offset
-            self.configuration['target_height'],  # The height wanted
-            self.configuration['target_width'],   # The width wanted
-            is_verbose_on
-        )
+        if self.hyperparameters["do_cropping"]:
+            self.crop_box = create_crop_box(
+                self.hyperparameters['cropping_position']["x"], # The height of the offset
+                self.hyperparameters['cropping_position']["y"], # The width of the offset
+                self.configuration['target_height'],  # The height wanted
+                self.configuration['target_width'],   # The width wanted
+                is_verbose_on
+            )
+        else:
+            self.crop_box = None
         
         self.checkpoint_folder_path = Path(self.configuration['output_path']) / 'checkpoints'
         self.start_epoch = 0
@@ -149,11 +153,12 @@ class TrainingFold():
         self.prev_checkpoint_file_path = None
         self.prev_best_checkpoint_file_path = None
         
+        # TODO: verify it doesnt contradict with prefix
         if is_cv_loop: 
-            new_job_name = f"{configuration['job_name']}_test_{test_fold_name}"+ \
-                            f"_val_{validation_fold_name}"
+            new_job_name = f"{configuration['job_name']}_test_{self.test_fold_name}"+ \
+                            f"_val_{self.validation_fold_name}"
         else: 
-            new_job_name = f"{configuration['job_name']}_test_{test_fold_name}" 
+            new_job_name = f"{configuration['job_name']}_test_{self.test_fold_name}" 
 
             self.configuration['job_name'] = new_job_name
 
@@ -163,6 +168,32 @@ class TrainingFold():
         if not self.is_3d:
             normalizer = normalizer(self.partitions_info_dict["training"]["files"],
                                     dict_config)
+
+
+    def get_files_labels(self,
+                         partition:str):
+        
+        # Dictionary mapping partitions to their respective fold names or conditions
+        partition_queries = {
+            'test': f"fold_name == @self.test_fold_name",
+            'validation': f"fold_name == @self.validation_fold_name",
+            'training': f"fold_name in @self.training_folds_list"
+        }
+
+        # Validate the partition argument
+        if partition not in partition_queries:
+            raise ValueError(f"Invalid partition specified: {partition}."
+                             " Must be 'test', 'validation', or 'training'.")
+
+        # Query the DataFrame once per function call
+        partition_query = partition_queries[partition]
+        filtered_data = self.df_metadata.query(partition_query)
+
+        # Extract files and labels lists
+        files = filtered_data['absolute_filepath'].tolist()
+        labels = filtered_data['label'].tolist()
+
+        return files, labels
 
 
     def get_dataset_info(self):
@@ -181,24 +212,7 @@ class TrainingFold():
             raise ValueError(f"The columns {l_columns} must be in csv_metadata file.")
         
         for partition, value_dict in self.partitions_info_dict.items():
-            if partition == 'test':
-                are_test_rows_series_bool = self.df_metadata["fold_name"] == self.test_fold_name
-                value_dict['files'] = \
-                    self.df_metadata[are_test_rows_series_bool]["absolute_filepath"].tolist()
-                value_dict['labels'] = \
-                    self.df_metadata[are_test_rows_series_bool]["label"].tolist()
-            elif partition == 'validation':
-                are_validation_rows_series_bool = self.df_metadata["fold_name"] == self.validation_fold_name
-                value_dict['files'] = \
-                    self.df_metadata[are_validation_rows_series_bool]["absolute_filepath"].tolist()
-                value_dict['labels'] = \
-                    self.df_metadata[are_validation_rows_series_bool]["label"].tolist()
-            else:  # training
-                are_training_rows_series_bool = self.df_metadata["fold_name"].isin(self.training_folds_list)
-                value_dict['files'] = \
-                    self.df_metadata[are_training_rows_series_bool]["absolute_filepath"].tolist()
-                value_dict['labels'] = \
-                    self.df_metadata[are_training_rows_series_bool]["label"].tolist()  
+            value_dict['files'], value_dict['labels'] = self.get_files_labels(partition)
 
 
     def create_model(self):
@@ -207,7 +221,8 @@ class TrainingFold():
         """
         
         # Creates the model
-        self.model = create_model(self.configuration)
+        self.model = create_model(self.configuration,
+                                  self.hyperparameters)
         self.model.to(self.execution_device)
         # Initializes the weights
         # initialize_model_weights(self.model)
@@ -223,14 +238,13 @@ class TrainingFold():
         self.get_dataset_info()
         self.create_model()
         self.optimizer = create_optimizer(self.model,
-                                          self.configuration['hyperparameters'])
+                                          self.hyperparameters)
         
         # scheduler https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
-
-        # eta_min=self.configuration['hyperparameters']['learning_rate']/10,        
+      
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
                                                               T_max=10,
-                                                              eta_min=self.configuration['hyperparameters']['learning_rate']/100,
+                                                              eta_min=self.hyperparameters['learning_rate']/100,
                                                               last_epoch=-1,
                                                               verbose='deprecated')
         
@@ -317,8 +331,8 @@ class TrainingFold():
             or lists of floats for RGB.
         """
 
-        total_sum = torch.zeros(self.hyperparameters["number_channels"])
-        total_sum_squared = torch.zeros(self.hyperparameters["number_channels"])
+        total_sum = torch.zeros(self.configuration["number_channels"])
+        total_sum_squared = torch.zeros(self.configuration["number_channels"])
         num_pixels = 0
         
         # Iterate through the dataset
@@ -337,9 +351,9 @@ class TrainingFold():
         stddev = (total_sum_squared / num_pixels - mean ** 2).sqrt()
             
         # Convert to scalars for grayscale or lists for RGB
-        if self.hyperparameters["number_channels"] == 1:
+        if self.configuration["number_channels"] == 1:
             return mean.item(), stddev.item()
-        elif self.hyperparameters["number_channels"] == 3:
+        elif self.configuration["number_channels"] == 3:
             return mean.tolist(), stddev.tolist()
         else:
             raise ValueError("Number of channels must be 1 or 3.")
@@ -374,7 +388,7 @@ class TrainingFold():
                 if self.do_normalize_2d:
                     dataset_before_normalization = Dataset2D(
                         dictionary_partition = self.partitions_info_dict[dataset_type],
-                        number_channels = self.hyperparameters['number_channels'],
+                        number_channels = self.configuration['number_channels'],
                         do_cropping = self.hyperparameters['do_cropping'],
                         crop_box = self.crop_box,
                         transform=None
@@ -382,7 +396,7 @@ class TrainingFold():
 
                     dataloader = DataLoader(
                         dataset = dataset_before_normalization,
-                        batch_size = self.configuration['hyperparameters']['batch_size'],
+                        batch_size = self.hyperparameters['batch_size'],
                         shuffle = False,
                         drop_last = drop_residual,
                         num_workers = 0 # Default
@@ -401,7 +415,7 @@ class TrainingFold():
             else:
                 dataset = Dataset2D(
                     dictionary_partition = self.partitions_info_dict[dataset_type], # The data dictionary
-                    number_channels = self.hyperparameters['number_channels'],      # The number of channels in an image
+                    number_channels = self.configuration['number_channels'],      # The number of channels in an image
                     do_cropping = self.hyperparameters['do_cropping'],              # Whether to crop the image
                     crop_box = self.crop_box,                                       # The dimensions after cropping
                     transform=transform
@@ -416,7 +430,7 @@ class TrainingFold():
             # Creates dataloader
             dataloader = DataLoader(
                 dataset = dataset,
-                batch_size = self.configuration['hyperparameters']['batch_size'],
+                batch_size = self.hyperparameters['batch_size'],
                 shuffle = do_shuffle,
                 drop_last = drop_residual,
                 num_workers = 4
@@ -440,12 +454,12 @@ class TrainingFold():
         """
 
         # Calculates the residual
-        residual = len(self.partitions_info_dict["training"]['files']) % self.configuration['hyperparameters']['batch_size']
+        residual = len(self.partitions_info_dict["training"]['files']) % self.hyperparameters['batch_size']
         print("Residual for Batch training =", residual)
         
         
         # If the residual is too small, it is discarded
-        if residual < (self.configuration['hyperparameters']['batch_size']/2):
+        if residual < (self.hyperparameters['batch_size']/2):
             print("Residual discarded")
             drop_residual = True
         
@@ -567,7 +581,7 @@ class TrainingFold():
                                 Path(self.configuration['output_path']),
                                 self.test_fold_name,
                                 self.validation_fold_name,
-                                self.configuration["architecture_name"],
+                                self.hyperparameters["architecture"],
                                 self.is_cv_loop)
 
         
@@ -710,7 +724,7 @@ class TrainingFold():
     def process_batch_mixed_precision(self, partition, inputs, labels):
         # Uses mixed precision to use less memory
         with autocast(enabled=True, dtype=torch.float16,
-                        cache_enabled=True):
+                      cache_enabled=True, device_type='cuda'):
             # Make predictions for this batch
             outputs = self.model(inputs)
             
@@ -1020,6 +1034,6 @@ class TrainingFold():
             partitions_info_dict=self.partitions_info_dict, 
             class_names=self.configuration['class_names'],
             job_name=self.configuration['job_name'],
-            architecture_name=self.configuration['architecture_name'],
+            architecture_name=self.hyperparameters['architecture'],
             is_cv_loop=self.is_cv_loop)
         

@@ -1,14 +1,10 @@
 from typing import List
+import itertools
 from termcolor import colored
-
 from nachosv2.data_processing.check_unique_subjects import check_unique_subjects
 from nachosv2.data_processing.read_metadata_csv import read_metadata_csv
-# from nachosv2.log_processing.read_log import read_item_list_in_log
-# from nachosv2.log_processing.write_log import write_log_to_file
-
 from nachosv2.training.training_processing.training_fold import TrainingFold
 from nachosv2.checkpoint_processing.read_log import read_item_list_in_log
-
 from nachosv2.setup.verify_configuration_types import verify_configuration_types
 from nachosv2.setup.define_dimensions import define_dimensions
 from nachosv2.data_processing.get_list_of_epochs import get_list_of_epochs
@@ -17,18 +13,22 @@ from nachosv2.checkpoint_processing.log_utils import write_log_to_file
 from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import read_log
 from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import write_log
 from nachosv2.training.training_processing.partitions import generate_dict_folds_for_partitions
-
 from nachosv2.training.hpo.hpo import get_hpo_configuration
 
 
-def create_test_validation_pairs(test_fold_list: list,
-                                 validation_fold_list: list) -> List[dict]:
-    result_list = []
-    for test_fold in test_fold_list:
-        validation_folds = [fold for fold in validation_fold_list if fold != test_fold]
-        for validation_fold in validation_folds:
-            result_list.append({"test": test_fold, "validation": validation_fold})
-    return result_list
+def create_loop_indices(test_fold_list: list,
+                        hpo_list: list,
+                        validation_fold_list: list) -> List[dict]:
+    list_loop_indices = []
+    for t, h, v in itertools.product(test_fold_list,
+                                     hpo_list,
+                                     validation_fold_list):
+        if t != v:
+            list_loop_indices.append({"test": t,
+                                      "hpo_configuration": h,
+                                      "validation": v})
+    
+    return list_loop_indices
 
 
 def add_epochs_to_test_val_pairs(test_val_dict_list: List[dict],
@@ -125,7 +125,7 @@ def execute_training(execution_device: str,
     # Double-checks that the validation subjects are unique
     if is_cv_loop:  # Only if we are in the inner loop
         check_unique_subjects(config_dict["validation_fold_list"],
-                                "validation")
+                              "validation")
     
     validation_fold_list = config_dict.get('validation_fold_list', None)
     
@@ -139,39 +139,42 @@ def execute_training(execution_device: str,
     else:
         test_fold_list = list(config_dict['test_fold_list'])
     
-    test_val_dict_list = create_test_validation_pairs(test_fold_list,
-                                                      validation_fold_list)
 
     # test_val_epoch_dict_list = add_epochs_to_test_val_pairs(test_val_dict_list,
     #                                                         config_dict,
     #                                                         is_cv_loop,
     #                                                         is_verbose_on)
 
-    number_training = len(test_val_dict_list)
-    
-    
-    # Read HPO values
     hpo_configurations = get_hpo_configuration(config_dict)    
     
-    for index, fold_values in enumerate(test_val_epoch_dict_list):
+    indices_loop_list = create_loop_indices(test_fold_list,
+                                            hpo_configurations,
+                                            validation_fold_list)
+    
+    n_combinations = len(indices_loop_list)
+    # Read HPO values
+    
+    for index, indices_loop_dict in enumerate(indices_loop_list):
 
-        test_fold = fold_values["test"]
-        validation_fold = fold_values["validation"]
-        n_epochs = fold_values["epoch"]
+        test_fold = indices_loop_dict["test"]
+        validation_fold = indices_loop_dict["validation"]
+        # verify is None when is_cv_loop False
+        # validation_fold = None
+        hpo_configuration = indices_loop_dict["hpo_configuration"]
+        hpo_index = hpo_configuration["hpo_index"]
 
         # cross-validation loop
         if is_cv_loop:
-            print(colored(f'--- Training: {index + 1}/{number_training} ---',
+            print(colored(f'--- Training: {index + 1}/{n_combinations} ---',
                           'magenta'))
         # cross-testing loop
         else:
-            validation_fold_name = None
-            print(colored(f'--- Training: {index + 1}/{number_training} ---',
+            print(colored(f'--- Training: {index + 1}/{n_combinations} ---',
                          'magenta'))
 
         print("Test fold:", test_fold)
         print("Validation folds:", validation_fold)
-        print("Number of epochs:", n_epochs)
+        print("HPO index:", hpo_index)
                 
         partitions_dict = generate_dict_folds_for_partitions(
             validation_fold_name=validation_fold,
@@ -182,9 +185,8 @@ def execute_training(execution_device: str,
         
         write_log(
             config=config_dict,
-            test_fold=test_fold,
+            indices_dict=indices_loop_dict,
             training_index=index,
-            validation_fold=validation_fold,
             is_training_finished=False,
             output_directory=config_dict['output_path'],
             rank=None,
@@ -195,28 +197,25 @@ def execute_training(execution_device: str,
         
         # Creates and runs the training fold for this subject pair
         training_fold = TrainingFold(
-            execution_device,        # The name of the device that will be use
-            index,                # The fold index within the loop
-            config_dict,           # The training configuration
-            test_fold,            # The test subject name
-            validation_fold,      # The validation_subject name
-            training_folds_list,  # A list of fold partitions
-            df_metadata,             # The data dictionary
-            n_epochs,        # The number of epochs
-            do_normalize_2d,         # 
-            use_mixed_precision,
-            is_cv_loop,           # If this is of the outer loop. Default is false. (Optional)
-            is_3d,                   # 
-            is_verbose_on            # If the verbose mode is activated. Default is false. (Optional)
+            execution_device=execution_device,  # The name of the device that will be use
+            training_index=index,  # The fold index within the loop
+            configuration=config_dict,  # The training configuration
+            indices_loop_dict=indices_loop_dict,  # The validation_subject name
+            training_folds_list=training_folds_list,  # A list of fold partitions
+            df_metadata=df_metadata,  # The data dictionary
+            do_normalize_2d=do_normalize_2d,
+            use_mixed_precision=use_mixed_precision,
+            is_cv_loop=is_cv_loop,  # If this is of the outer loop. Default is false. (Optional)
+            is_3d=is_3d,  # 
+            is_verbose_on=is_verbose_on  # If the verbose mode is activated. Default is false. (Optional)
         )
         
         training_fold.run_all_steps()
         
         write_log(
             config=config_dict,
-            test_fold=test_fold,
+            indices_dict=indices_loop_dict,
             training_index=index,
-            validation_fold=validation_fold,
             is_training_finished=True,
             output_directory=config_dict['output_path'],
             rank=None,

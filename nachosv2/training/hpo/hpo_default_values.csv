@@ -1,8 +1,9 @@
-,hyperparameter, value, type
-0,"learning_rate", 0.001, float
-1,"do_cropping", False, bool
-2,"patience",20, int
-3,"learning_rate",0.01, float
-4,"momentum",0.9, float
-5,"nesterov",False, bool
-6,"architecture","InceptionV3", str
+,hyperparameter,value,type
+0,"batch_size",32,int
+1,"do_cropping",False,bool
+2,"n_epochs",50,int
+3,"patience",20,int
+4,"learning_rate",0.001,float
+5,"momentum",0.9,float
+6,"enable_nesterov",False,bool
+7,"architecture","InceptionV3",str
