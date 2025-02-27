@@ -43,9 +43,8 @@ def read_log(config,
 
 
 def write_log(config,
-              test_fold: str,
+              indices_dict: dict,
               training_index: int,
-              validation_fold: Optional[str],
               is_training_finished: bool,
               output_directory: str,
               rank: int = None,
@@ -65,13 +64,16 @@ def write_log(config,
         is_outer_loop (bool, optional): Indicates if this is the outer loop. Default is False.
     """
     
-    log_dict = {"test_fold": test_fold,
-                "rotation": training_index,
-                "validation_fold": validation_fold,
-                "is_training_finished": is_training_finished}
+    log_dict = {
+                "training_index": training_index,
+                "test_fold": indices_dict["test"],
+                "hpo_index": indices_dict["hpo_configuration"]["hpo_index"],
+                "validation_fold": indices_dict["validation"],
+                "is_training_finished": is_training_finished,
+                }
     
     log_filename = get_job_name(config,
-                                test_fold,
+                                log_dict["test_fold"],
                                 rank,
                                 is_cv_loop)
     
