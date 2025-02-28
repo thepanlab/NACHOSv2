@@ -67,7 +67,7 @@ def write_log(config,
     log_dict = {
                 "training_index": training_index,
                 "test_fold": indices_dict["test"],
-                "hpo_index": indices_dict["hpo_configuration"]["hpo_index"],
+                "hp_config_index": indices_dict["hpo_configuration"]["hp_config_index"],
                 "validation_fold": indices_dict["validation"],
                 "is_training_finished": is_training_finished,
                 }
