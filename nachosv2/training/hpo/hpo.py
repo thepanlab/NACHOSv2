@@ -38,7 +38,7 @@ def extract_values_single(df_default:pd.DataFrame,
                                                               row['type']),
                                                axis=1)
     
-    dict_values["hpo_index"] = 0
+    dict_values["hp_config_index"] = 0
     
     for index in df_temp.index:
         if index in hyperparameter_dict:
