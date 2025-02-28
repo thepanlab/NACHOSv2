@@ -28,18 +28,19 @@ def save_csv_from_list_dict(values: List[dict],
     values_df = pd.DataFrame(values)   
     values_df.to_csv(path / filename)
 
-def get_prefix_and_folder_path(test_fold_name: str,
-                               validation_fold_name: Optional[str],
+def get_prefix_and_folder_path(test_fold: str,
+                               hp_config_index: int,
+                               validation_fold: Optional[str],
                                is_cv_loop: bool,
                                output_path: Path) -> tuple[str, Path]:
     
-    prefix = f'test_{test_fold_name}'
+    prefix = f'test_{test_fold}_hpconfig_{hp_config_index}'
 
     path_folder_output = output_path / 'training_results' / \
-                        f'test_{test_fold_name}'      
+                        f'test_{test_fold}' / f"hpconfig_{hp_config_index}"
     
     if is_cv_loop:
-        val_folder = f"val_{validation_fold_name}" 
+        val_folder = f"val_{validation_fold}" 
         path_folder_output = path_folder_output / val_folder
         
         prefix += f"_{val_folder}"
@@ -95,13 +96,15 @@ def save_prediction_results(partition_type: str,
 
 def save_history_to_csv(history: dict,
                         output_path: Path,
-                        test_fold_name: str,
-                        validation_fold_name: str,
+                        test_fold: str,
+                        hp_config_index: int,
+                        validation_fold: str,
                         is_cv_loop: bool,
                         rank: int=None):
     
-    prefix, path_folder_output = get_prefix_and_folder_path(test_fold_name,
-                                                            validation_fold_name,
+    prefix, path_folder_output = get_prefix_and_folder_path(test_fold,
+                                                            hp_config_index,
+                                                            validation_fold,
                                                             is_cv_loop,
                                                             output_path)
         
@@ -113,8 +116,9 @@ def save_history_to_csv(history: dict,
 
 def predict_and_save_results(execution_device: str,
                              output_path: Path,
-                             test_fold_name: str,
-                             validation_fold_name: str,
+                             test_fold: str,
+                             hp_config_index: int,
+                             validation_fold: str,
                              model: nn.Module,
                              history: dict,
                              time_elapsed: float,
@@ -150,8 +154,9 @@ def predict_and_save_results(execution_device: str,
     """
 
     
-    prefix, path_folder_output = get_prefix_and_folder_path(test_fold_name,
-                                                            validation_fold_name,
+    prefix, path_folder_output = get_prefix_and_folder_path(test_fold,
+                                                            hp_config_index,
+                                                            validation_fold,
                                                             is_cv_loop,
                                                             output_path)
             
@@ -186,5 +191,5 @@ def predict_and_save_results(execution_device: str,
                                 prefix)
     
     print(colored(f"Finished writing results to file "
-                  f"test fold '{test_fold_name}' and validation subject "
-                  f"'{validation_fold_name}'.\n", 'green'))
+                  f"test fold '{test_fold}' and validation subject "
+                  f"'{validation_fold}'.\n", 'green'))
