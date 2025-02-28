@@ -161,7 +161,7 @@ def execute_training(execution_device: str,
         # verify is None when is_cv_loop False
         # validation_fold = None
         hpo_configuration = indices_loop_dict["hpo_configuration"]
-        hpo_index = hpo_configuration["hpo_index"]
+        hp_config_index = hpo_configuration["hp_config_index"]
 
         # cross-validation loop
         if is_cv_loop:
@@ -173,8 +173,8 @@ def execute_training(execution_device: str,
                          'magenta'))
 
         print("Test fold:", test_fold)
+        print("Hyperparameter configuration index:", hp_config_index)
         print("Validation folds:", validation_fold)
-        print("HPO index:", hpo_index)
                 
         partitions_dict = generate_dict_folds_for_partitions(
             validation_fold_name=validation_fold,

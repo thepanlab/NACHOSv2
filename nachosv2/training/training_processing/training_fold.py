@@ -80,17 +80,18 @@ class TrainingFold():
         
         self.indices_loop_dict = indices_loop_dict
         
-        self.test_fold_name = indices_loop_dict["test"]
-        self.validation_fold_name = indices_loop_dict["validation"]
+        self.test_fold = indices_loop_dict["test"]
+        self.validation_fold = indices_loop_dict["validation"]
         self.hyperparameters = indices_loop_dict["hpo_configuration"]
+        self.hp_config_index = self.hyperparameters["hp_config_index"]
         
         if is_cv_loop:
             self.prefix_name = f"{configuration['job_name']}" + \
-                               f"_test_{self.test_fold_name}" + \
-                               f"_val_{self.validation_fold_name}"
+                               f"_test_{self.test_fold}" + \
+                               f"_val_{self.validation_fold}"
         else:
             self.prefix_name = f"{configuration['job_name']}" + \
-                               f"_{self.test_fold_name}"
+                               f"_{self.test_fold}"
 
         self.training_folds_list = training_folds_list
         
@@ -155,10 +156,10 @@ class TrainingFold():
         
         # TODO: verify it doesnt contradict with prefix
         if is_cv_loop: 
-            new_job_name = f"{configuration['job_name']}_test_{self.test_fold_name}"+ \
-                            f"_val_{self.validation_fold_name}"
+            new_job_name = f"{configuration['job_name']}_test_{self.test_fold}"+ \
+                            f"_val_{self.validation_fold}"
         else: 
-            new_job_name = f"{configuration['job_name']}_test_{self.test_fold_name}" 
+            new_job_name = f"{configuration['job_name']}_test_{self.test_fold}" 
 
             self.configuration['job_name'] = new_job_name
 
@@ -175,8 +176,8 @@ class TrainingFold():
         
         # Dictionary mapping partitions to their respective fold names or conditions
         partition_queries = {
-            'test': f"fold_name == @self.test_fold_name",
-            'validation': f"fold_name == @self.validation_fold_name",
+            'test': f"fold_name == @self.test_fold",
+            'validation': f"fold_name == @self.validation_fold",
             'training': f"fold_name in @self.training_folds_list"
         }
 
@@ -579,8 +580,9 @@ class TrainingFold():
         if partition == 'validation' or not self.is_cv_loop:
             save_history_to_csv(self.history,
                                 Path(self.configuration['output_path']),
-                                self.test_fold_name,
-                                self.validation_fold_name,
+                                self.test_fold,
+                                self.hp_config_index,
+                                self.validation_fold,
                                 self.hyperparameters["architecture"],
                                 self.is_cv_loop)
 
@@ -1020,14 +1022,15 @@ class TrainingFold():
         
         # self.model.load_state_dict(torch.load(best_model_path))
                 
-        print(colored(f"Finished training for test fold '{self.test_fold_name}'"
-                      f" and validation fold '{self.validation_fold_name}'.", 'green'))
+        print(colored(f"Finished training for test fold '{self.test_fold}'"
+                      f" and validation fold '{self.validation_fold}'.", 'green'))
         
         predict_and_save_results(
             execution_device=self.execution_device,
             output_path=Path(self.configuration['output_path']), 
-            test_fold_name=self.test_fold_name, 
-            validation_fold_name=self.validation_fold_name, 
+            test_fold=self.test_fold,
+            hp_config_index=self.hp_config_index,
+            validation_fold=self.validation_fold, 
             model=self.model, 
             history=self.history, 
             time_elapsed=self.time_elapsed, 
