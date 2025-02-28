@@ -16,11 +16,12 @@ batch_size: 32
 do_cropping: false
 # x and y cropping position
 cropping_position:
-  - 40
-  - 10
+  x: 40
+  y: 10
 
 # Specify single value or range
-n_epochs: 50
+n_epochs: 3
+
 # Specify single value or range
 patience: 20
 
@@ -28,12 +29,12 @@ patience: 20
 learning_rate: 0.0001
 
 # Specify single value or range
-# if you don't want to use momentum, place -1 or omit value
+# if you don't want to use momentum, place 0 or omit value
 # e.g. momentum: -1  
 momentum: 0.9
 
 # Specify single value or range
-nesterov: true
+enable_nesterov: true
 
 # Specify single value or range
-architecture_name: InceptionV3
+architecture: InceptionV3

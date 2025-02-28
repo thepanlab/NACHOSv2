@@ -1,24 +1,9 @@
-use_hpo: true
+# If use_hpo: true
+# it will verify that the configuration file
+# has single values
 
-configuration_filepath: "/home/pcallec/NACHOS/nachosv2/config_files/OCT_small/random_search.yml"
-
-# If hpo: use_hpo: true
-# hyperparameters will be ignored
-# hyperparameters:
-#   batch_size: 32
-  
-
-#   do_cropping: false
-#   cropping_position:
-#     - 40
-#     - 10
-#   decay: 0.01
-#   learning_rate: 0.01
-#   momentum: 0.9
-#   bool_nesterov: true
-#   n_epochs: 2
-#   patience: 10
-#   architecture_name: "InceptionV3"
+use_hpo: false
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/config_files/OCT_small/single_configuration.yml"
 
 number_channels: 1
 
