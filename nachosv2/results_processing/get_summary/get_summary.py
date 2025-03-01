@@ -91,8 +91,8 @@ def fill_dataframe(filepath: Path,
     # You need to adjust this based on your actual CSV column names and what you define as 'best'
     if 'validation_loss' in history_df.columns:
         # Logic: it identifies the minimum value for 'validation loss'
-        best_epoch_index = history_df['validation_loss'].idxmin()
-        best_epoch_data = history_df.iloc[best_epoch_index]
+        best_val_loss_index = history_df['validation_loss'].idxmin()
+        best_val_loss_data = history_df.iloc[best_val_loss_index]
 
          # Extract information from the file name
         file_info = parse_filename(filepath, is_cv_loop)
@@ -102,8 +102,9 @@ def fill_dataframe(filepath: Path,
             'test_fold': file_info['test_fold'],
             'hp_config': file_info['hp_config'],
             'val_fold': file_info['val_fold'],
-            'best_epoch': [best_epoch_index],
-            'best_loss': [best_epoch_data['train_loss']]
+            'best_epoch': [best_val_loss_index],
+            'training_loss': [best_val_loss_data['train_loss']],
+            'validation_loss': [best_val_loss_data['validation_loss']]
         })
 
         # Concatenate the new row to the existing DataFrame
@@ -112,29 +113,28 @@ def fill_dataframe(filepath: Path,
     return df
     
 
-def generate_summary_epochs(results_path: Path,
-                            output_path: Optional[Path],
-                            is_cv_loop: Optional[bool]=None):
+def generate_summary(results_path: Path,
+                     output_path: Optional[Path],
+                     is_cv_loop: Optional[bool]=None):
     
     history_filepath_list = get_filepath_list(results_path,
                                               "history")
     
-    df_epochs = pd.DataFrame()
+    df_results = pd.DataFrame()
     
     # Extract and print test and validation fold numbers
     for history_path in history_filepath_list:
         filename = history_path.name
             
-        df_epochs = fill_dataframe(history_path, df_epochs, is_cv_loop)
+        df_results = fill_dataframe(history_path, df_results, is_cv_loop)
 
         print("hello")
     
-    epochs_filepath = get_filepath_from_results_path(results_path,
-                                                    "epochs_analysis",
-                                                    "epochs_results_all.csv",
-                                                     output_path)
-    
-    df_epochs.to_csv(epochs_filepath)
+    summary_filepath = get_filepath_from_results_path(results_path=results_path,
+                                                     folder_name="summary_analysis",
+                                                     file_name="results_all.csv",
+                                                     output_path=output_path)
+    df_results.to_csv(summary_filepath)
 
 
 def main(config = None):
@@ -154,8 +154,8 @@ def main(config = None):
     
     is_cv_loop = config_dict.get('is_cv_loop', None)
     
-    generate_summary_epochs(results_path, output_path,
-                            is_cv_loop)
+    generate_summary(results_path, output_path,
+                     is_cv_loop)
     
 
 if __name__ == "__main__":
