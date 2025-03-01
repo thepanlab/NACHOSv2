@@ -190,7 +190,7 @@ def execute_training(execution_device: str,
             is_training_finished=False,
             output_directory=config_dict['output_path'],
             rank=None,
-            is_cv_loop=True
+            is_cv_loop=is_cv_loop
         )
         
         training_folds_list = partitions_dict['training']
@@ -219,5 +219,5 @@ def execute_training(execution_device: str,
             is_training_finished=True,
             output_directory=config_dict['output_path'],
             rank=None,
-            is_cv_loop=False
+            is_cv_loop=is_cv_loop
         )

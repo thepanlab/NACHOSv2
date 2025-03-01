@@ -36,9 +36,13 @@ def get_prefix_and_folder_path(test_fold: str,
     
     prefix = f'test_{test_fold}_hpconfig_{hp_config_index}'
 
-    path_folder_output = output_path / 'training_results' / \
-                        f'test_{test_fold}' / f"hpconfig_{hp_config_index}"
-    
+    # TODO:
+    # Add cv_loop or ct_loop
+
+    loop_folder ="CV" if is_cv_loop else "CT"
+    path_folder_output = output_path / loop_folder / 'training_results' / \
+                         f'test_{test_fold}' / f"hpconfig_{hp_config_index}"
+        
     if is_cv_loop:
         val_folder = f"val_{validation_fold}" 
         path_folder_output = path_folder_output / val_folder

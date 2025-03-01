@@ -71,7 +71,8 @@ def run_training():
 
     # Creates a file and writes elapsed time in it
     # Make the next line fit in 80 characters
-    timing_directory_path = Path(config_dict["output_path"]) / "training_timings" # The directory's path where to put the timing file
+    loop_folder = "CT" if not is_cv_loop else "CV"
+    timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
     timing_directory_path.mkdir(mode=0o777, parents=True, exist_ok=True)
     
     write_timing_file(training_timer,

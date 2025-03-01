@@ -148,7 +148,9 @@ class TrainingFold():
         else:
             self.crop_box = None
         
-        self.checkpoint_folder_path = Path(self.configuration['output_path']) / 'checkpoints'
+      
+        loop_folder = 'CV' if self.is_cv_loop else 'CT'
+        self.checkpoint_folder_path = Path(self.configuration['output_path']) / loop_folder /'checkpoints'
         self.start_epoch = 0
         
         self.prev_checkpoint_file_path = None
@@ -916,40 +918,6 @@ class TrainingFold():
                     os.remove(self.prev_best_checkpoint_file_path)
 
                 self.prev_best_checkpoint_file_path = best_checkpoint_file_path
-
-    # def save_best_model(self, epoch_index:int):
-    #     """
-    #     Saves the best model.
-        
-    #     Args:
-    #         best_model_path (str): The path where to save the best model.
-    #         epoch (int): The current epoch.
-    #         epoch_loss (float): The loss of the epoch.
-    #         epoch_accuracy (float): The accuracy of the epoch.
-    #     """
-                   
-    #     # If the directory does not exist, creates it
-    #     if not self.checkpoint_folder_path.exists():
-    #         self.checkpoint_folder_path.mkdir(mode=0o777, parents=True, exist_ok=True)
-    
-    #     # Saves the checkpoint to file: Name_Current-epoch.pth
-    #     new_save_path = self.checkpoint_folder_path / f"{self.prefix_name}_{epoch_index + 1}_best.pth"
-        
-    #     torch.save({"model_state_dict": self.model.state_dict(),
-    #                 "optimizer_state_dict": self.optimizer.state_dict()},
-    #                 new_save_path)
-        
-    #     print(colored(f"Saved a checkpoint for best model at epoch {epoch_index + 1}/{self.number_of_epochs} at {new_save_path}.", 'cyan'))
-        
-    #     # Keeps only the previous checkpoint for the most recent training fold, to save memory.
-        
-    #     # Delete previous checkpoint
-    #     if self.prev_best_checkpoint_file_path and self.prev_best_checkpoint_file_path.exists():
-    #         os.remove(self.prev_best_checkpoint_file_path)
-
-    #     self.prev_best_checkpoint_file_path = new_save_path
-       
-    #     return 
 
 
     def get_checkpoint_info(self,
