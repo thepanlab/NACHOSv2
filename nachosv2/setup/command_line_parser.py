@@ -9,6 +9,7 @@ DEFAULT_EXECUTION_DEVICE = "cuda:1"
 # alternative is: "cross-testing"
 DEFAULT_LOOP = "cross-validation"  
 
+
 def add_arguments_to_parser(parser):
     """
     Given an existing parActually parses the arguments.
