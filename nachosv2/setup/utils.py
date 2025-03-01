@@ -1,6 +1,23 @@
+# utils.py
+
 from pathlib import Path
 from typing import Optional, List
 from termcolor import colored
+
+
+def get_other_result(path: Path,
+                     suffix: str):
+    # take path prediction and get class name file
+    other_path = Path(str(path).replace('prediction_results',
+                                         suffix))
+    # verify other_path exists
+    if not other_path.exists():
+        raise FileNotFoundError(f"The file {other_path} does not exist.")
+    
+    df_other = pd.read_csv(other_path,
+                           index_col=0)
+    
+    return df_other
 
 
 def get_filepath_list(directory_to_search_path: Path,
