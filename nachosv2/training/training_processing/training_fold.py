@@ -676,9 +676,15 @@ class TrainingFold():
             for partition in partitions_list:
                 self.process_one_epoch(epoch, partition)
 
-            # ReduceLROnPlateau requires the validation loss
-            self.scheduler.step()
-            
+                # Do a step                 
+                if self.is_cv_loop: 
+                    # In a cross-validation loop, step the scheduler only after validating                  
+                    if partition == "validation":
+                        self.scheduler.step()
+                else:
+                    # In a cross-testing loop, step the scheduler after training                  
+                    self.scheduler.step()
+                                
             if self.is_cv_loop and self.do_early_stop:
                 print("Early stopping")
                 break
