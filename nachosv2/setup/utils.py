@@ -21,7 +21,8 @@ def get_other_result(path: Path,
 
 
 def get_filepath_list(directory_to_search_path: Path,
-                      string_in_filename: str) -> List[Path]:
+                      string_in_filename: str,
+                      is_cv_loop: bool) -> List[Path]:
     """
     Recursively searches for CSV files containing 'string_in_filename'
     in their filenames within a given directory.
@@ -39,8 +40,12 @@ def get_filepath_list(directory_to_search_path: Path,
     # List to store the paths of matching CSV files
     matched_files = []
     
+    # TODO: make sure it is searching in CV or CT loop
+    loop_folder = "CV" if is_cv_loop else "CT"
+    search_pattern = f'**/{loop_folder}/**/*{string_in_filename}*.csv'
+
     # Using rglob to recursively search for files
-    for file in directory_to_search_path.rglob(f'*{string_in_filename}*.csv'):
+    for file in directory_to_search_path.rglob(search_pattern):
         matched_files.append(file)
     
     return matched_files
