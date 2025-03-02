@@ -71,6 +71,7 @@ def determine_use_lock(rank):
 
 
 def write_log_to_file(log_folder: str,
+                      is_cv_loop: bool,
                       log_filename: str,
                       dict_to_save: dict):
     """_summary_
@@ -80,8 +81,8 @@ def write_log_to_file(log_folder: str,
         log_filename (str): filename of log file
         dict_to_save (dict): dictionary to be saved
     """
-    
-    folder_logs_path = Path(log_folder) / 'logs'
+    loop_folder = "CV" if is_cv_loop else "CT"
+    folder_logs_path = Path(log_folder) / loop_folder /'logs'
     folder_logs_path.mkdir(parents=True, exist_ok=True)
     filepath = folder_logs_path / f"{log_filename}.dill"
     
