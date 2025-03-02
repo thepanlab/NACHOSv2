@@ -4,6 +4,7 @@ from collections import OrderedDict
 from typing import Optional, Callable, Union, Tuple, List
 from pathlib import Path
 import math
+from typing import Union, List
 
 from termcolor import colored
 import pandas as pd
@@ -20,7 +21,6 @@ import torch.optim as optim
 
 from nachosv2.training.training_processing.custom_2D_dataset import Dataset2D
 # from nachosv2.training.training_processing.custom_3D_dataset import Custom3DDataset
-from nachosv2.data_processing.create_empty_history import create_empty_history
 from nachosv2.data_processing.normalizer import normalizer
 from nachosv2.image_processing.image_crop import create_crop_box
 from nachosv2.image_processing.image_parser import *
@@ -36,9 +36,9 @@ from nachosv2.model_processing.initialize_model_weights import initialize_model_
 from nachosv2.model_processing.create_model import create_model
 from nachosv2.model_processing.get_metrics_dictionary import get_metrics_dictionary
 from nachosv2.modules.optimizer.optimizer_creator import create_optimizer
-from typing import Union, List
 from nachosv2.modules.early_stopping.earlystopping import EarlyStopping
 from nachosv2.output_processing.result_outputter import save_history_to_csv
+from nachosv2.setup.utils_training import create_empty_history
 
 class TrainingFold():
     def __init__(
@@ -82,7 +82,7 @@ class TrainingFold():
         
         self.test_fold = indices_loop_dict["test"]
         self.validation_fold = indices_loop_dict["validation"]
-        self.hyperparameters = indices_loop_dict["hpo_configuration"]
+        self.hyperparameters = indices_loop_dict["hp_configuration"]
         self.hp_config_index = self.hyperparameters["hp_config_index"]
         
         if is_cv_loop:
@@ -91,7 +91,7 @@ class TrainingFold():
                                f"_val_{self.validation_fold}"
         else:
             self.prefix_name = f"{configuration['job_name']}" + \
-                               f"_{self.test_fold}"
+                               f"_test_{self.test_fold}"
 
         self.training_folds_list = training_folds_list
         

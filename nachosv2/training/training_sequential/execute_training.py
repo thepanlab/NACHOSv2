@@ -25,7 +25,7 @@ def create_loop_indices(test_fold_list: list,
                                      validation_fold_list):
         if t != v:
             list_loop_indices.append({"test": t,
-                                      "hpo_configuration": h,
+                                      "hp_configuration": h,
                                       "validation": v})
     
     return list_loop_indices
@@ -160,7 +160,7 @@ def execute_training(execution_device: str,
         validation_fold = indices_loop_dict["validation"]
         # verify is None when is_cv_loop False
         # validation_fold = None
-        hpo_configuration = indices_loop_dict["hpo_configuration"]
+        hpo_configuration = indices_loop_dict["hp_configuration"]
         hp_config_index = hpo_configuration["hp_config_index"]
 
         # cross-validation loop
