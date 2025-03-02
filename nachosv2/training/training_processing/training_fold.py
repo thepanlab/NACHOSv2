@@ -549,7 +549,7 @@ class TrainingFold():
         self.all_predictions = []
 
         # Source: https://pytorch.org/tutorials/beginner/introyt/trainingyt.html#per-epoch-activity
-        if partition == 'train':
+        if partition == 'training':
             # Make sure gradient tracking is on, and do a pass over the data
             self.model.train(True)
         elif partition == "validation":
@@ -594,9 +594,9 @@ class TrainingFold():
         if partition == 'validation':
             
             # print epoch results
-            print(f' loss: {self.loss_hist["train"][epoch_index]:.4f} |'
+            print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} |'
                   f'val_loss: {epoch_loss:.4f} |'
-                  f'accuracy: {self.accuracy_hist["train"][epoch_index]:.4f} |' f'val_accuracy: {epoch_accuracy:.4f}')
+                  f'accuracy: {self.accuracy_hist["training"][epoch_index]:.4f} |' f'val_accuracy: {epoch_accuracy:.4f}')
 
             is_best = False
             if epoch_loss < self.best_valid_loss:
@@ -613,8 +613,8 @@ class TrainingFold():
         
         elif not self.is_cv_loop:
             # print epoch results
-            print(f' loss: {self.loss_hist["train"][epoch_index]:.4f} |'
-                  f'accuracy: {self.accuracy_hist["train"][epoch_index]:.4f} |')
+            print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} |'
+                  f'accuracy: {self.accuracy_hist["training"][epoch_index]:.4f} |')
 
             self.save_model(epoch_index, epoch_loss,
                             epoch_accuracy, False)
@@ -649,9 +649,9 @@ class TrainingFold():
                                            counter=self.counter_early_stopping,
                                            best_val_loss=self.best_valid_loss)        
         else:        
-            self.loss_hist = {"train": [0.0] * self.number_of_epochs,
+            self.loss_hist = {"training": [0.0] * self.number_of_epochs,
                               "validation": [0.0] * self.number_of_epochs}
-            self.accuracy_hist = {"train": [0.0] * self.number_of_epochs,
+            self.accuracy_hist = {"training": [0.0] * self.number_of_epochs,
                                   "validation": [0.0] * self.number_of_epochs}
             self.best_valid_loss = math.inf
             self.early_stopping = EarlyStopping(patience=self.hyperparameters['patience'],
@@ -700,7 +700,7 @@ class TrainingFold():
             list[str]: A list containing the partitions 'train' and optionally 'validation'.
         """
     
-        partitions = ['train']
+        partitions = ['training']
         if self.is_cv_loop:
             partitions.append('validation')
         
@@ -721,7 +721,7 @@ class TrainingFold():
             ValueError: If the specified partition is not supported.
         """
         
-        if partition == 'train': # Training phase
+        if partition == 'training': # Training phase
             data_loader = self.partitions_info_dict['training']['dataloader'] # Loads the training set
         elif partition == 'validation': # Validation phase
             data_loader = self.partitions_info_dict['validation']['dataloader'] # Loads the validation set
@@ -742,7 +742,7 @@ class TrainingFold():
             loss = self.loss_function(outputs, labels)
         
             # Backward pass and optimize only if in training phase
-            if partition == 'train':
+            if partition == 'training':
                 # scale the loss to avoid underflow
                 # which can occur when using mixed precision float16
                 self.scaler.scale(loss).backward()
@@ -770,7 +770,7 @@ class TrainingFold():
         # Compute the loss and its gradients
         loss = self.loss_function(outputs, labels)
         
-        if partition == "train":
+        if partition == "training":
             loss.backward()
             # Adjust learning weights
             self.optimizer.step()
@@ -786,7 +786,7 @@ class TrainingFold():
         Runs the fit loop for the training or evaluation phase.
 
         Args:
-            partition (str): The phase of the model ('train' or 'eval').
+            partition (str): The phase of the model ('training' or 'eval').
             inputs (Tensor): The input data for the current batch.
             labels (Tensor): The true labels corresponding to the inputs.
             
@@ -798,14 +798,14 @@ class TrainingFold():
             running_corrects (int): The updated cumulative number of correct predictions.
         """
 
-        if partition not in ['train', 'validation']:
-            raise ValueError(f"Unknown partition '{partition}'. Expected 'train' or 'validation'.")
+        if partition not in ['training', 'validation']:
+            raise ValueError(f"Unknown partition '{partition}'. Expected 'training' or 'validation'.")
 
         # https://pytorch.org/docs/stable/generated/torch.autograd.grad_mode.set_grad_enabled.html
         # sets gradient calculation on or off.
         # On: training
         # Off: validation, test
-        with torch.set_grad_enabled(partition == 'train'):
+        with torch.set_grad_enabled(partition == 'training'):
             # Sends the inputs and labels to the execution device
             inputs = inputs.to(self.execution_device)
             labels = labels.to(self.execution_device)
@@ -844,7 +844,7 @@ class TrainingFold():
 
         Args:
             _data_loader (DataLoader): The data loader providing the dataset for the current phase.
-            phase (str): The phase of the model ('train' or 'eval').
+            phase (str): The phase of the model ('training' or 'eval').
             running_loss (float): The cumulative loss for the current epoch.
             running_corrects (int): The cumulative number of correct predictions for the current epoch.
 
