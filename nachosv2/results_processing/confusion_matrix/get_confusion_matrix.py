@@ -48,7 +48,8 @@ def generate_cf(results_path: Path,
     
     suffix_filename = "prediction_results"
     predictions_file_path_list = get_filepath_list(results_path,
-                                                   suffix_filename)
+                                                   suffix_filename,
+                                                   is_cv_loop)
     
     if is_cv_loop is None:
         is_cv_loop = determine_if_cv_loop(predictions_file_path_list[0])
