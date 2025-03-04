@@ -67,7 +67,8 @@ def determine_if_cv_loop(path: Path):
     
     
 def get_default_folder(path: Path,
-                       folder_name: str) -> Path:
+                       folder_name: str,
+                       is_cv_loop: bool) -> Path:
     """
     Create a folder under the parent folder of 'training_results' with the name 'folder_name'.
 
@@ -79,16 +80,23 @@ def get_default_folder(path: Path,
     """
 
     default_folder_path = None
-
+    subpath_to_find = "CV" if is_cv_loop else "CT"
     if path.suffix == ".csv":
-        index_training_results = path.parts.index("training_results")
-        default_folder_path = Path(*path.parts[:index_training_results]) / folder_name
+        # It searches for the 'CT' or 'CV' index in path
+        # e.g. /home/pcallec/NACHOS/results/pig_kidney_subset/CT/training_results/test_k1/hpconfig_0/test_k1_hpconfig_0_prediction_results.csv
+        index_training_results = None
+        for i, part in enumerate(path.parts):
+            if part in ("CT", "CV"):
+                index_training_results = i
+                break
+        # It get path until before 'training_results' ,i.e., CT or CV and creates a folder there
+        base_path = Path(*path.parts[:index_training_results + 1])
+        default_folder_path = base_path / folder_name
     else:
         for subpath in path.rglob("*"):  # rglob searches recursively for given pattern
-            if subpath.is_dir() and subpath.name == "training_results":
+            if subpath.is_dir() and ( subpath.name == subpath_to_find ):
                 # Path found, get the parent of 'training_results'
-                parent_folder = subpath.parent
-                default_folder_path = parent_folder / folder_name
+                default_folder_path = subpath / folder_name
                 break
     
     if default_folder_path is None:
@@ -129,11 +137,14 @@ def get_newfilepath_from_predictions(predictions_filepath: Path,
 def get_filepath_from_results_path(results_path: Path,
                                    folder_name: str,
                                    file_name: str,
+                                   is_cv_loop: bool,
                                    output_path: Optional[Path] = None) -> Path:
 
     if output_path is None:
         folder_path = get_default_folder(results_path,
-                                         folder_name)
+                                         folder_name,
+                                         is_cv_loop)
+        
         print(colored(f"\nUsing default folder: {folder_path}.", 'magenta'))
     else:
         folder_path = output_path
