@@ -127,7 +127,7 @@ def execute_training(execution_device: str,
         check_unique_subjects(config_dict["validation_fold_list"],
                               "validation")
     
-    validation_fold_list = config_dict.get('validation_fold_list', None)
+    validation_fold_list = config_dict.get('validation_fold_list', [None])
     
     if is_verbose_on:  # If the verbose mode is activated
         print(colored("Double-checks of test and validation uniqueness successfully done.", 'cyan'))
@@ -135,9 +135,11 @@ def execute_training(execution_device: str,
     
     # Creates test_subjects_list as a list, regardless of its initial form
     if not config_dict['test_fold_list']: # If the test_subjects list is empty, uses all subjects
-        test_fold_list = list(config_dict['fold_list'])
-    else:
-        test_fold_list = list(config_dict['test_fold_list'])
+        test_fold_list = config_dict['fold_list']
+    elif isinstance(config_dict['test_fold_list'], str): # If the test_subjects list is a string, uses the corresponding list
+        test_fold_list = [config_dict['test_fold_list']]
+    elif isinstance(config_dict['test_fold_list'], list): # If the test_subjects list is a list, uses it
+        test_fold_list = config_dict['test_fold_list']
     
 
     # test_val_epoch_dict_list = add_epochs_to_test_val_pairs(test_val_dict_list,
