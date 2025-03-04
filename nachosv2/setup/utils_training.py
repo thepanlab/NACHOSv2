@@ -15,3 +15,4 @@ def create_empty_history(is_cv_loop: bool,
     # add_lists_to_history(history, metrics_dictionary)
 
     return history
+
