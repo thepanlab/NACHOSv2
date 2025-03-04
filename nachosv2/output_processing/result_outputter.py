@@ -111,7 +111,7 @@ def save_history_to_csv(history: dict,
                                                             validation_fold,
                                                             is_cv_loop,
                                                             output_path)
-        
+
     # Saves the history
     save_csv_from_list_dict(history,
                             path_folder_output,
@@ -186,6 +186,10 @@ def predict_and_save_results(execution_device: str,
                                 partitions_info_dict,
                                 path_folder_output,
                                 prefix)
+        
+        end_message = f"Finished writing results to file " + \
+                      f"test fold '{test_fold}' and validation subject " + \
+                      f"'{validation_fold}'.\n"
     else: # For the cross-validation loop
         save_prediction_results("test",
                                 execution_device,
@@ -193,7 +197,7 @@ def predict_and_save_results(execution_device: str,
                                 partitions_info_dict,
                                 path_folder_output,
                                 prefix)
+        end_message = f"Finished writing results to file " + \
+                      f"test fold '{test_fold}'.\n"
     
-    print(colored(f"Finished writing results to file "
-                  f"test fold '{test_fold}' and validation subject "
-                  f"'{validation_fold}'.\n", 'green'))
+    print(colored(end_message, 'green'))
