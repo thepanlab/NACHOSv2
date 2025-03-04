@@ -39,12 +39,19 @@ fold_list:
   - "k5"
 test_fold_list:
   - "k1"
+  - "k2"
+  - "k3"
+  - "k4"
+  - "k5"
 
 # validation_fold_list is used only for 
 # cross-validation
 validation_fold_list:
+  - "k1"
   - "k2"
   - "k3"
+  - "k4"
+  - "k5"
 
 image_size:
   - 301
