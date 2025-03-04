@@ -155,6 +155,7 @@ class TrainingFold():
         
         self.prev_checkpoint_file_path = None
         self.prev_best_checkpoint_file_path = None
+        self.last_checkpoint_file_path = None
         
         # TODO: verify it doesnt contradict with prefix
         if is_cv_loop: 
@@ -296,28 +297,7 @@ class TrainingFold():
             dict_to_save={'fold_info': self.fold_info},
             use_lock=self.mpi_rank != None
         )
-
-
-    # def load_checkpoint(self):
-    #     """
-    #     Loads the latest checkpoint to start from.
-    #     """
-        
-    #     checkpoint = get_most_recent_checkpoint(
-    #         os.path.join(self.fold_info.configuration['output_path'], 'checkpoints'),
-    #         self.fold_info.checkpoint_prefix,
-    #         self.fold_info.model
-    #     )
-        
-    #     if checkpoint is not None:
-    #         print(colored(f"Loaded most recent checkpoint of epoch: {checkpoint[1]}.", 'cyan'))
-    #         self.fold_info.model.model = checkpoint[0]
-    #         self.checkpoint_epoch = checkpoint[1]
-    #     # If no checkpoint
-    #     else:
-    #         # Creates the model
-    #         self.fold_info.create_model()
-    
+   
     
     float_or_list_floats = Union[float, List[float]]
     def get_mean_stddev(self, dataloader: DataLoader)->Tuple[float_or_list_floats,
@@ -579,14 +559,15 @@ class TrainingFold():
         self.loss_hist[partition][epoch_index] = epoch_loss
         self.accuracy_hist[partition][epoch_index] = epoch_accuracy
         
+        # it saves history when self.is_cv_loop and for validation
+        # or when not self.is_cv_loop, that is, cross-testing loop
         if partition == 'validation' or not self.is_cv_loop:
-            save_history_to_csv(self.history,
-                                Path(self.configuration['output_path']),
-                                self.test_fold,
-                                self.hp_config_index,
-                                self.validation_fold,
-                                self.hyperparameters["architecture"],
-                                self.is_cv_loop)
+            save_history_to_csv(history=self.history,
+                                output_path=Path(self.configuration['output_path']),
+                                test_fold=self.test_fold,
+                                hp_config_index=self.hp_config_index,
+                                validation_fold=self.validation_fold,
+                                is_cv_loop=self.is_cv_loop)
 
         
         
@@ -595,7 +576,7 @@ class TrainingFold():
             
             # print epoch results
             print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} |'
-                  f'val_loss: {epoch_loss:.4f} |'
+                  f'val_loss: {epoch_loss:.4f} | '
                   f'accuracy: {self.accuracy_hist["training"][epoch_index]:.4f} |' f'val_accuracy: {epoch_accuracy:.4f}')
 
             is_best = False
@@ -882,12 +863,15 @@ class TrainingFold():
         """       
         # If the directory does not exist, creates it
         if not self.checkpoint_folder_path.exists():
-            self.checkpoint_folder_path.mkdir(mode=0o777, parents=True, exist_ok=True)
+            self.checkpoint_folder_path.mkdir(mode=0o775, parents=True, exist_ok=True)
         
         # If the epoch is within the frequency steps, saves it
         checkpoint_frequency = self.configuration['checkpoint_epoch_frequency']
         is_frequency_checkpoint = ( (epoch_index+1) % checkpoint_frequency == 0)
-        if is_frequency_checkpoint or is_best:
+        # Determine if it is the last epoch
+        is_last = ( epoch_index+1 == self.number_of_epochs)
+        
+        if is_frequency_checkpoint or is_best or is_last:
 
             l_path_to_save = []
             if is_frequency_checkpoint:
@@ -896,6 +880,9 @@ class TrainingFold():
             if is_best:            
                 best_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}_best.pth"
                 l_path_to_save.append(best_checkpoint_file_path)
+            if is_last:            
+                last_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}_last.pth"
+                l_path_to_save.append(last_checkpoint_file_path)
             
             for path in l_path_to_save:
                 torch.save({"model_state_dict": self.model.state_dict(),
@@ -925,7 +912,10 @@ class TrainingFold():
 
                 self.prev_best_checkpoint_file_path = best_checkpoint_file_path
 
-
+            if is_last:
+                self.last_checkpoint_file_path = last_checkpoint_file_path
+                
+                
     def get_checkpoint_info(self,
                             list_paths: List[Path]):
         """
@@ -982,12 +972,15 @@ class TrainingFold():
         # best_model_path = "results/temp/temp_best_model.pth"
         
         # Loads the best model weights
-        if self.is_cv_loop:
-            checkpoint = torch.load(self.prev_best_checkpoint_file_path,
-                                    weights_only=True)
-        else:
-            checkpoint = torch.load(self.prev_checkpoint_file_path,
-                                    weights_only=True)
+        checkpoint_path = (
+            self.prev_best_checkpoint_file_path if self.is_cv_loop
+            else self.last_checkpoint_file_path
+        )
+
+        
+        print(colored(f"For predictions using checkpoint file: {checkpoint_path}", 'green'))
+        checkpoint = torch.load(checkpoint_path,
+                                weights_only=True)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
@@ -995,9 +988,13 @@ class TrainingFold():
         self.model.eval()
         
         # self.model.load_state_dict(torch.load(best_model_path))
-                
-        print(colored(f"Finished training for test fold '{self.test_fold}'"
-                      f" and validation fold '{self.validation_fold}'.", 'green'))
+        if self.is_cv_loop:
+            end_message = f"Finished training for test fold '{self.test_fold}'" + \
+                          f" and validation fold '{self.validation_fold}'."
+        else:
+            end_message = f"Finished training for test fold '{self.test_fold}'"
+            
+        print(colored(end_message, 'green'))
         
         predict_and_save_results(
             execution_device=self.execution_device,
