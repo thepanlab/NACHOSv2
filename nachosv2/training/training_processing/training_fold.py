@@ -9,6 +9,7 @@ from typing import Union, List
 from termcolor import colored
 import pandas as pd
 from datetime import datetime
+# from tqdm import tqdm
 # import torch
 import torch
 # from torch.cuda.amp import autocast, GradScaler
@@ -372,6 +373,7 @@ class TrainingFold():
                     dataset_before_normalization = Dataset2D(
                         dictionary_partition = self.partitions_info_dict[dataset_type],
                         number_channels = self.configuration['number_channels'],
+                        image_size = (self.configuration['target_height'], self.configuration['target_width']),
                         do_cropping = self.hyperparameters['do_cropping'],
                         crop_box = self.crop_box,
                         transform=None
@@ -399,6 +401,7 @@ class TrainingFold():
                 dataset = Dataset2D(
                     dictionary_partition = self.partitions_info_dict[dataset_type], # The data dictionary
                     number_channels = self.configuration['number_channels'],      # The number of channels in an image
+                    image_size = (self.configuration['target_height'], self.configuration['target_width']),
                     do_cropping = self.hyperparameters['do_cropping'],              # Whether to crop the image
                     crop_box = self.crop_box,                                       # The dimensions after cropping
                     transform=transform
@@ -538,8 +541,9 @@ class TrainingFold():
             self.model.eval()
             
         # Iterates over data
-        for inputs, labels, _ in data_loader:
-            
+        for i, (inputs, labels, _ ) in enumerate(data_loader):
+            print(f"Epoch: {epoch_index+1} of {self.number_of_epochs}. {partition} Progress: {i/len(data_loader)*100:.1f}%\r",
+                  end="")
             # Runs the fit loop
             loss_update, corrects_update = self.process_batch(
                 partition, inputs, labels,
