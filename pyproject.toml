@@ -24,7 +24,8 @@ Homepage = "https://github.com/thepanlab/NACHOS_v2"
 Repository = "https://github.com/thepanlab/NACHOS_v2"
 
 [project.scripts]
-NACHOSv2_inner_loop = "nachosv2.training.training_sequential.training_inner_loop:run_training"
+NACHOSv2_train = "nachosv2.training.training_sequential.training_sequential:run_training"
+NACHOSv2_getsummary = "nachosv2.results_processing.get_summary.get_summary:main"
 
 [tool.setuptools.packages.find]
 # where = ["."]  # list of folders that contain the packages (["."] by default)
