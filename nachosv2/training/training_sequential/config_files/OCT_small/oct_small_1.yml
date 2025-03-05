@@ -3,13 +3,13 @@
 # has single values
 
 use_hpo: false
-configuration_filepath: "/home/pcallec/NACHOS/nachosv2/config_files/OCT_small/single_configuration.yml"
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/OCT_small/hp_single_configuration.yml"
 
 number_channels: 1
 
 data_input_directory: "/home/pcallec/mif_outer/data/pig_kidney_subset"
 # csv file with the metadata: image_path, label, fold
-path_metadata_csv: "/home/pcallec/NACHOS/data/2D_kidney_csv/all.csv"
+path_metadata_csv: "/home/pcallec/NACHOS/data/2D_kidney_csv/metadata_2D_kidney.csv"
 output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset"
 job_name: "pig_kidney_subset"
 
@@ -56,5 +56,8 @@ validation_fold_list:
 image_size:
   - 301
   - 235
+
+# if images are of different sizes,
+# they will be resized to the target size
 target_height: 301
 target_width: 235
