@@ -94,7 +94,8 @@ def get_hpo_configuration(config):
     if not config["use_hpo"]:
         # Verify there are single values or list of one value
         verify_single_values(hyperparameter_dict)
-        l_hpo_configuration.append(extract_values_single(df_default, hyperparameter_dict))
+        l_hpo_configuration.append(extract_values_single(df_default,
+                                                         hyperparameter_dict))
     else:
         # TODO
         create_random_configurations(hyperparameter_dict)
