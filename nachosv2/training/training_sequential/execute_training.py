@@ -16,9 +16,21 @@ from nachosv2.training.training_processing.partitions import generate_dict_folds
 from nachosv2.training.hpo.hpo import get_hpo_configuration
 
 
-def create_loop_indices(test_fold_list: list,
-                        hpo_list: list,
-                        validation_fold_list: list) -> List[dict]:
+def create_loop_indices(test_fold_list: List[str],
+                        hpo_list: List[dict],
+                        validation_fold_list: List[str]) -> List[dict]:
+    """
+    Create a list of dictionaries containing loop indices for training, that is training, validation(if cross-validation loop), and testing.
+
+    Args:
+        test_fold_list (list): List of test folds.
+        hpo_list (list of dict]): List of hyperparameter optimization configurations.
+        validation_fold_list (list): List of validation folds.
+
+    Returns:
+        List[dict]: List of dictionaries with keys 'test', 'hpo', and 'validation' 
+                    representing the loop indices.
+    """
     list_loop_indices = []
     for t, h, v in itertools.product(test_fold_list,
                                      hpo_list,
@@ -31,42 +43,6 @@ def create_loop_indices(test_fold_list: list,
     return list_loop_indices
 
 
-def add_epochs_to_test_val_pairs(test_val_dict_list: List[dict],
-                                 config_dict: dict,
-                                 is_cv_loop: bool,
-                                 is_verbose_on: bool) -> List[dict]:
-    # verify that the number of epochs is correct
-    if is_cv_loop:
-        if isinstance(config_dict["hyperparameters"]["epochs"], list):
-            if len(config_dict["hyperparameters"]["epochs"]) != 1:
-                raise ValueError(colored("For cross-validation loop, you should have only one value for epochs.", 'red'))
-            else:
-                value_epoch = config_dict["hyperparameters"]["epochs"][0]
-        elif isinstance(config_dict["hyperparameters"]["epochs"], int):
-            value_epoch = config_dict["hyperparameters"]["epochs"]
-    else:
-        if len(config_dict["hyperparameters"]["epochs"]) != len(test_val_dict_list):
-            raise ValueError(colored(
-                f"Length of list of epochs ({len(config_dict['hyperparameters']['epochs'])}) does not match the length of test_subjects ({len(test_val_dict_list)}).",
-                'red'
-            ))
-
-    test_val_epoch_list = []
-            
-    if is_cv_loop:
-        for fold_pair in test_val_dict_list:
-            fold_pair_plus = fold_pair.copy()
-            fold_pair_plus["epoch"] = value_epoch
-            test_val_epoch_list.append(fold_pair_plus)
-    else:
-        for fold_pair, epoch in zip(test_val_dict_list, config_dict["hyperparameters"]["epochs"]):
-            fold_pair_plus = fold_pair.copy()
-            fold_pair_plus["epoch"] = epoch
-            test_val_epoch_list.append(fold_pair_plus)
-
-    return  test_val_epoch_list
-    
-    
 def execute_training(execution_device: str,
                      config_dict: dict,
                      is_cv_loop: bool = True,
@@ -76,10 +52,8 @@ def execute_training(execution_device: str,
 
     Args:
         execution_device (str): The name of the device that will be use.
-        list_of_configs (list of JSON): The list of configuration file.
-        list_of_configs_paths (list of str): The list of configuration file's paths.
-        
-        is_outer_loop (bool): If this is of the outer loop. (Optional)
+        config_dict (dict): configuration file.
+        is_cv_loop (bool): If this is the cross-validation loop. (Optional)        
         is_verbose_on (bool): If the verbose mode is activated. Default is false. (Optional)
     
     Raises:
@@ -140,12 +114,6 @@ def execute_training(execution_device: str,
         test_fold_list = [config_dict['test_fold_list']]
     elif isinstance(config_dict['test_fold_list'], list): # If the test_subjects list is a list, uses it
         test_fold_list = config_dict['test_fold_list']
-    
-
-    # test_val_epoch_dict_list = add_epochs_to_test_val_pairs(test_val_dict_list,
-    #                                                         config_dict,
-    #                                                         is_cv_loop,
-    #                                                         is_verbose_on)
 
     hpo_configurations = get_hpo_configuration(config_dict)    
     
@@ -160,8 +128,7 @@ def execute_training(execution_device: str,
 
         test_fold = indices_loop_dict["test"]
         validation_fold = indices_loop_dict["validation"]
-        # verify is None when is_cv_loop False
-        # validation_fold = None
+        
         hpo_configuration = indices_loop_dict["hp_configuration"]
         hp_config_index = hpo_configuration["hp_config_index"]
 
@@ -191,8 +158,8 @@ def execute_training(execution_device: str,
             training_index=index,
             is_training_finished=False,
             output_directory=config_dict['output_path'],
+            is_cv_loop=is_cv_loop,
             rank=None,
-            is_cv_loop=is_cv_loop
         )
         
         training_folds_list = partitions_dict['training']
@@ -220,6 +187,6 @@ def execute_training(execution_device: str,
             training_index=index,
             is_training_finished=True,
             output_directory=config_dict['output_path'],
+            is_cv_loop=is_cv_loop,
             rank=None,
-            is_cv_loop=is_cv_loop
         )
