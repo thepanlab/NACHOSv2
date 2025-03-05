@@ -1,6 +1,6 @@
 
 # only used when use_hpo: true
-n_combinations: 9
+n_combinations: 1
 
 # Specify single value or range e.g.
 # if using a single value use
@@ -20,7 +20,7 @@ cropping_position:
   y: 10
 
 # Specify single value or range
-n_epochs: 3
+n_epochs: 200
 
 # Specify single value or range
 patience: 20
