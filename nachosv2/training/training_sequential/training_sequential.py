@@ -1,5 +1,3 @@
-import os
-import sys
 from pathlib import Path
 from termcolor import colored
 
@@ -48,6 +46,8 @@ def run_training():
     # Default to is_cross_testing = False, i.e. cross-validation loop
     # is enabled
     loop = args["loop"]
+    if loop not in ["cross-validation", "cross-testing"]:
+        raise ValueError(f"Invalid loop type: {loop}")
     
     if loop == 'cross-testing':
         is_cv_loop = False
@@ -73,7 +73,7 @@ def run_training():
     # Make the next line fit in 80 characters
     loop_folder = "CT" if not is_cv_loop else "CV"
     timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
-    timing_directory_path.mkdir(mode=0o777, parents=True, exist_ok=True)
+    timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
     
     write_timing_file(training_timer,
                       timing_directory_path,
