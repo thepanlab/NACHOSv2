@@ -63,8 +63,8 @@ def fill_dataframe(filepath: Path,
                     "val_fold==@file_info['val_fold'] and "
                     "hp_config==@file_info['hp_config']"
                     )
-                value_metric = metrics_df.query(query)[metric]
-                difference = best_val_loss_data['validation_accuracy'] - value_metric
+                value_metric = metrics_df.query(query)[metric].item()
+                difference = best_val_loss_data['validation_accuracy'].item() - value_metric
                 if metric == "accuracy":
                     if difference > 0.02:
                         raise ValueError("Validation accuracy difference is greater than 2% for history and predictions")
