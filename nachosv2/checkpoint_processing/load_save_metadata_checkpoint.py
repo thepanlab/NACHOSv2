@@ -47,27 +47,25 @@ def write_log(config,
               training_index: int,
               is_training_finished: bool,
               output_directory: str,
-              rank: int = None,
-              is_cv_loop: bool = False):
+              is_cv_loop: bool = False,
+              rank: int = None):
     """
-    Writes a log entry to a file with information about the current rotation and job.
+    Writes a log entry to a file with information about the current training process.
 
     Args:
         config (dict): Configuration dictionary containing job name information.
-        testing_subject (str): The identifier for the testing subject.
-        rotation (int): The current rotation value to be recorded.
-        log_directory (str): The directory where the log file will be written.
-        
-        log_rotations (dict, optional): Dictionary containing previous rotation logs. Default is None.
-        validation_subject (str, optional): The identifier for the validation subject. Default is None.
-        rank (int, optional): The rank or process identifier. Default is None.
-        is_outer_loop (bool, optional): Indicates if this is the outer loop. Default is False.
+        indices_dict (dict): Dictionary containing indices for training, validation, and test sets.
+        training_index (int): The current training index.
+        is_training_finished (bool): Flag indicating whether the training is finished.
+        output_directory (str): Directory of the output results.
+        rank (int, optional): Rank of the current process (used in distributed training). Defaults to None.
+        is_cv_loop (bool, optional): Flag indicating if cross-validation loop is being used. Defaults to False.
     """
     
     log_dict = {
                 "training_index": training_index,
                 "test_fold": indices_dict["test"],
-                "hp_config_index": indices_dict["hpo_configuration"]["hp_config_index"],
+                "hp_config_index": indices_dict["hp_configuration"]["hp_config_index"],
                 "validation_fold": indices_dict["validation"],
                 "is_training_finished": is_training_finished,
                 }
@@ -80,6 +78,7 @@ def write_log(config,
     # use_lock = determine_use_lock(rank)
 
     write_log_to_file(output_directory,
+                      is_cv_loop,
                       log_filename,
                       log_dict)
 
