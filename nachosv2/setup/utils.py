@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional, List
 from termcolor import colored
-
+import pandas as pd
 
 def get_other_result(path: Path,
                      suffix: str):
@@ -40,7 +40,6 @@ def get_filepath_list(directory_to_search_path: Path,
     # List to store the paths of matching CSV files
     matched_files = []
     
-    # TODO: make sure it is searching in CV or CT loop
     loop_folder = "CV" if is_cv_loop else "CT"
     search_pattern = f'**/{loop_folder}/**/*{string_in_filename}*.csv'
 
@@ -107,6 +106,7 @@ def get_default_folder(path: Path,
 
 def get_newfilepath_from_predictions(predictions_filepath: Path,
                                      suffix_name: str,
+                                     is_cv_loop: bool,
                                      output_path: Optional[Path]):
     """
     Get the name of the confusion matrix file.
@@ -122,7 +122,8 @@ def get_newfilepath_from_predictions(predictions_filepath: Path,
                                                   suffix_name)
     if output_path is None:
         folder_path = get_default_folder(predictions_filepath,
-                                         suffix_name)
+                                         suffix_name,
+                                         is_cv_loop)
         print(colored(f"\nUsing default folder: {folder_path}.", 'magenta'))
     else:
         folder_path = output_path

@@ -1,5 +1,5 @@
-from pathlib import Path
 import re
+from pathlib import Path
 from termcolor import colored
 from typing import Optional
 from sklearn import metrics
@@ -50,10 +50,7 @@ def generate_cf(results_path: Path,
     predictions_file_path_list = get_filepath_list(results_path,
                                                    suffix_filename,
                                                    is_cv_loop)
-    
-    if is_cv_loop is None:
-        is_cv_loop = determine_if_cv_loop(predictions_file_path_list[0])
-        
+            
     # Extract and print test and validation fold numbers
     for predictions_path in predictions_file_path_list:
         filename = predictions_path.name            
@@ -61,6 +58,7 @@ def generate_cf(results_path: Path,
 
         cf_filepath = get_newfilepath_from_predictions(predictions_path,
                                                        "confusion_matrix",
+                                                       is_cv_loop,
                                                        output_path)
         
         cf_df.to_csv(cf_filepath)
