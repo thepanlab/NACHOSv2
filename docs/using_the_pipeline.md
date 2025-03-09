@@ -1,19 +1,21 @@
 # Using the Pipeline
 
-This guide provides detailed instructions on how to use our image classification pipeline, from setup to result processing.
+1. The metadata (label, fold, etc) shoould be located in a CSV file.
 
-## Preparation
+The CVS should have minimum the colums: `fold_name`,`absolute_filepath`,`label`. e.g.
 
-Before running the pipeline, ensure you have:
+| fold_name | absolute_filepath | label |
+|-----------|-------------------|-------|
+|k1|/home/pcallec/NACHOS_v2/data/pig_kidney_subset/k1/k1_cortex/100_k1_cortex.jpg|0|
+|k1|/home/pcallec/NACHOS_v2/data/pig_kidney_subset/k1/k1_cortex/10_k1_cortex.jpg|0|
+|k1|/home/pcallec/NACHOS_v2/data/pig_kidney_subset/k1/k1_cortex/11_k1_cortex.jpg|0|
+|...|...|...|
 
-1. Activated your Conda environment:
-   ```
-   conda activate pytorch_gpu_env
-   ```
+`fold_name`: data will be split according to this column \
+`absolute_filepath`: absolute path for the file \
+`label`: category in integer values e.g. `0`,`1`,...
 
-2. Prepared your CSV files in the `data/your_data_csv/` directory.
-
-3. Modified a configuration file in `scripts/config_files/` with the necessary training parameters and informations.
+The CSV can have more columns; however, they won't be used.
 
 ## Running the Pipeline
 
@@ -22,45 +24,14 @@ Before running the pipeline, ensure you have:
 To start training, use the following command:
 
 ```bash
-python3 -m scripts.training.training_sequential.training_inner_loop --file scripts/config_files/3D_config_inner_conv3D_trial_parallel.json
+python3 NACHOSv2_train --loop "cross-validation" --file config_inner_conv3D_trial_parallel.yml --device cuda:0
 ```
 
-Replace the JSON file name with your specific configuration file.
-
-### Important Arguments
-
-- `--file` or `--config_file`: Specify a single configuration file.
+- `--file` or `--config_file`: Specify a single configuration filepath.
+- `--loop`: selects between `cross-validation` or `cross-testing`
 - `--folder` or `--config_folder`: Specify a folder containing multiple configuration files to run several training sessions.
 - `--verbose` or `--v`: Activate verbose mode for more detailed output.
-- `--device` or `--d`: Choose the CUDA device for execution. Default is cuda:1.
-
-### Example
-
-```bash
-python3 -m scripts.training.training_sequential.training_inner_loop --file scripts/config_files/my_custom_config.json --verbose --device cuda:0
-```
-
-## Monitoring Progress
-
-Training progress information will be displayed in the console. Keep an eye on this output to monitor the advancement of your training session.
-
-## Using Screen for Long Training Sessions
-
-For long training sessions, it's recommended to use the `screen` command. This allows you to detach from the session without interrupting the training, even if your connection is lost.
-
-1. Start a new screen session:
-   ```
-   screen -S training_session
-   ```
-
-2. Run your training command in this session.
-
-3. Detach from the session: Press `Ctrl+A`, then `D`.
-
-4. To reattach later:
-   ```
-   screen -r training_session
-   ```
+- `--device` or `--d`: Choose the CUDA device for execution. default `cuda:0` 
 
 ## Processing Results
 
