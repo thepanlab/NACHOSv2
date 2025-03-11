@@ -167,37 +167,17 @@ def get_value_from_hyperparameter_dict(index: str,
         "momentum": random.uniform
     }
     
-    # if value not in hyperparameter_dict, return default value
-    if index not in hyperparameter_dict:
-        return df_default.loc[index, "value_converted"]
-    # if value in hyperparameter_dict, return value
-    elif hyperparameter_dict[index]:
-        
-        # if list
-        if isinstance(hyperparameter_dict[index], list):
-            # if single value
-            if len(hyperparameter_dict[index]) == 1:
-                return hyperparameter_dict[index][0]
-            # if list with more than one value
-            else:
-                # get random value from list
-                rand_idx = random.randrange(len(hyperparameter_dict[index]))
-                random_value = hyperparameter_dict[index][rand_idx]
-                return random_value
-        # if min and max
-        elif isinstance(hyperparameter_dict[index], dict):
-            # verify if min and max are keys in dictionary
-            if "min" in hyperparameter_dict[index] and "max" in hyperparameter_dict[index]:
-                min_val = hyperparameter_dict[index]["min"]
-                max_val = hyperparameter_dict[index]["max"]
-                # depending of the hyperparameter, use a different random function
-                random_value = random_function[index](min_val, max_val)
-                return random_value
-            else:
-                raise ValueError(f"Hyperparameter {index} must have 'min' and 'max' keys.")
-        # if hyperparameter not provided, use default            
+    value = hyperparameter_dict.get(index, df_default.loc[index, "value_converted"])
+
+    if isinstance(value, list):
+        return random.choice(value) if len(value) > 1 else value[0]
+    if isinstance(value, dict):
+        if "min" in value and "max" in value:
+            return random_function[index](value["min"], value["max"])
         else:
-            return hyperparameter_dict[index]
+            raise ValueError(f"Hyperparameter {index} must have 'min' and 'max' keys.")
+    
+    return value
     
 
 def is_repeated(dict_values, l_dict):
@@ -366,18 +346,15 @@ def get_hpo_configuration(config: Dict[str,any]) -> List[Dict[str,any]]:
     df_default = extract_default_hyperparameters()
     
     # List to store the generated HPO configurations
-    l_hpo_configuration = []
 
     if not config["use_hpo"]:
         # If HPO is not used, verify single values or list of one value
         verify_single_values(hyperparameter_dict)
-        l_hpo_configuration.append(extract_values_single(df_default,
-                                                         hyperparameter_dict))
+        return [extract_values_single(df_default,
+                                      hyperparameter_dict)]
     else:
         # If HPO is used, generate random configurations
-        l_hpo_configuration.extend(create_random_configurations(
-                                    hyperparameter_dict,
-                                    df_default,
-                                    config))
-
-    return l_hpo_configuration
+        return create_random_configurations(
+                    hyperparameter_dict,
+                    df_default,
+                    config)
