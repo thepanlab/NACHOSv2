@@ -243,102 +243,142 @@ Returns:
 Raises:
     ValueError: If too many repeated configurations are generated.
 """
-    dict_values = {}
-    is_unique = False
+
     n_repetitions = 0
-    
-    while not is_unique:
-        is_unique = True
+
+    while n_repetitions <= max_number_repetitions:
         
-        # Generate random values for each hyperparameter
-        for index in df_default.index:
-            if index in hyperparameter_dict:
-                dict_values[index] = \
+        # Generate random hyperparameter values
+        dict_values = {}
+        
+        for hyperparameter in df_default.index:
+            if hyperparameter in hyperparameter_dict:
+                # Get value from hyperparameter dictionary
+                dict_values[hyperparameter] = \
                     get_value_from_hyperparameter_dict(
-                    index,
+                    hyperparameter,
                     hyperparameter_dict,
                     df_default)
             else:
-                dict_values[index] = df_default.loc[index, "value_converted"]
+                # Use default value if not in hyperparameter dictionary
+                dict_values[hyperparameter] = df_default.loc[index, "value_converted"]
 
         # Check if the generated combination is unique
-        is_repeated_bool = is_repeated(dict_values, l_dict)
-
-        if is_repeated_bool:
-            n_repetitions += 1
-            is_unique = False
-
-        # Raise an error if too many repeated configurations are generated
-        if n_repetitions > max_number_repetitions:
-            raise ValueError("Too many repeated configurations. The number of "
-                             "configurations is too small for the ranges of "
-                             "values. Option 1: decrease number of "
-                             "combinations. Option 2: Increase the range or "
-                             "possible values of the hyperparameters.")
+        if not is_repeated(dict_values, l_dict):
+            return dict_values
         
-    return dict_values
+        n_repetitions += 1
+
+    # Raise an error if too many repeated configurations are generated
+    raise ValueError(
+        "Too many repeated configurations. "
+        "The number of possible configurations is too small for the given ranges. "
+        "Consider reducing the number of attempts or expanding the range of hyperparameters."
+    )
 
 
 def add_hp_to_df(dict_values: dict,
                  df_hp_rs: pd.DataFrame):
-    
+"""
+Add a new set of hyperparameter values to the DataFrame.
+
+Args:
+    dict_values (dict): Dictionary containing hyperparameter values to add.
+    df_hp_rs (pd.DataFrame): DataFrame containing previously generated hyperparameter values.
+
+Returns:
+    pd.DataFrame: Updated DataFrame with the new set of hyperparameter values added.
+"""
+    # Create a temporary DataFrame from the dictionary of hyperparameter values
     df_temp = pd.DataFrame(dict_values, index=[0])
-    # reset index
+    
+    # Concatenate the temporary DataFrame with the existing DataFrame and reset the index
     df_hp_rs = pd.concat([df_hp_rs, df_temp], ignore_index=True)
     
     return df_hp_rs
 
 
-def create_random_configurations(hyperparameter_dict: dict,
-                                 config: dict) -> List[dict]:
-    
-    df_default = extract_default_hyperparameters()
+def create_random_configurations(hyperparameter_dict: Dict[str,any],
+                                 df_default: pd.DataFrame,
+                                 config: Dict[str,any]) -> List[Dict[str,any]]:
+    """
+Generate random configurations based on the provided hyperparameters.
+
+Args:
+    hyperparameter_dict (dict): Dictionary containing hyperparameter information, including the number of combinations.
+    df_default (dict): Default values for the hyperparameters.
+    config (dict): Configuration dictionary containing output path information.
+
+Returns:
+    List[dict]: A list of dictionaries, each representing a random hyperparameter configuration.
+"""
+    # Number of combinations to generate    
     n_combinations = hyperparameter_dict["n_combinations"]
     
+    # DataFrame to store hyperparameter configurations
     df_hp_rs = pd.DataFrame()
     
+    # List to store the generated configurations
     l_dict = []
     if n_combinations == 1:
+        # Verify single values if only one combination is needed
         verify_single_values(hyperparameter_dict)
         l_dict.append(extract_values_single(df_default, hyperparameter_dict))
     else:
         for i in range(n_combinations):
+             # Generate one random combination
             random_combination = get_one_random_combination(df_default,
                                                             hyperparameter_dict,
                                                             l_dict,
                                                             n_combinations)
+            # Add an index to the combination
             random_combination = {"hp_config_index": i, **random_combination}
+
+            # Add the combination to the DataFrame
             df_hp_rs = add_hp_to_df(random_combination,
                                     df_hp_rs)
             
-            # store file using config
+            #  Store the DataFrame to a CSV file using the provided config
             hp_folder_path = get_folder_path(Path(config["output_path"]),
                                              "hp_random_search",
                                              True)
             hp_filepath = hp_folder_path / "hp_configurations.csv"
             df_hp_rs.to_csv(hp_filepath)
             
-            # verify combinations dont repeat
             l_dict.append(random_combination)
     
     return l_dict
 
 
-def get_hpo_configuration(config: dict) -> List[dict]:
-    
+def get_hpo_configuration(config: Dict[str,any]) -> List[Dict[str,any]]:
+"""
+Generate hyperparameter optimization (HPO) configurations based on the provided configuration.
+
+Args:
+    config (dict): Configuration dictionary containing file paths and HPO usage flag.
+
+Returns:
+    List[dict]: A list of dictionaries, each representing a hyperparameter configuration.
+"""
+    # Retrieve hyperparameter configuration from the specified file
     hyperparameter_dict = get_config(config["configuration_filepath"])
     
+    # Extract default hyperparameter values
     df_default = extract_default_hyperparameters()
     
+    # List to store the generated HPO configurations
     l_hpo_configuration = []
+
     if not config["use_hpo"]:
-        # Verify there are single values or list of one value
+        # If HPO is not used, verify single values or list of one value
         verify_single_values(hyperparameter_dict)
         l_hpo_configuration.append(extract_values_single(df_default,
                                                          hyperparameter_dict))
     else:
-        
-        l_hpo_configuration.extend(create_random_configurations(hyperparameter_dict,
-                                   config))
+        # If HPO is used, generate random configurations
+        l_hpo_configuration.extend(create_random_configurations(
+                                    hyperparameter_dict,
+                                    df_default
+                                    config))
 
     return l_hpo_configuration
