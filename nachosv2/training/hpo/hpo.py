@@ -8,15 +8,15 @@ from nachosv2.setup.utils import get_folder_path
 
                   
 def verify_single_values(hyperparameter: dict):
-"""
-Verify that the hyperparameters are single values or lists of one value.
+    """
+    Verify that the hyperparameters are single values or lists of one value.
 
-Args:
-    hyperparameter (dict): Dictionary containing hyperparameters to verify.
+    Args:
+        hyperparameter (dict): Dictionary containing hyperparameters to verify.
 
-Raises:
-    ValueError: If any hyperparameter is a dictionary (except for allowed keys) or a list with more than one value.
-"""
+    Raises:
+        ValueError: If any hyperparameter is a dictionary (except for allowed keys) or a list with more than one value.
+    """
     # only value allowed to be a list with more than one value
     l_dict_allowed = ["cropping_position"]
     for key, value in hyperparameter.items():
@@ -29,30 +29,29 @@ Raises:
 
 
 def convert_type(val: str,
-                 typ: str):
-"""
-Convert a string value to a specified type.
+                 type: str):
+    """
+    Convert a string value to a specified type.
 
-Args:
-    val (str): The value to convert.
-    typ (str): The type to convert the value to. Supported types are 'int', 'float', 'bool', and 'str'.
+    Args:
+        val (str): The value to convert.
+        typ (str): The type to convert the value to. Supported types are 'int', 'float', 'bool', and 'str'.
 
-Returns:
-    The converted value in the specified type.
+    Returns:
+        The converted value in the specified type.
 
-Raises:
-    ValueError: If the specified type is not supported.
-"""
-    if typ == 'int':
-        return int(val)
-    elif typ == 'bool':
-        return bool(val)
-    elif typ == 'float':
-        return float(val)
-    elif typ == 'str':
-        return str(val)
-    else:
-        return val
+    Raises:
+        ValueError: If the specified type is not supported.
+    """
+
+    converter_dict = {
+        'int': int,
+        'bool': bool,
+        'float': float,
+        'str': str
+    }
+    
+    return converter_dict[type](val)
 
 
 def extract_values_single(df_default:pd.DataFrame,
@@ -144,20 +143,20 @@ def random_value_factor(min_value, max_value, scale_factor=10):
 def get_value_from_hyperparameter_dict(index: str,
                                        hyperparameter_dict: dict,
                                        df_default):
-"""
-Retrieve a value from the hyperparameter dictionary or default DataFrame.
+    """
+    Retrieve a value from the hyperparameter dictionary or default DataFrame.
 
-Args:
-    index (str): The key for the hyperparameter to retrieve.
-    hyperparameter_dict (dict): Dictionary containing hyperparameters and their ranges or values.
-    df_default (pd.DataFrame): DataFrame containing default values for hyperparameters.
+    Args:
+        index (str): The key for the hyperparameter to retrieve.
+        hyperparameter_dict (dict): Dictionary containing hyperparameters and their ranges or values.
+        df_default (pd.DataFrame): DataFrame containing default values for hyperparameters.
 
-Returns:
-    The value of the hyperparameter, either from the hyperparameter dictionary or the default DataFrame.
+    Returns:
+        The value of the hyperparameter, either from the hyperparameter dictionary or the default DataFrame.
 
-Raises:
-    ValueError: If the hyperparameter range is invalid.
-"""
+    Raises:
+        ValueError: If the hyperparameter range is invalid.
+    """
     
     # specify the random function for each hyperparameter
     random_function = {
@@ -202,16 +201,16 @@ Raises:
     
 
 def is_repeated(dict_values, l_dict):
-"""
-Check if a given dictionary of hyperparameter values is already present in a list of dictionaries.
+    """
+    Check if a given dictionary of hyperparameter values is already present in a list of dictionaries.
 
-Args:
-    dict_values (dict): Dictionary containing hyperparameter values to check.
-    l_dict (List[dict]): List of dictionaries containing previously generated hyperparameter values.
+    Args:
+        dict_values (dict): Dictionary containing hyperparameter values to check.
+        l_dict (List[dict]): List of dictionaries containing previously generated hyperparameter values.
 
-Returns:
-    bool: True if the dictionary of hyperparameter values is already present in the list, False otherwise.
-"""
+    Returns:
+        bool: True if the dictionary of hyperparameter values is already present in the list, False otherwise.
+    """
     for existing_dict in l_dict:
         dict_hp = existing_dict.copy()
         # delete hp_config_index to compare just the hyperparameter values
@@ -228,21 +227,21 @@ def get_one_random_combination(df_default: pd.DataFrame,
                                hyperparameter_dict: Dict[str,any],
                                l_dict: List[Dict[str,any]],
                                max_number_repetitions: int) -> Dict[str,any]:
-"""
-Generate one unique random combination of hyperparameters.
+    """
+    Generate one unique random combination of hyperparameters.
 
-Args:
-    df_default (pd.DataFrame): DataFrame containing default values for hyperparameters.
-    hyperparameter_dict (dict): Dictionary containing hyperparameters and their ranges or values.
-    l_dict (List[dict]): List of dictionaries containing previously generated hyperparameter values.
-    max_number_repetitions (int): Maximum number of combinations to try before raising an error.
+    Args:
+        df_default (pd.DataFrame): DataFrame containing default values for hyperparameters.
+        hyperparameter_dict (dict): Dictionary containing hyperparameters and their ranges or values.
+        l_dict (List[dict]): List of dictionaries containing previously generated hyperparameter values.
+        max_number_repetitions (int): Maximum number of combinations to try before raising an error.
 
-Returns:
-    dict: A dictionary containing a unique combination of hyperparameter values.
+    Returns:
+        dict: A dictionary containing a unique combination of hyperparameter values.
 
-Raises:
-    ValueError: If too many repeated configurations are generated.
-"""
+    Raises:
+        ValueError: If too many repeated configurations are generated.
+    """
 
     n_repetitions = 0
 
@@ -279,16 +278,16 @@ Raises:
 
 def add_hp_to_df(dict_values: dict,
                  df_hp_rs: pd.DataFrame):
-"""
-Add a new set of hyperparameter values to the DataFrame.
+    """
+    Add a new set of hyperparameter values to the DataFrame.
 
-Args:
-    dict_values (dict): Dictionary containing hyperparameter values to add.
-    df_hp_rs (pd.DataFrame): DataFrame containing previously generated hyperparameter values.
+    Args:
+        dict_values (dict): Dictionary containing hyperparameter values to add.
+        df_hp_rs (pd.DataFrame): DataFrame containing previously generated hyperparameter values.
 
-Returns:
-    pd.DataFrame: Updated DataFrame with the new set of hyperparameter values added.
-"""
+    Returns:
+        pd.DataFrame: Updated DataFrame with the new set of hyperparameter values added.
+    """
     # Create a temporary DataFrame from the dictionary of hyperparameter values
     df_temp = pd.DataFrame(dict_values, index=[0])
     
@@ -302,16 +301,16 @@ def create_random_configurations(hyperparameter_dict: Dict[str,any],
                                  df_default: pd.DataFrame,
                                  config: Dict[str,any]) -> List[Dict[str,any]]:
     """
-Generate random configurations based on the provided hyperparameters.
+    Generate random configurations based on the provided hyperparameters.
 
-Args:
-    hyperparameter_dict (dict): Dictionary containing hyperparameter information, including the number of combinations.
-    df_default (dict): Default values for the hyperparameters.
-    config (dict): Configuration dictionary containing output path information.
+    Args:
+        hyperparameter_dict (dict): Dictionary containing hyperparameter information, including the number of combinations.
+        df_default (dict): Default values for the hyperparameters.
+        config (dict): Configuration dictionary containing output path information.
 
-Returns:
-    List[dict]: A list of dictionaries, each representing a random hyperparameter configuration.
-"""
+    Returns:
+        List[dict]: A list of dictionaries, each representing a random hyperparameter configuration.
+    """
     # Number of combinations to generate    
     n_combinations = hyperparameter_dict["n_combinations"]
     
@@ -351,15 +350,15 @@ Returns:
 
 
 def get_hpo_configuration(config: Dict[str,any]) -> List[Dict[str,any]]:
-"""
-Generate hyperparameter optimization (HPO) configurations based on the provided configuration.
+    """
+    Generate hyperparameter optimization (HPO) configurations based on the provided configuration.
 
-Args:
-    config (dict): Configuration dictionary containing file paths and HPO usage flag.
+    Args:
+        config (dict): Configuration dictionary containing file paths and HPO usage flag.
 
-Returns:
-    List[dict]: A list of dictionaries, each representing a hyperparameter configuration.
-"""
+    Returns:
+        List[dict]: A list of dictionaries, each representing a hyperparameter configuration.
+    """
     # Retrieve hyperparameter configuration from the specified file
     hyperparameter_dict = get_config(config["configuration_filepath"])
     
@@ -378,7 +377,7 @@ Returns:
         # If HPO is used, generate random configurations
         l_hpo_configuration.extend(create_random_configurations(
                                     hyperparameter_dict,
-                                    df_default
+                                    df_default,
                                     config))
 
     return l_hpo_configuration
