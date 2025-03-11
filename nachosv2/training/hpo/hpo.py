@@ -56,22 +56,24 @@ def convert_type(val: str,
 
 def extract_values_single(df_default:pd.DataFrame,
                           hyperparameter_dict: dict):
-    """_summary_
+    """
+    Extract single values for each hyperparameter from the default values.
 
     Args:
-        df_default (pd.DataFrame): _description_
-        hyperparameter_dict (dict): _description_
+        df_default (dict): Default values for the hyperparameters.
+        hyperparameter_dict (dict): Dictionary containing hyperparameter information.
 
     Returns:
-        _type_: _description_
+        dict: A dictionary with the extracted single values for each hyperparameter.
     """
     dict_values = {}
-    
     dict_values["hp_config_index"] = 0
     
     for index in df_default.index:
+        # if values is in hyperparameter configuration
         if index in hyperparameter_dict:
             dict_values[index] = hyperparameter_dict[index]
+        # otherwise use default
         else:
             dict_values[index] = df_default.loc[index, "value_converted"]
     
