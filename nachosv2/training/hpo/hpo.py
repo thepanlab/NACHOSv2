@@ -1,12 +1,24 @@
+import random
+import math
+from typing import List, Dict
 from pathlib import Path
 import pandas as pd
 from nachosv2.setup.get_config import get_config
+from nachosv2.setup.utils import get_folder_path
 
-                                
+                  
 def verify_single_values(hyperparameter: dict):
-    
+"""
+Verify that the hyperparameters are single values or lists of one value.
+
+Args:
+    hyperparameter (dict): Dictionary containing hyperparameters to verify.
+
+Raises:
+    ValueError: If any hyperparameter is a dictionary (except for allowed keys) or a list with more than one value.
+"""
+    # only value allowed to be a list with more than one value
     l_dict_allowed = ["cropping_position"]
-    
     for key, value in hyperparameter.items():
         if key in l_dict_allowed:
             continue
@@ -18,6 +30,19 @@ def verify_single_values(hyperparameter: dict):
 
 def convert_type(val: str,
                  typ: str):
+"""
+Convert a string value to a specified type.
+
+Args:
+    val (str): The value to convert.
+    typ (str): The type to convert the value to. Supported types are 'int', 'float', 'bool', and 'str'.
+
+Returns:
+    The converted value in the specified type.
+
+Raises:
+    ValueError: If the specified type is not supported.
+"""
     if typ == 'int':
         return int(val)
     elif typ == 'bool':
@@ -32,19 +57,24 @@ def convert_type(val: str,
 
 def extract_values_single(df_default:pd.DataFrame,
                           hyperparameter_dict: dict):
+    """_summary_
+
+    Args:
+        df_default (pd.DataFrame): _description_
+        hyperparameter_dict (dict): _description_
+
+    Returns:
+        _type_: _description_
+    """
     dict_values = {}
-    df_temp = df_default.set_index("hyperparameter")
-    df_temp['value_converted'] = df_temp.apply(lambda row: convert_type(row['value'],
-                                                              row['type']),
-                                               axis=1)
     
     dict_values["hp_config_index"] = 0
     
-    for index in df_temp.index:
+    for index in df_default.index:
         if index in hyperparameter_dict:
             dict_values[index] = hyperparameter_dict[index]
         else:
-            dict_values[index] = df_temp.loc[index, "value_converted"]
+            dict_values[index] = df_default.loc[index, "value_converted"]
     
     return dict_values
 
@@ -63,28 +93,238 @@ def extract_default_hyperparameters() -> pd.DataFrame:
     
     df_default = pd.read_csv(default_path, index_col=0)
     
+    # Set the 'hyperparameter' column as the index
+    df_default = df_default.set_index("hyperparameter")
+    # Convert the 'value' column to the appropriate type
+    df_default['value_converted'] = df_default.apply(lambda row: convert_type(row['value'],
+                                                                 row['type']),
+                                                     axis=1)
+    
     return df_default
 
 
-def create_random_configurations(is_cv_loop: bool,
-                                 hyperparameter_dict: dict):
+def random_power(min_value, max_value, base):
+    # Get the exponent range
+    min_exponent = int(round(math.log(min_value, base)))
+    max_exponent = int(round(math.log(max_value, base)))
+    
+    # Generate a random exponent within the range
+    random_exponent = random.randint(min_exponent, max_exponent)
+    
+    # Return 10 raised to the chosen exponent
+    return base ** random_exponent
+
+
+def random_value_factor(min_value, max_value, scale_factor=10):
+    """
+    Generates a random value by scaling a randomly chosen factor within the given range.
+
+    Parameters:
+    - min_value (int): Minimum value of the range.
+    - max_value (int): Maximum value of the range.
+    - scale_factor (int): The scaling factor (default is 10).
+
+    Returns:
+    - int: A randomly generated value based on the scale factor.
+    """
+    if min_value > max_value:
+        raise ValueError("min_val should not be greater than max_val")
+
+    # Compute scaling factors
+    min_factor = min_value//scale_factor
+    max_factor = max_value//scale_factor
+    
+    # Generate a random exponent within the range
+    random_factor = random.randint(min_factor, max_factor)
+    
+    # Return 10 raised to the chosen exponent
+    return scale_factor*random_factor
+
+
+def get_value_from_hyperparameter_dict(index: str,
+                                       hyperparameter_dict: dict,
+                                       df_default):
+"""
+Retrieve a value from the hyperparameter dictionary or default DataFrame.
+
+Args:
+    index (str): The key for the hyperparameter to retrieve.
+    hyperparameter_dict (dict): Dictionary containing hyperparameters and their ranges or values.
+    df_default (pd.DataFrame): DataFrame containing default values for hyperparameters.
+
+Returns:
+    The value of the hyperparameter, either from the hyperparameter dictionary or the default DataFrame.
+
+Raises:
+    ValueError: If the hyperparameter range is invalid.
+"""
+    
+    # specify the random function for each hyperparameter
+    random_function = {
+        "batch_size": lambda min_val, max_val: random_power(min_val, max_val, base=2),
+        "n_epochs": random_value_factor,
+        "n_patience": random.randint,
+        "learning_rate": lambda min_val, max_val: random_power(min_val, max_val, base=10),
+        "momentum": random.uniform
+    }
+    
+    # if value not in hyperparameter_dict, return default value
+    if index not in hyperparameter_dict:
+        return df_default.loc[index, "value_converted"]
+    # if value in hyperparameter_dict, return value
+    elif hyperparameter_dict[index]:
+        
+        # if list
+        if isinstance(hyperparameter_dict[index], list):
+            # if single value
+            if len(hyperparameter_dict[index]) == 1:
+                return hyperparameter_dict[index][0]
+            # if list with more than one value
+            else:
+                # get random value from list
+                rand_idx = random.randrange(len(hyperparameter_dict[index]))
+                random_value = hyperparameter_dict[index][rand_idx]
+                return random_value
+        # if min and max
+        elif isinstance(hyperparameter_dict[index], dict):
+            # verify if min and max are keys in dictionary
+            if "min" in hyperparameter_dict[index] and "max" in hyperparameter_dict[index]:
+                min_val = hyperparameter_dict[index]["min"]
+                max_val = hyperparameter_dict[index]["max"]
+                # depending of the hyperparameter, use a different random function
+                random_value = random_function[index](min_val, max_val)
+                return random_value
+            else:
+                raise ValueError(f"Hyperparameter {index} must have 'min' and 'max' keys.")
+        # if hyperparameter not provided, use default            
+        else:
+            return hyperparameter_dict[index]
+    
+
+def is_repeated(dict_values, l_dict):
+"""
+Check if a given dictionary of hyperparameter values is already present in a list of dictionaries.
+
+Args:
+    dict_values (dict): Dictionary containing hyperparameter values to check.
+    l_dict (List[dict]): List of dictionaries containing previously generated hyperparameter values.
+
+Returns:
+    bool: True if the dictionary of hyperparameter values is already present in the list, False otherwise.
+"""
+    for existing_dict in l_dict:
+        dict_hp = existing_dict.copy()
+        # delete hp_config_index to compare just the hyperparameter values
+        del dict_hp["hp_config_index"]
+        
+        # comparing dictionaries of hyperparameters    
+        if dict_hp == dict_values:
+            return True
+    
+    return False
+
+
+def get_one_random_combination(df_default: pd.DataFrame,
+                               hyperparameter_dict: Dict[str,any],
+                               l_dict: List[Dict[str,any]],
+                               max_number_repetitions: int) -> Dict[str,any]:
+"""
+Generate one unique random combination of hyperparameters.
+
+Args:
+    df_default (pd.DataFrame): DataFrame containing default values for hyperparameters.
+    hyperparameter_dict (dict): Dictionary containing hyperparameters and their ranges or values.
+    l_dict (List[dict]): List of dictionaries containing previously generated hyperparameter values.
+    max_number_repetitions (int): Maximum number of combinations to try before raising an error.
+
+Returns:
+    dict: A dictionary containing a unique combination of hyperparameter values.
+
+Raises:
+    ValueError: If too many repeated configurations are generated.
+"""
+    dict_values = {}
+    is_unique = False
+    n_repetitions = 0
+    
+    while not is_unique:
+        is_unique = True
+        
+        # Generate random values for each hyperparameter
+        for index in df_default.index:
+            if index in hyperparameter_dict:
+                dict_values[index] = \
+                    get_value_from_hyperparameter_dict(
+                    index,
+                    hyperparameter_dict,
+                    df_default)
+            else:
+                dict_values[index] = df_default.loc[index, "value_converted"]
+
+        # Check if the generated combination is unique
+        is_repeated_bool = is_repeated(dict_values, l_dict)
+
+        if is_repeated_bool:
+            n_repetitions += 1
+            is_unique = False
+
+        # Raise an error if too many repeated configurations are generated
+        if n_repetitions > max_number_repetitions:
+            raise ValueError("Too many repeated configurations. The number of "
+                             "configurations is too small for the ranges of "
+                             "values. Option 1: decrease number of "
+                             "combinations. Option 2: Increase the range or "
+                             "possible values of the hyperparameters.")
+        
+    return dict_values
+
+
+def add_hp_to_df(dict_values: dict,
+                 df_hp_rs: pd.DataFrame):
+    
+    df_temp = pd.DataFrame(dict_values, index=[0])
+    # reset index
+    df_hp_rs = pd.concat([df_hp_rs, df_temp], ignore_index=True)
+    
+    return df_hp_rs
+
+
+def create_random_configurations(hyperparameter_dict: dict,
+                                 config: dict) -> List[dict]:
     
     df_default = extract_default_hyperparameters()
-    # Go through the default values and check if they are in the hyperparameter_dict
     n_combinations = hyperparameter_dict["n_combinations"]
+    
+    df_hp_rs = pd.DataFrame()
+    
     l_dict = []
     if n_combinations == 1:
         verify_single_values(hyperparameter_dict)
         l_dict.append(extract_values_single(df_default, hyperparameter_dict))
     else:
         for i in range(n_combinations):
-            dict_temp = {}
-            for key, value in dict_hyperparameters_default.items():
-                if key not in hyperparameter_dict:
-                    dict_temp[key] = value
+            random_combination = get_one_random_combination(df_default,
+                                                            hyperparameter_dict,
+                                                            l_dict,
+                                                            n_combinations)
+            random_combination = {"hp_config_index": i, **random_combination}
+            df_hp_rs = add_hp_to_df(random_combination,
+                                    df_hp_rs)
+            
+            # store file using config
+            hp_folder_path = get_folder_path(Path(config["output_path"]),
+                                             "hp_random_search",
+                                             True)
+            hp_filepath = hp_folder_path / "hp_configurations.csv"
+            df_hp_rs.to_csv(hp_filepath)
+            
+            # verify combinations dont repeat
+            l_dict.append(random_combination)
+    
+    return l_dict
 
 
-def get_hpo_configuration(config):
+def get_hpo_configuration(config: dict) -> List[dict]:
     
     hyperparameter_dict = get_config(config["configuration_filepath"])
     
@@ -97,7 +337,8 @@ def get_hpo_configuration(config):
         l_hpo_configuration.append(extract_values_single(df_default,
                                                          hyperparameter_dict))
     else:
-        # TODO
-        create_random_configurations(hyperparameter_dict)
+        
+        l_hpo_configuration.extend(create_random_configurations(hyperparameter_dict,
+                                   config))
 
     return l_hpo_configuration
