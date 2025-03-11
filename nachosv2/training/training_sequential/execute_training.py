@@ -1,5 +1,6 @@
 from typing import List
 import itertools
+import random
 from termcolor import colored
 from nachosv2.data_processing.check_unique_subjects import check_unique_subjects
 from nachosv2.data_processing.read_metadata_csv import read_metadata_csv
@@ -115,6 +116,8 @@ def execute_training(execution_device: str,
     elif isinstance(config_dict['test_fold_list'], list): # If the test_subjects list is a list, uses it
         test_fold_list = config_dict['test_fold_list']
 
+    random.seed(config_dict['seed_hpo'])
+    
     hpo_configurations = get_hpo_configuration(config_dict)    
     
     indices_loop_list = create_loop_indices(test_fold_list,
