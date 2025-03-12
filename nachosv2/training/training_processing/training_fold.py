@@ -110,6 +110,11 @@ class TrainingFold():
 
         # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
         # The input is expected to contain the unnormalized logits for each class
+        # TODO: define as binary cross entropy 
+        # when 2 classes are used
+        # and modify predictions, they dont need to be softmaxed
+        #https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html
+        #https://discuss.pytorch.org/t/bceloss-vs-bcewithlogitsloss/33586
         self.loss_function = nn.CrossEntropyLoss()
         
         self.model = None
