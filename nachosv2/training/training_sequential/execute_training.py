@@ -116,7 +116,8 @@ def execute_training(execution_device: str,
     elif isinstance(config_dict['test_fold_list'], list): # If the test_subjects list is a list, uses it
         test_fold_list = config_dict['test_fold_list']
 
-    random.seed(config_dict['seed_hpo'])
+    if config_dict["use_hpo"]:
+        random.seed(config_dict['seed_hpo'])
     
     hpo_configurations = get_hpo_configuration(config_dict)    
     
