@@ -40,6 +40,7 @@ def get_config(config_file_path: str) -> dict:
                     
     return config_dict
 
+
 def get_config_list(config_file_path: str,
                     config_folder_path: str) -> List[dict]:
     """
