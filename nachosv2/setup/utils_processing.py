@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 from sklearn import metrics
 import yaml
 from termcolor import colored
@@ -19,40 +19,67 @@ metric_functions = {
     'top_k_accuracy': metrics.top_k_accuracy_score,
     'average_precision': metrics.average_precision_score,
     'neg_brier_score': lambda y_true, y_pred: -metrics.brier_score_loss(y_true, y_pred),
+    # F1 Scores with different averaging methods
     'f1': lambda y_true, y_pred: metrics.f1_score(y_true, y_pred, average='binary'),
     'f1_micro': lambda y_true, y_pred: metrics.f1_score(y_true, y_pred, average='micro'),
     'f1_macro': lambda y_true, y_pred: metrics.f1_score(y_true, y_pred, average='macro'),
     'f1_weighted': lambda y_true, y_pred: metrics.f1_score(y_true, y_pred, average='weighted'),
     'f1_samples': lambda y_true, y_pred: metrics.f1_score(y_true, y_pred, average='samples'),
     'neg_log_loss': metrics.log_loss,
+    # Precision, Recall, and Jaccard Score
     'precision': lambda y_true, y_pred: metrics.precision_score(y_true, y_pred, average='binary'),
     'recall': lambda y_true, y_pred: metrics.recall_score(y_true, y_pred, average='binary'),
     'jaccard': lambda y_true, y_pred: metrics.jaccard_score(y_true, y_pred, average='binary'),
-    'roc_auc': metrics.roc_auc_score,
-    'roc_auc_ovr': metrics.roc_auc_score,
-    'roc_auc_ovo': metrics.roc_auc_score,
-    'roc_auc_ovr_weighted': metrics.roc_auc_score,
-    'roc_auc_ovo_weighted': metrics.roc_auc_score,
-    # Add clustering metrics here as needed
+    # ROC AUC Scores - Specifying Multiclass/Multi-label Cases
+    'roc_auc': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred),
+    'roc_auc_ovr': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovr'),
+    'roc_auc_ovo': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovo'),
+    'roc_auc_ovr_weighted': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovr', average='weighted'),
+    'roc_auc_ovo_weighted': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovo', average='weighted')
 }
 
 
-def generate_individual_metric(list_metrics: List[str],
-                               path: Path) -> dict:
-    
+def generate_individual_metric(metrics_list: List[str],
+                               path: Path) -> Dict[str, float]:
+    """
+    Computes specified evaluation metrics for classification predictions stored in a CSV file.
+
+    Parameters:
+    ----------
+    metrics_list : List[str]
+        A list of metric names to compute. Each metric should correspond to a function 
+        defined in `metric_functions`.
+    path : Path
+        Path to the CSV file containing prediction results with `true_label` and 
+        `predicted_class` columns.
+
+    Returns:
+    -------
+    Dict[str, float]
+        A dictionary where keys are metric names and values are the computed metric scores.
+
+    Raises:
+    ------
+    ValueError
+        If any metric in `list_metrics` is not found in `metric_functions`.
+    """
+
     df_results = pd.read_csv(path)
     actual = df_results['true_label']
     predicted = df_results['predicted_class']
     
     metrics_dict = {}
     # Get the corresponding function and compute the metric
-    for metric in list_metrics:
+    for metric in metrics_list:
         if metric in metric_functions:
-            metric_function = metric_functions[metric]
-            score = metric_function(actual, predicted)
-            metrics_dict[metric] = [score]        
+            metrics_dict[metric] = metric_functions[metric](actual,predicted)       
         else:
-            raise ValueError(f"Metric {metric} not supported.")
+            message_str = f"Metric {metric} not supported. Metrics supported: "
+            
+            for key in metric_functions:
+                message_str += f"{key}, "
+                
+            raise ValueError(message_str)
     
     return metrics_dict
 
