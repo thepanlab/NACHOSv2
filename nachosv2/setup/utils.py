@@ -104,6 +104,16 @@ def get_default_folder(path: Path,
     return default_folder_path
 
 
+def get_folder_path(output_path: Path,
+                    folder_name: str,
+                    is_cv_loop: bool):
+    loop = "CV" if is_cv_loop else "CT"
+    folder_path = output_path / loop / folder_name
+    folder_path.mkdir(mode=0o775, parents=True, exist_ok=True)
+
+    return folder_path
+
+
 def get_newfilepath_from_predictions(predictions_filepath: Path,
                                      suffix_name: str,
                                      is_cv_loop: bool,
