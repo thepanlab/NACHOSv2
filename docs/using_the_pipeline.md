@@ -24,7 +24,7 @@ The CSV can have more columns; however, they won't be used.
 To start training, use the following command:
 
 ```bash
-python3 NACHOSv2_train --loop "cross-validation" --file config_inner_conv3D_trial_parallel.yml --device cuda:0
+python NACHOSv2_train --loop "cross-validation" --device cuda:0 --file config_training.yml 
 ```
 
 - `--file` or `--config_file`: Specify a single configuration filepath.
@@ -32,6 +32,18 @@ python3 NACHOSv2_train --loop "cross-validation" --file config_inner_conv3D_tria
 - `--folder` or `--config_folder`: Specify a folder containing multiple configuration files to run several training sessions.
 - `--verbose` or `--v`: Activate verbose mode for more detailed output.
 - `--device` or `--d`: Choose the CUDA device for execution. default `cuda:0` 
+
+To get summary results:
+```bash
+python3 NACHOSv2_getsummary --file config_summary_cv.yml
+```
+If are getting summary for `cross-validation`, it will automatically generate the configuration files to train `for cross-testing` inside the folder ``
+
+To get confusion matrix:
+```bash
+python3 NACHOSv2_getconfusionmatrix --file config_confusionmatrix_cv.yml
+```
+
 
 ## Processing Results
 
