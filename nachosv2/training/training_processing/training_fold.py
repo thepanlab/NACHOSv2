@@ -253,7 +253,7 @@ class TrainingFold():
         # scheduler https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
       
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
-                                                              T_max=10,
+                                                              T_max=5,
                                                               eta_min=self.hyperparameters['learning_rate']/100,
                                                               last_epoch=-1,
                                                               verbose='deprecated')
