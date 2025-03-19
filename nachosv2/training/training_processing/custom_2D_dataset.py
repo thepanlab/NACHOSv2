@@ -36,6 +36,7 @@ class Dataset2D(Dataset):
     def __init__(self,
                  dictionary_partition: dict,
                  number_channels: int,
+                 image_size: tuple = None,
                  do_cropping: bool = False,
                  crop_box: tuple = None,
                  transform: Optional[Callable] = None):
@@ -56,10 +57,10 @@ class Dataset2D(Dataset):
         
         self.dictionary_partition = dictionary_partition
         self.number_channels = number_channels
+        self.image_size = image_size
         self.do_cropping = do_cropping
         self.crop_box = crop_box
         self.transform = transform
-
 
     def __len__(self):
         """
@@ -94,13 +95,15 @@ class Dataset2D(Dataset):
         if self.number_channels == 1 and image.ndim == 3:
             image = rgb2gray(image)
         
+        if self.image_size:
+            image = skimage.transform.resize(image, self.image_size)
+        
         # If asked, crops the image
         if self.do_cropping:
             image = crop_image(image, self.crop_box)
 
         # Converts the image into a tensor
         image = transforms.ToTensor()(image)
-
         if self.transform:
             # Error here
             image = self.transform(image)
