@@ -27,9 +27,15 @@ metric_functions = {
     'f1_samples': lambda y_true, y_pred: metrics.f1_score(y_true, y_pred, average='samples'),
     'neg_log_loss': metrics.log_loss,
     # Precision, Recall, and Jaccard Score
-    'precision': lambda y_true, y_pred: metrics.precision_score(y_true, y_pred, average='binary'),
-    'recall': lambda y_true, y_pred: metrics.recall_score(y_true, y_pred, average='binary'),
-    'jaccard': lambda y_true, y_pred: metrics.jaccard_score(y_true, y_pred, average='binary'),
+    'precision_binary': lambda y_true, y_pred: metrics.precision_score(y_true, y_pred, average='binary'),
+    'precision_micro': lambda y_true, y_pred: metrics.precision_score(y_true, y_pred, average='micro'),
+    'precision_macro': lambda y_true, y_pred: metrics.precision_score(y_true, y_pred, average='macro'),
+    'recall_binary': lambda y_true, y_pred: metrics.recall_score(y_true, y_pred, average='binary'),
+    'recall_micro': lambda y_true, y_pred: metrics.recall_score(y_true, y_pred, average='micro'),
+    'recall_macro': lambda y_true, y_pred: metrics.recall_score(y_true, y_pred, average='macro'),
+    'jaccard_binary': lambda y_true, y_pred: metrics.jaccard_score(y_true, y_pred, average='binary'),
+    'jaccard_micro': lambda y_true, y_pred: metrics.jaccard_score(y_true, y_pred, average='micro'),
+    'jaccard_macro': lambda y_true, y_pred: metrics.jaccard_score(y_true, y_pred, average='macro'),
     # ROC AUC Scores - Specifying Multiclass/Multi-label Cases
     'roc_auc': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred),
     'roc_auc_ovr': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovr'),
@@ -39,8 +45,21 @@ metric_functions = {
 }
 
 
+def get_partition_from_prediction_file(filepath: Path) -> str:
+    partition = filepath.stem.split('_')[-1]
+
+    if partition not in [ 'val', 'test']:
+        raise ValueError(f"Partition {partition} not recognized. Expected 'val', or 'test'. in {filepath}")
+
+    if partition == 'val':
+        partition = 'validation' # for consistency with the results of history
+
+
+    return partition
+
+
 def generate_individual_metric(metrics_list: List[str],
-                               path: Path) -> Dict[str, float]:
+                               path_list: List[Path]) -> Dict[str, float]:
     """
     Computes specified evaluation metrics for classification predictions stored in a CSV file.
 
@@ -63,39 +82,68 @@ def generate_individual_metric(metrics_list: List[str],
     ValueError
         If any metric in `list_metrics` is not found in `metric_functions`.
     """
-
-    df_results = pd.read_csv(path)
-    actual = df_results['true_label']
-    predicted = df_results['predicted_class']
-    
     metrics_dict = {}
     # Get the corresponding function and compute the metric
     for metric in metrics_list:
-        if metric in metric_functions:
-            metrics_dict[metric] = metric_functions[metric](actual,predicted)       
-        else:
+        if metric not in metric_functions:
             message_str = f"Metric {metric} not supported. Metrics supported: "
-            
             for key in metric_functions:
                 message_str += f"{key}, "
-                
             raise ValueError(message_str)
-    
+        else:
+            # in case there are validation and test
+            # sort to have validation first
+            path_list_sorted = sorted(path_list, reverse=True)
+            for path in path_list_sorted:
+                partition = get_partition_from_prediction_file(path)
+                df_results = pd.read_csv(path)
+                actual = df_results['true_label']
+                predicted = df_results['predicted_class']
+                metrics_dict[f"{partition}_{metric}"] = [metric_functions[metric](actual, predicted)]
+
     return metrics_dict
+
+    
+    # metrics_dict = {}
+    # # Get the corresponding function and compute the metric
+    # for metric in metrics_list:
+    #     if metric in metric_functions:
+    #         metrics_dict[metric] = metric_functions[metric](actual,predicted)       
+    #     else:
+    #         message_str = f"Metric {metric} not supported. Metrics supported: "
+            
+    #         for key in metric_functions:
+    #             message_str += f"{key}, "
+                
+    #         raise ValueError(message_str)
+    
+    # return metrics_dict
 
 
 def parse_filename(filepath: Path,
                    is_cv_loop: bool) -> dict:
     """
-    Parse parts from the filename to extract test fold, hyperparameter configuration, and validation fold.
+    Parses a filename to extract test fold, hyperparameter configuration, and optionally validation fold.
+    
+    Args:
+        filepath (Path): The file path object containing the filename.
+        is_cv_loop (bool): Flag indicating whether the filename contains a validation fold.
+
+    Returns:
+        dict: Parsed values with keys 'test_fold', 'hp_config', and optionally 'val_fold'.
     """
     parts = filepath.stem.split('_')
-    return {
-        'test_fold': [parts[1]],  # Assumes specific filename structure
-        'hp_config': [int(parts[3])],
-        'val_fold': [parts[5]] if is_cv_loop else None
+
+    parsed_data = {
+        'test_fold': parts[1],  # Assumes test fold is at index 1
+        'hp_config': int(parts[3])  # Assumes hyperparameter config is at index 3
     }
-    
+
+    if is_cv_loop:
+        parsed_data['val_fold'] = parts[5]  # Assumes validation fold is at index 5
+
+    return parsed_data
+
 
 def save_dict_to_yaml(data_dict: dict,
                       file_path: Path):

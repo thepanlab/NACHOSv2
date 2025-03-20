@@ -154,7 +154,6 @@ class TrainingFold():
         else:
             self.crop_box = None
         
-      
         loop_folder = 'CV' if self.is_cv_loop else 'CT'
         self.checkpoint_folder_path = Path(self.configuration['output_path']) / loop_folder /'checkpoints'
         self.start_epoch = 0
@@ -1012,11 +1011,9 @@ class TrainingFold():
             hp_config_index=self.hp_config_index,
             validation_fold=self.validation_fold, 
             model=self.model, 
-            history=self.history, 
             time_elapsed=self.time_elapsed, 
             partitions_info_dict=self.partitions_info_dict, 
             class_names=self.configuration['class_names'],
-            job_name=self.configuration['job_name'],
-            architecture_name=self.hyperparameters['architecture'],
-            is_cv_loop=self.is_cv_loop)
+            is_cv_loop=self.is_cv_loop,
+            enable_prediction_on_test=self.configuration['enable_prediction_on_test'],)
         

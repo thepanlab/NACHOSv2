@@ -44,7 +44,7 @@ def fill_dataframe(filepath: Path,
     # if CV loop, 3 first columns are test, hp_config, and val
     # if CT loop, 2 first columns are test, val    
     index_col_metric = 3 if is_cv_loop else 2
-    l_metrics = metrics_df.columns[index_col_metric:]
+    metric_columns = metrics_df.columns[index_col_metric:]
     
     # Cross-validation loop
     if is_cv_loop:
@@ -69,7 +69,7 @@ def fill_dataframe(filepath: Path,
             'validation_accuracy': [best_val_loss_data['validation_accuracy']]
         }
 
-        for metric in l_metrics:
+        for metric in metric_columns:
             query = (
                 "test_fold==@file_info['test_fold'] and "
                 "val_fold==@file_info['val_fold'] and "
@@ -77,15 +77,14 @@ def fill_dataframe(filepath: Path,
                 )
             metric_value = metrics_df.query(query)[metric].item()
 
-            if metric == "accuracy":
-                accuracy_difference = best_val_loss_data['validation_accuracy'].item() - metric_value
+            if metric == "validation_accuracy":
+                accuracy_difference = abs(best_val_loss_data['validation_accuracy'].item() - metric_value)
                 if metric == "accuracy":
                     if accuracy_difference > 0.02:
                         raise ValueError("Validation accuracy difference is greater than 2% for history and predictions")
 
-            dict_row[f"validation_{metric}"] = \
-                metrics_df.query(query)[metric]
-            
+            dict_row[metric] = metrics_df.query(query)[metric]
+
         # Prepare row as a DataFrame to be concatenated
         new_row_df = pd.DataFrame(dict_row)
 
@@ -147,12 +146,14 @@ def generate_summary(results_path: Path,
 
 
 def generate_avg_summary(summary_filepath: Path,
-                          results_path: Path,
-                          output_path: Optional[Path]) -> Path:
+                         results_path: Path,
+                         is_cv_loop: bool,
+                         output_path: Optional[Path]) -> Path:
     
     data = pd.read_csv(summary_filepath, index_col=0)  # Change to the path of your CSV file
-
-    columns_to_average = ['n_epochs', 'training_loss', 'validation_loss', 'training_accuracy', 'validation_accuracy']
+    index_start_column = 3 if is_cv_loop else 2
+    
+    columns_to_average = data.columns[index_start_column:].tolist()
 
     # Group the data by 'test_fold' and 'hp_config' and calculate the mean
     grouped_data = data.groupby(['test_fold', 'hp_config'])[columns_to_average].mean().reset_index()
@@ -275,10 +276,13 @@ def main():
     is_cv_loop = config_dict.get('is_cv_loop', None)
 
     metrics_list = ["accuracy"]
-    if isinstance(config_dict.get('metrics_list', None), list): 
-        metrics_list.extend(config_dict.get('metrics_list', None))
-    else:
-        metrics_list.append(metrics_list)
+    metrics_list_config = config_dict.get('metrics_list', None)
+    
+    if isinstance(metrics_list_config, list): 
+        metrics_list.extend(metrics_list_config)
+    elif isinstance(metrics_list_config, str):
+        if metrics_list_config != "accuracy":
+            metrics_list.append(metrics_list_config)
 
     metrics_filepath = generate_metrics_file(
         metrics_list=metrics_list,
@@ -294,6 +298,7 @@ def main():
     if is_cv_loop:
         avg_summary_filepath = generate_avg_summary(summary_filepath,
                                                     results_path,
+                                                    is_cv_loop,
                                                     output_path)
 
         configuration_cv_path = config_dict.get('configuration_cv_path', None)

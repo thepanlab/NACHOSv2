@@ -72,9 +72,6 @@ def save_prediction_results(partition_type: str,
     if partition_type not in ["validation", "test"]:
         raise ValueError(f"partition_type should be either 'validation' or 'test', but got {partition_type}.")
     
-    # Predicts probability results for the testing and validation datasets
-    # TODO: stored filepath
-    # verify full filepath and filename !!!
     preds, pred_probs, true_labels, filepaths = predict_model(
                                                 execution_device,
                                                 trained_model,
@@ -86,6 +83,7 @@ def save_prediction_results(partition_type: str,
     for index in range(len(preds)):
         dict_temp = {}
         dict_temp["index"] = index
+        dict_temp["filename"] = Path(filepaths[index]).name
         dict_temp["filepath"] = filepaths[index]
         dict_temp["true_label"] = true_labels[index]
         dict_temp["predicted_class"] = preds[index]
@@ -93,9 +91,16 @@ def save_prediction_results(partition_type: str,
             dict_temp[f"class_{i}_prob"] = pred_probs[index][i]
         prediction_rows.append(dict_temp)
 
+    filename_map = {
+        "validation": f"{file_prefix}_prediction_val.csv",
+        "test": f"{file_prefix}_prediction_test.csv"
+    }
+
+    filename = filename_map[partition_type]
+
     save_csv_from_list_dict(prediction_rows,
                             output_path,
-                            f"{file_prefix}_prediction_results.csv")    
+                            filename)
 
 
 def save_history_to_csv(history: dict,
@@ -124,13 +129,11 @@ def predict_and_save_results(execution_device: str,
                              hp_config_index: int,
                              validation_fold: str,
                              model: nn.Module,
-                             history: dict,
                              time_elapsed: float,
                              partitions_info_dict: dict,
                              class_names: List[str],
-                             job_name: str,
-                             architecture_name: str,
-                             is_cv_loop: bool):
+                             is_cv_loop: bool,
+                             enable_prediction_on_test: bool=None):
     """
     Outputs results from the trained model.
         
@@ -190,6 +193,19 @@ def predict_and_save_results(execution_device: str,
         end_message = f"Finished writing results to file " + \
                       f"test fold '{test_fold}' and validation subject " + \
                       f"'{validation_fold}'.\n"
+                      
+        if enable_prediction_on_test:
+            save_prediction_results("test",
+                                    execution_device,
+                                    model,
+                                    partitions_info_dict,
+                                    path_folder_output,
+                                    prefix)
+        
+            end_message = f"Finished writing results to file " + \
+                        f"test fold '{test_fold}' and validation subject " + \
+                        f"'{validation_fold}'.\n"
+            
     else: # For the cross-validation loop
         save_prediction_results("test",
                                 execution_device,

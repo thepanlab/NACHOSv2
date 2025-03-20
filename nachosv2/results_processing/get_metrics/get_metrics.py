@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
+from collections import defaultdict
 from termcolor import colored
 from sklearn import metrics
 import pandas as pd
@@ -14,6 +15,49 @@ from nachosv2.setup.files_check import ensure_path_exists
 from nachosv2.setup.utils_processing import generate_individual_metric
 from nachosv2.setup.utils_processing import parse_filename
 from nachosv2.setup.utils import get_filepath_from_results_path
+
+
+def get_dict_info_and_prediction_path(predictions_path_list,
+                                      is_cv_loop) -> Dict[tuple, List[Path]]:
+    """
+    Creates a dictionary mapping parsed filename information to corresponding prediction paths.
+
+    Args:
+        predictions_path_list (List[Path]): List of file paths for predictions.
+        is_cv_loop (bool): Flag indicating if cross-validation is used.
+
+    Returns:
+        Dict[Tuple, List[Path]]: A dictionary where keys are tuples of parsed filename info 
+                                 and values are lists of corresponding file paths.
+    """
+    dict_values = defaultdict(list)
+    for predictions_path in predictions_path_list:
+        parsed_info = parse_filename(predictions_path, is_cv_loop)
+        dict_values[tuple(parsed_info.values())].append(predictions_path)
+        
+    return dict_values
+
+
+def create_dictionary_from_tuple(tuple_key: tuple) -> dict:
+    """
+    Creates a dictionary from a tuple.
+
+    Args:
+        tuple_key (tuple): The tuple to be converted to a dictionary.
+
+    Returns:
+        dict: The dictionary created from the tuple.
+    """
+    dict_return = {}
+    if len(tuple_key) == 3:
+        dict_return["test_fold"]=tuple_key[0]
+        dict_return["hp_config"]=tuple_key[1]
+        dict_return["val_fold"]=tuple_key[2]
+    elif len(tuple_key) == 2:
+        dict_return["test_fold"]=tuple_key[0]
+        dict_return["hp_config"]=tuple_key[1]
+
+    return dict_return    
 
 
 def generate_metrics_file(metrics_list: List[str],
@@ -43,7 +87,7 @@ def generate_metrics_file(metrics_list: List[str],
     """
         
     # Define filename suffix for prediction result files 
-    suffix_filename = "prediction_results"
+    suffix_filename = "prediction"
     
     # Get the list of file paths containing prediction results
     predictions_path_list = get_filepath_list(
@@ -51,35 +95,32 @@ def generate_metrics_file(metrics_list: List[str],
         string_in_filename=suffix_filename,
         is_cv_loop=is_cv_loop)
     
+    predictions_info_dict = get_dict_info_and_prediction_path(predictions_path_list,
+                                      is_cv_loop)
+    
     # Initialize an empty DataFrame to store metrics results
     df_results = pd.DataFrame()
 
     # Process each prediction file
-    for predictions_path in predictions_path_list:
+    for key, prediction_list in predictions_info_dict.items():
         # Generate a dictionary of extracted metrics
         metrics_dict = generate_individual_metric(metrics_list,
-                                                  predictions_path)
-        # Extract file metadata i.e. dict with
-        # test fold, hyperparameter configuration index, and validation fold
-        file_info = parse_filename(predictions_path, is_cv_loop)
-
-        if not is_cv_loop:
-            file_info.pop('val_fold', None)
-
-        file_info.update(metrics_dict)
-        new_row_df = pd.DataFrame(file_info)
+                                                  prediction_list)
+        summary_dict = create_dictionary_from_tuple(key)
+        summary_dict.update(metrics_dict)
+        new_row_df = pd.DataFrame(summary_dict)
 
         # Concatenate the new row to the existing DataFrame
         df_results = pd.concat([df_results, new_row_df], ignore_index=True)
 
-    metrics_filepath = get_filepath_from_results_path(
-        results_path=results_path,
-        folder_name="metrics",
-        file_name="metrics_results.csv",
-        is_cv_loop=is_cv_loop,
-        output_path=output_path)
-    
-    df_results.to_csv(metrics_filepath)
+        metrics_filepath = get_filepath_from_results_path(
+            results_path=results_path,
+            folder_name="metrics",
+            file_name="metrics_results.csv",
+            is_cv_loop=is_cv_loop,
+            output_path=output_path)
+        
+        df_results.to_csv(metrics_filepath)
 
     return metrics_filepath
 
