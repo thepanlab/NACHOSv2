@@ -34,8 +34,9 @@ share/python-wheels/
 /data/cifar-10-batches-py/
 /data/cifar-10-python.tar.gz
 /data/cifar10_images/
+/nachosv2/data/cifar-10-batches-py/
+/nachosv2/data/cifar-10-python.tar.gz
 *.png
-/data/cifar-10-batches-py/
 
 # event files
 *.tfevents*
