@@ -39,19 +39,13 @@ fold_list:
   - "k5"
 test_fold_list:
   - "k1"
-  - "k2"
-  - "k3"
-  - "k4"
-  - "k5"
 
 # validation_fold_list is used only for 
 # cross-validation
 validation_fold_list:
   - "k1"
   - "k2"
-  - "k3"
-  - "k4"
-  - "k5"
+
 
 image_size:
   - 301
@@ -61,3 +55,8 @@ image_size:
 # they will be resized to the target size
 target_height: 301
 target_width: 235
+
+# Only useful in cross-validation, default is false
+# If true, in addition to the predictions on the validation fold,
+# the predictions on the test fold will be computed
+enable_prediction_on_test: true
