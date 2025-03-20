@@ -1,6 +1,6 @@
 from pathlib import Path
 from termcolor import colored
-
+from mpi4py import MPI
 from nachosv2.training.training_sequential.execute_training import execute_training
 from nachosv2.modules.timer.precision_timer import PrecisionTimer
 from nachosv2.modules.timer.write_timing_file import write_timing_file
@@ -25,15 +25,18 @@ def run_training():
     
     # Defines the arguments
     config_dict = get_config(args['file'])
+    enable_parallelization = args['parallel']
     
+    execution_device_list = args['devices']
+    
+    if not enable_parallelization:
+        if len(execution_device_list)>1:
+            raise ValueError("For sequential training, only one device can be used.")
+        
     is_verbose_on = args['verbose']
     
     # default "cuda:1" if not specified
-    wanted_execution_device = args['device']
-    
-    # Defines the execution device
-    execution_device = define_execution_device(wanted_execution_device)
-    
+       
     # Starts a timer
     training_timer = PrecisionTimer()
     
@@ -55,9 +58,10 @@ def run_training():
         is_cv_loop = True
         
     execute_training(
-        execution_device,
+        execution_device_list,
         config_dict,
         is_cv_loop,
+        enable_parallelization,
         is_verbose_on
         )
 

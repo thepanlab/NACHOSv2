@@ -35,7 +35,8 @@ def add_arguments_to_parser(parser):
     )
     
     parser.add_argument( # Allows to specify the execution device in command line
-        '--device', '--d',
+        '--devices', '--d',
+        nargs="+",
         type = str, default = DEFAULT_EXECUTION_DEVICE, required = False,
         help = 'Change the execution device'
     )
@@ -46,7 +47,19 @@ def add_arguments_to_parser(parser):
         help = 'Determine the type of loop'
     )
     
+    parser.add_argument( # Specify parallelization
+        '--parallel',
+        action="store_true",
+        help="Enable parallelization"
+    )
     
+    parser.add_argument( # Specify parallelization
+        '--dummy_node',
+        action="store_true",
+        help="Enable dummy node when want to use same number of processes on each server"
+    )
+
+
 def parse_command_line_args():
     """
     Parses command-line arguments.
