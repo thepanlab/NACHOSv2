@@ -226,18 +226,19 @@ def execute_training(execution_device_list: List[str],
         # Initalize TF, set the visible GPU to rank%2 for rank > 0
         # tf_config = tf.compat.v1.ConfigProto()
         if rank != 0:
-            num_gpus = torch.cuda.device_count()
-
+            num_gpus_available = torch.cuda.device_count()
+            num_gpus_to_use = len(execution_device_list)
+            
             print(colored(f'Rank {rank}', 'cyan'))
-            print("Num GPUs Available: ", num_gpus)
-            print("GPUs Available: ", torch.cuda.get_device_name(rank))        
+            print("Num GPUs Available: ", num_gpus_available)
+            print("Num GPUs to use: ", num_gpus_to_use)
         
             index_gpu = -100
         
             if b_dummy:
             
                 # Assuming we discard one process
-                # Assunming # gpus 2
+                # Assunming n_gpus 2
                 # mod number is (# gpus +1)
                 # Rank 0 Rank 1  Rank 2
                 #        0       1  
@@ -255,35 +256,17 @@ def execute_training(execution_device_list: List[str],
     # Rank 0 initializes the program and runs the configuration loops
     if rank == 0:  
         
-        # Get start time
-        start_time_name = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        start_time = time.time()
-        start_perf = time.perf_counter()
-        
         # Get the configurations
-        configs = parse_training_configs(config_loc)
-        n_configs = len(configs)
         next_task_index = 0
         
         # No configs, no run
-        if n_configs == 0:
-            print(colored("No configurations given.", 'yellow'))
-            for subrank in range(1, n_proc):
-                comm.send(False, dest=subrank)
-            exit(-1)
-        
-        # Get the tasks for each process
-        tasks = split_tasks(configs, is_outer)
-        # tasks is a list of tuples
-        # where tuple has 4 elements
-        # 0: dictionary of configuration of hyperparameters
-        # 1: number of epochs
-        # 2: test_fold
-        # 3: validation_fold
-        print("len(tasks(top3)) = ", len(tasks[:3]))
-        print("tasks(top3) = ", tasks[:3])
-
-        n_tasks = len(tasks)
+        if n_combinations == 0:
+            # TODO: determine if sending False is necesssary
+            # for subrank in range(1, n_proc):
+            #     comm.send(False, dest=subrank)
+            raise ValueError(colored("No configurations given.", 'yellow'))
+            
+        n_tasks = len(indices_loop_list)
         
         # Listen for process messages while running
         exited = []
@@ -304,15 +287,17 @@ def execute_training(execution_device_list: List[str],
             exited.extend([(n_gpus+1)*i for i in range(1, n_not_used_ranks+1)])
             
         print("exited =", exited)
-
+        indices_loop_list=indices_loop_list[::-1]
+        
         while True:
             # it received rank from other processes
             subrank = comm.recv(source=MPI.ANY_SOURCE)
             
             # Send task if the process is ready
-            if tasks:
-                print(colored(f"Rank 0 is sending rank {subrank} its task {len(tasks)}/{n_tasks}.", 'green'))
-                comm.send(tasks.pop(), dest=subrank)
+            if indices_loop_list:
+                print(colored(f"Rank 0 is sending rank {subrank} its task "
+                              f"{len(indices_loop_list)}/{n_tasks}.", 'green'))
+                comm.send(indices_loop_list.pop(), dest=subrank)
                 next_task_index += 1
                     
             # If no task remains, terminate process
