@@ -19,7 +19,7 @@ from nachosv2.setup.command_line_parser import parse_command_line_args
 from nachosv2.setup.define_execution_device import define_execution_device
 from nachosv2.setup.get_config import get_config
 from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import write_log
-from nachosv2.training.hpo.hpo import get_hpo_configuration
+from nachosv2.training.hpo.hpo import get_hp_configuration
 
 """
 Green: indications about where is the training
@@ -30,9 +30,8 @@ Red: errors, fatal or not
 """
 
 
-def create_loop_indices(test_fold_list: List[str],
-                        hpo_list: List[dict],
-                        validation_fold_list: List[str]) -> List[dict]:
+def create_loop_indices(config_dict: dict,
+                        is_cv_loop: bool) -> List[dict]:
     """
     Create a list of dictionaries containing loop indices for training, that is training, validation(if cross-validation loop), and testing.
 
@@ -45,9 +44,22 @@ def create_loop_indices(test_fold_list: List[str],
         List[dict]: List of dictionaries with keys 'test', 'hpo', and 'validation' 
                     representing the loop indices.
     """
+    
+    validation_fold_list = get_fold_list("validation",
+                                         is_cv_loop,
+                                         config_dict)
+    test_fold_list = get_fold_list("test",
+                                   is_cv_loop,
+                                   config_dict)
+
+    if config_dict["use_hpo"]:
+        random.seed(config_dict['seed_hpo'])
+
+    hp_list = get_hp_configuration(config_dict)  
+    
     list_loop_indices = []
     for t, h, v in itertools.product(test_fold_list,
-                                     hpo_list,
+                                     hp_list,
                                      validation_fold_list):
         if t != v:
             list_loop_indices.append({"test": t,
@@ -173,39 +185,89 @@ def get_fold_list(partition: str,
         return normalize_to_list(fold_list)
 
 
-def train():
-    # Parses the command line arguments
-    args = parse_command_line_args()
+def get_gpu_index(num_gpus_per_device_to_use: int,
+                  rank: int,
+                  enable_dummy_node: bool):
+    num_gpus_available = torch.cuda.device_count()
     
-    # Defines the arguments
-    config_dict = get_config(args['file'])
-    enable_parallelization = args['parallel']
-    execution_device_list = args['devices']
+    print(colored(f'Rank {rank}', 'cyan'))
+    print("Num GPUs Available: ", num_gpus_available)
+    print("Num GPUs to use: ", num_gpus_per_device_to_use)
+
+    index_gpu = -1
+
+    if enable_dummy_node:
     
-    if not enable_parallelization:
-        if len(execution_device_list) > 1:
-            raise ValueError("For sequential training, only one device can be used.")
+        # Assuming we discard one process
+        # Assunming n_gpus 2
+        # mod number is (# gpus +1)
+        # Rank 0 Rank 1  Rank 2
+        #        0       1  
+        # Rank 3 Rank 4  Rank 5
+        # 2      0       1
+        # Rank 6 Rank 7  Rank 8 
+        # 2      0       1      
         
-    is_verbose_on = args['verbose']
+        # The value 2 will do nothing 
+        index_gpu = (rank-1) % (num_gpus_per_device_to_use+1)
+        print("index_gpu =", index_gpu)
+    else:
+        index_gpu = (rank-1) % num_gpus_per_device_to_use
     
-    # Starts a timer
-    training_timer = PrecisionTimer()
+    return index_gpu
+
+
+def fill_list_with_dummy_processes(n_proc: int,
+                                   num_gpus_per_device_to_use: int):                               
+    # r: rank
+    # 2 GPUs
+    #           | r0 r1 r2 | r3 r4 r5 | r6 r7 r8 | r9 r10 r11 |
+    # index_gpu       0  1 |  2  0  1 |  2  0  1 |  2   0   1 |
+    #                         ^          ^          ^           
+    # ranks with index_gpu are not used
+    # r3, r6, r9 
     
-    # Checks for memory leaks
-    memory_leak_check_enabled = False
-    # TODO: verify this memory check
-    if memory_leak_check_enabled:
-        memory_snapshot = initiate_memory_leak_check()
+    #                   # processes 
+    # n_unused_ranks = -------------- - 1
+    #                   # gpus + 1
+    # The number of unused ranks is calculated by the formula above
+    # we first divided by the number of of gpus per device to use
+    # plus one ( because of dummy node)
+    # me made a substraction because process rank 0 is the 
+    # manager process
+        
+    n_unused_ranks = int(n_proc/(num_gpus_per_device_to_use+1) - 1)
     
-    loop = args["loop"]
+    return [(num_gpus_per_device_to_use+1)*i for i in range(1, n_unused_ranks+1)]
+
+
+def determine_if_cv_loop(loop: str) -> bool:
     if loop not in ["cross-validation", "cross-testing"]:
         raise ValueError(f"Invalid loop type: {loop}")
-    
+
     if loop == 'cross-testing':
         is_cv_loop = False
     else:
         is_cv_loop = True
         
+    return is_cv_loop
+    
+def train_sequential(config_dict: dict,
+                     execution_device_list: list,
+                     is_verbose_on: bool,
+                     loop: str):
+
+    if len(execution_device_list) > 1:
+        raise ValueError("For sequential training, only one device can be used.")
+
+    # # Checks for memory leaks
+    # memory_leak_check_enabled = False
+    # # TODO: verify this memory check
+    # if memory_leak_check_enabled:
+    #     memory_snapshot = initiate_memory_leak_check()
+
+    is_cv_loop = determine_if_cv_loop(loop)
+
     path_csv_metadata = config_dict["path_metadata_csv"]
     df_metadata = read_metadata_csv(path_csv_metadata)
 
@@ -216,7 +278,7 @@ def train():
     #     dict_config['test_subjects'],  # The list of dictionary keys to read
     #     is_verbose_on                  # If the verbose mode is activated
     # )
-    
+
     # # Creates the list of test subjects
     # if log_list and 'subject_list' in log_list: # From the log file if it exists
     #     test_subjects_list = log_list['test_subjects']
@@ -224,210 +286,210 @@ def train():
     # else: # From scratch if the log file doesn't exists
     #     test_subjects_list = dict_config['test_subjects']
         
-    
+
     # Double-checks that the test subjects are unique
     # check_unique_subjects(test_subjects_list, "test")
 
     # Double-checks that the validation subjects are unique
     if is_cv_loop:  # Only if we are in the inner loop
         check_unique_subjects(config_dict["validation_fold_list"],
-                              "validation")
-    
+                                "validation")
+
     if is_verbose_on:  # If the verbose mode is activated
         print(colored("Double-checks of test and validation uniqueness successfully done.", 'cyan'))
-    
-    validation_fold_list = get_fold_list("validation",
-                                         is_cv_loop,
-                                         config_dict)
-    test_fold_list = get_fold_list("test",
-                                   is_cv_loop,
-                                   config_dict)
 
-    if config_dict["use_hpo"]:
-        random.seed(config_dict['seed_hpo'])
-    
-    hpo_configurations = get_hpo_configuration(config_dict)    
-    
-    indices_loop_list = create_loop_indices(test_fold_list,
-                                            hpo_configurations,
-                                            validation_fold_list)
-    
+    indices_loop_list = create_loop_indices(config_dict,
+                                            is_cv_loop)
+
     n_combinations = len(indices_loop_list)
-   
-   # Sequential implementation
-    if not enable_parallelization:
-        for index, indices_loop_dict in enumerate(indices_loop_list):
-            perform_single_training(index=index,
-                                    n_combinations=n_combinations,
-                                    indices_loop_dict=indices_loop_dict,
-                                    is_cv_loop=is_cv_loop,
-                                    df_metadata=df_metadata,
-                                    execution_device=execution_device_list[0],
-                                    config_dict=config_dict,
-                                    is_verbose_on=is_verbose_on)
-    # Parallel implementation
-    else:
-    # TODO
-    # Parallelization shoudl be done here
-       # Initialize MPI
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
-        n_proc = comm.Get_size()
+
+    # Starts a timer
+    training_timer = PrecisionTimer()
+
+    for index, indices_loop_dict in enumerate(indices_loop_list):
+        perform_single_training(index=index,
+                                n_combinations=n_combinations,
+                                indices_loop_dict=indices_loop_dict,
+                                is_cv_loop=is_cv_loop,
+                                df_metadata=df_metadata,
+                                execution_device=execution_device_list[0],
+                                config_dict=config_dict,
+                                is_verbose_on=is_verbose_on)
+        
+    # Stops the timer and prints the elapsed time
+    elapsed_time_seconds = training_timer.get_elapsed_time()
+    print(colored(f"\nElapsed time: {elapsed_time_seconds:.2f} seconds.", 'magenta'))
+
+    # Creates a file and writes elapsed time in it
+    # Make the next line fit in 80 characters
+    loop_folder = "CT" if not is_cv_loop else "CV"
+    timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
+    timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
     
-        # Initalize TF, set the visible GPU to rank%2 for rank > 0
-        # tf_config = tf.compat.v1.ConfigProto()
-        if rank != 0:
-            num_gpus_available = torch.cuda.device_count()
-            num_gpus_to_use = len(execution_device_list)
-            
-            print(colored(f'Rank {rank}', 'cyan'))
-            print("Num GPUs Available: ", num_gpus_available)
-            print("Num GPUs to use: ", num_gpus_to_use)
+    write_timing_file(training_timer,
+                      timing_directory_path,
+                      config_dict,
+                      is_verbose_on)
+
+
+def train_parallel(config_dict: dict,
+                   execution_device_list: list,
+                   enable_dummy_process: bool,
+                   is_verbose_on: bool,
+                   loop: str):
+    
+    num_gpus_per_device_to_use = len(execution_device_list)
+    # Initialize MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    n_proc = comm.Get_size()
+    
+    # Rank 0 initializes the program and runs the configuration loops
+    if rank == 0:
+        is_cv_loop = determine_if_cv_loop(loop)
+
         
-            index_gpu = -100
+        # Double-checks that the validation subjects are unique
+        if is_cv_loop:  # Only if we are in the inner loop
+            check_unique_subjects(config_dict["validation_fold_list"],
+                                  "validation")
+
+        if is_verbose_on:  # If the verbose mode is activated
+            print(colored("Double-checks of test and validation uniqueness successfully done.", 'cyan'))
+
+        indices_loop_list = create_loop_indices(config_dict,
+                                                is_cv_loop)
         
-            if b_dummy:
-            
-                # Assuming we discard one process
-                # Assunming n_gpus 2
-                # mod number is (# gpus +1)
-                # Rank 0 Rank 1  Rank 2
-                #        0       1  
-                # Rank 3 Rank 4  Rank 5
-                # 2      0       1
-                # Rank 6 Rank 7  Rank 8 
-                # 2      0       1      
-                
-                # The value 2 will do nothing 
-                index_gpu = (rank-1) % (n_gpus+1)
-                print("index_gpu =", index_gpu)
-            else:
-                index_gpu = (rank-1) % n_gpus
+        n_tasks = len(indices_loop_list)
+
+        # No configs, no run
+        if n_tasks == 0:
+            # TODO: determine if sending False is necesssary
+            for subrank in range(1, n_proc):
+                comm.send(False, dest=subrank)
+            raise ValueError(colored("No configurations given.", 'yellow'))
+
+        path_csv_metadata = config_dict["path_metadata_csv"]
+        df_metadata = read_metadata_csv(path_csv_metadata)
         
-        # Rank 0 initializes the program and runs the configuration loops
-        if rank == 0:  
+        # Listen for process messages while running
+        process_finished_list = []
+        # add manually when b_dummy is used 
+        # to avoid problems later
+        if enable_dummy_process:
+            dummy_process_list = fill_list_with_dummy_processes(
+                                    n_proc,
+                                    num_gpus_per_device_to_use)
+            process_finished_list.extend(dummy_process_list)
+            print("process_finished_list =", process_finished_list)
+        
+        # reverse order to pop the last element
+        indices_loop_list = indices_loop_list[::-1]
+        
+        # Starts a timer
+        training_timer = PrecisionTimer()
+        
+        while True:
+            # it received rank from other processes
+            subrank = comm.recv(source=MPI.ANY_SOURCE)
             
-            # Get the configurations
-            next_task_index = 0
+            for index, indices_loop_dict in enumerate(indices_loop_list):
+                dict_to_send = { "index": index,
+                                 "n_combinations": n_tasks,
+                                 "indices_loop_dict": indices_loop_dict,
+                                 "is_cv_loop": is_cv_loop,
+                                 "df_metadata": df_metadata,
+                                 "config_dict": config_dict,
+                                 "is_verbose_on": is_verbose_on}
+                comm.send(dict_to_send, dest=subrank)
+
+            # Send task if the process is ready
+            # if indices_loop_list:
+            #     print(colored(f"Rank 0 is sending rank {subrank} its task "
+            #                 f"{len(indices_loop_list)}/{n_tasks}.", 'green'))
+            #     comm.send(indices_loop_list.pop(), dest=subrank)
+            #     next_task_index += 1
+
+            print(colored(f"Rank 0 is terminating rank {subrank}, no tasks to give.", 'red'))
+            comm.send(False, dest=subrank)
+            process_finished_list += [subrank]
             
-            # No configs, no run
-            if n_combinations == 0:
-                # TODO: determine if sending False is necesssary
-                # for subrank in range(1, n_proc):
-                #     comm.send(False, dest=subrank)
-                raise ValueError(colored("No configurations given.", 'yellow'))
-                
-            n_tasks = len(indices_loop_list)
+            # Stops the timer and prints the elapsed time
+            elapsed_time_seconds = training_timer.get_elapsed_time()
+            print(colored(f"\nElapsed time: {elapsed_time_seconds:.2f} seconds.", 'magenta'))
+
+            # Creates a file and writes elapsed time in it
+            # Make the next line fit in 80 characters
+            loop_folder = "CT" if not is_cv_loop else "CV"
+            timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
+            timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
             
-            # Listen for process messages while running
-            exited = []
-            # add manually when b_dummy is used 
-            # to avoid problems later
-            if b_dummy:
-                
-                # r: rank
-                # 2 GPUs
-                #       | r0 r1 r2 | r3 r4 r5 | r6 r7 r8 | r9 r10 r11 |
-                # index_gpu   0  1 |  2  0  1 |  2  0  1 |  2   0   1 |
-                #                     ^          ^          ^           
-                # ranks with index_gpu are not used
-                # r3, r6, r9 
-                
-                n_not_used_ranks = int(n_proc/(n_gpus+1) - 1)
-                
-                exited.extend([(n_gpus+1)*i for i in range(1, n_not_used_ranks+1)])
-                
-            print("exited =", exited)
-            indices_loop_list=indices_loop_list[::-1]
+            write_timing_file(training_timer,
+                              timing_directory_path,
+                              config_dict,
+                              is_verbose_on)
             
-            while True:
-                # it received rank from other processes
-                subrank = comm.recv(source=MPI.ANY_SOURCE)
-                
-                # Send task if the process is ready
-                if indices_loop_list:
-                    print(colored(f"Rank 0 is sending rank {subrank} its task "
-                                f"{len(indices_loop_list)}/{n_tasks}.", 'green'))
-                    comm.send(indices_loop_list.pop(), dest=subrank)
-                    next_task_index += 1
+    # rank > 0
+    else: 
+        
+        index_gpu = get_gpu_index(num_gpus_per_device_to_use,
+                                  rank,
+                                  enable_dummy_process)
+        
+        # Listen for the first task
+        print("num_gpus_per_device_to_use:", num_gpus_per_device_to_use)
+        print(f"rank: {rank}, index_gpu: {index_gpu}")
+        print("enable_dummy_process:", enable_dummy_process)
+        
+        if index_gpu != -1:
+
+            comm.send(rank, dest=0)
+
+            print(colored(f'Rank {rank} is listening for process 0.', 'cyan'))
+            task = comm.recv(source=0)
+            
+            # While there are tasks to run, train
+            while task:
                         
-                # If no task remains, terminate process
-                else:
-                    print(colored(f"Rank 0 is terminating rank {subrank}, no tasks to give.", 'red'))
-                    comm.send(False, dest=subrank)
-                    exited += [subrank]
-                    
-                    # Check if any processes are left, end this process if so
-                    if all(subrank in exited for subrank in range(1, n_proc)):
-                        
-                        # Get end time and print
-                        print(colored(f"Rank 0 is printing the processing time.", 'red'))
-                        elapsed_time = time.perf_counter() - start_perf
-
-                        if not os.path.exists("../results/training_timings"):
-                            os.makedirs("../results/training_timings")
-                        outfile = f'_TIME_MPI_OUTER_{start_time_name}.txt' if is_outer else f'_TIME_MPI_INNER_{start_time_name}.txt'
-                        with open(os.path.join("../results/training_timings", outfile), 'w') as fp:
-                            fp.write(f"{elapsed_time}")
-                        print(colored(f'Rank {rank} terminated. All other processes are finished.', 'yellow'))
-                        break
+                # Training loop       
+                perform_single_training(
+                        index=task["index"],
+                        n_combinations=task["n_combinations"],
+                        indices_loop_dict=task["indices_loop_dict"],
+                        is_cv_loop=task["is_cv_loop"],
+                        df_metadata=task["df_metadata"],
+                        execution_device=f"cuda:{index_gpu}",  # Use the GPU assigned to this rank
+                        config_dict=task["config_dict"],
+                        is_verbose_on=task["is_verbose_on"])
                 
-        # The other ranks will listen for rank 0's messages and run the training loop
-        else: 
-            # tf.config.run_functions_eagerly(True)
-            
-            # Listen for the first task
-            print("n_gpus:", n_gpus)
-            print(f"rank: {rank}, index_gpu: {index_gpu}")
-            print("b_dummy:", b_dummy)
-            
-            if not b_dummy or ( b_dummy and index_gpu != n_gpus):
-
-                print(f"physical_devices[{index_gpu}]=", physical_devices[index_gpu])
-                tf.config.set_visible_devices(physical_devices[index_gpu], 'GPU')
-                tf.config.experimental.set_memory_growth(physical_devices[index_gpu], True)
-
                 comm.send(rank, dest=0)
-
-                print(colored(f'Rank {rank} is listening for process 0.', 'cyan'))
                 task = comm.recv(source=0)
                 
-                # While there are tasks to run, train
-                while task:
-                            
-                    # Training loop
-                    config, n_epochs, test_subject, validation_subject = task
-                    print(colored(f"rank {rank}: test {test_subject}, validation {validation_subject}", 'cyan'))         
-                    
-                    run_training(rank, config, n_epochs, test_subject, validation_subject, is_outer)
-                    comm.send(rank, dest=0)
-                    task = comm.recv(source=0)
-                    
-                # Nothing more to run.
-                print(colored(f'Rank {rank} terminated. All jobs finished for this process.', 'yellow'))
+            # Nothing more to run.
+            print(colored(f'Rank {rank} terminated. All jobs finished for this process.', 'yellow'))
 
 
+def train():
 
-        # Checks for memory leaks
-        if memory_leak_check_enabled:
-            end_memory_leak_check(memory_snapshot)
-        
-        # Stops the timer and prints the elapsed time
-        elapsed_time_seconds = training_timer.get_elapsed_time()
-        print(colored(f"\nElapsed time: {elapsed_time_seconds:.2f} seconds.", 'magenta'))
+    args = parse_command_line_args()
 
-        # Creates a file and writes elapsed time in it
-        # Make the next line fit in 80 characters
-        loop_folder = "CT" if not is_cv_loop else "CV"
-        timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
-        timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
-        
-        write_timing_file(training_timer,
-                        timing_directory_path,
-                        config_dict,
-                        is_verbose_on)
+    # Defines the arguments
+    config_dict = get_config(args['file'])
+    enable_parallelization = args['parallel']
+    execution_device_list = args['devices']
+    is_verbose_on = args['verbose']
+    enable_dummy_process = args['enable_dummy_process']
+    loop = args["loop"]
 
-
+    # Sequential implementation
+    if not enable_parallelization:
+        train_sequential(config_dict,
+                         execution_device_list,
+                         is_verbose_on,
+                         loop)
+    # Parallel implementation
+    else:
+        pass
 # Sequential Inner Loop
 if __name__ == "__main__":
     train()
