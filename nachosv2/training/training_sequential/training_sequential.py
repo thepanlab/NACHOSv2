@@ -185,14 +185,14 @@ def get_fold_list(partition: str,
         return normalize_to_list(fold_list)
 
 
-def get_gpu_index(num_gpus_per_device_to_use: int,
-                  rank: int,
-                  enable_dummy_node: bool):
+def get_index_device(num_device_to_use: int,
+                     rank: int,
+                     enable_dummy_node: bool):
     num_gpus_available = torch.cuda.device_count()
     
     print(colored(f'Rank {rank}', 'cyan'))
     print("Num GPUs Available: ", num_gpus_available)
-    print("Num GPUs to use: ", num_gpus_per_device_to_use)
+    print("Num GPUs to use: ", num_device_to_use)
 
     index_gpu = -1
 
@@ -209,16 +209,16 @@ def get_gpu_index(num_gpus_per_device_to_use: int,
         # 2      0       1      
         
         # The value 2 will do nothing 
-        index_gpu = (rank-1) % (num_gpus_per_device_to_use+1)
+        index_gpu = (rank-1) % (num_device_to_use+1)
         print("index_gpu =", index_gpu)
     else:
-        index_gpu = (rank-1) % num_gpus_per_device_to_use
-    
+        index_gpu = (rank-1) % num_device_to_use
+    print("rank", rank, "index_gpu", index_gpu)
     return index_gpu
 
 
 def fill_list_with_dummy_processes(n_proc: int,
-                                   num_gpus_per_device_to_use: int):                               
+                                   num_device_to_use: int):                               
     # r: rank
     # 2 GPUs
     #           | r0 r1 r2 | r3 r4 r5 | r6 r7 r8 | r9 r10 r11 |
@@ -236,9 +236,9 @@ def fill_list_with_dummy_processes(n_proc: int,
     # me made a substraction because process rank 0 is the 
     # manager process
         
-    n_unused_ranks = int(n_proc/(num_gpus_per_device_to_use+1) - 1)
+    n_unused_ranks = int(n_proc/(num_device_to_use+1) - 1)
     
-    return [(num_gpus_per_device_to_use+1)*i for i in range(1, n_unused_ranks+1)]
+    return [(num_device_to_use+1)*i for i in range(1, n_unused_ranks+1)]
 
 
 def determine_if_cv_loop(loop: str) -> bool:
@@ -338,17 +338,17 @@ def train_parallel(config_dict: dict,
                    is_verbose_on: bool,
                    loop: str):
     
-    num_gpus_per_device_to_use = len(execution_device_list)
+    num_device_to_use = len(execution_device_list)
     # Initialize MPI
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     n_proc = comm.Get_size()
     
+    print("rank", rank, "n_proc", n_proc)
     # Rank 0 initializes the program and runs the configuration loops
     if rank == 0:
         is_cv_loop = determine_if_cv_loop(loop)
 
-        
         # Double-checks that the validation subjects are unique
         if is_cv_loop:  # Only if we are in the inner loop
             check_unique_subjects(config_dict["validation_fold_list"],
@@ -379,29 +379,23 @@ def train_parallel(config_dict: dict,
         if enable_dummy_process:
             dummy_process_list = fill_list_with_dummy_processes(
                                     n_proc,
-                                    num_gpus_per_device_to_use)
+                                    num_device_to_use)
             process_finished_list.extend(dummy_process_list)
-            print("process_finished_list =", process_finished_list)
-        
-        # reverse order to pop the last element
-        indices_loop_list = indices_loop_list[::-1]
-        
+        print("process_finished_list =", process_finished_list)
+                
         # Starts a timer
         training_timer = PrecisionTimer()
         
-        while True:
-            # it received rank from other processes
+        for index, indices_loop_dict in enumerate(indices_loop_list):
             subrank = comm.recv(source=MPI.ANY_SOURCE)
-            
-            for index, indices_loop_dict in enumerate(indices_loop_list):
-                dict_to_send = { "index": index,
-                                 "n_combinations": n_tasks,
-                                 "indices_loop_dict": indices_loop_dict,
-                                 "is_cv_loop": is_cv_loop,
-                                 "df_metadata": df_metadata,
-                                 "config_dict": config_dict,
-                                 "is_verbose_on": is_verbose_on}
-                comm.send(dict_to_send, dest=subrank)
+            dict_to_send = { "index": index,
+                             "n_combinations": n_tasks,
+                             "indices_loop_dict": indices_loop_dict,
+                             "is_cv_loop": is_cv_loop,
+                             "df_metadata": df_metadata,
+                             "config_dict": config_dict,
+                             "is_verbose_on": is_verbose_on}
+            comm.send(dict_to_send, dest=subrank)
 
             # Send task if the process is ready
             # if indices_loop_list:
@@ -409,39 +403,38 @@ def train_parallel(config_dict: dict,
             #                 f"{len(indices_loop_list)}/{n_tasks}.", 'green'))
             #     comm.send(indices_loop_list.pop(), dest=subrank)
             #     next_task_index += 1
-
+        for subrank in range(1, n_proc):
             print(colored(f"Rank 0 is terminating rank {subrank}, no tasks to give.", 'red'))
             comm.send(False, dest=subrank)
-            process_finished_list += [subrank]
-            
-            # Stops the timer and prints the elapsed time
-            elapsed_time_seconds = training_timer.get_elapsed_time()
-            print(colored(f"\nElapsed time: {elapsed_time_seconds:.2f} seconds.", 'magenta'))
+        
+        # Stops the timer and prints the elapsed time
+        elapsed_time_seconds = training_timer.get_elapsed_time()
+        print(colored(f"\nElapsed time: {elapsed_time_seconds:.2f} seconds.", 'magenta'))
 
-            # Creates a file and writes elapsed time in it
-            # Make the next line fit in 80 characters
-            loop_folder = "CT" if not is_cv_loop else "CV"
-            timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
-            timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
-            
-            write_timing_file(training_timer,
-                              timing_directory_path,
-                              config_dict,
-                              is_verbose_on)
+        # Creates a file and writes elapsed time in it
+        # Make the next line fit in 80 characters
+        loop_folder = "CT" if not is_cv_loop else "CV"
+        timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
+        timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
+        
+        write_timing_file(training_timer,
+                          timing_directory_path,
+                          config_dict,
+                          is_verbose_on)
             
     # rank > 0
     else: 
         
-        index_gpu = get_gpu_index(num_gpus_per_device_to_use,
-                                  rank,
-                                  enable_dummy_process)
+        index_device = get_index_device(num_device_to_use,
+                                        rank,
+                                        enable_dummy_process)
         
         # Listen for the first task
-        print("num_gpus_per_device_to_use:", num_gpus_per_device_to_use)
-        print(f"rank: {rank}, index_gpu: {index_gpu}")
+        print("num_device_to_use:", num_device_to_use)
+        print(f"rank: {rank}, index_gpu: {index_device}")
         print("enable_dummy_process:", enable_dummy_process)
         
-        if index_gpu != -1:
+        if index_device != -1:
 
             comm.send(rank, dest=0)
 
@@ -458,7 +451,7 @@ def train_parallel(config_dict: dict,
                         indices_loop_dict=task["indices_loop_dict"],
                         is_cv_loop=task["is_cv_loop"],
                         df_metadata=task["df_metadata"],
-                        execution_device=f"cuda:{index_gpu}",  # Use the GPU assigned to this rank
+                        execution_device=execution_device_list[index_device],  # Use the GPU assigned to this rank
                         config_dict=task["config_dict"],
                         is_verbose_on=task["is_verbose_on"])
                 
@@ -481,6 +474,8 @@ def train():
     enable_dummy_process = args['enable_dummy_process']
     loop = args["loop"]
 
+    print("execution_device_list",
+          execution_device_list)
     # Sequential implementation
     if not enable_parallelization:
         train_sequential(config_dict,
@@ -489,7 +484,11 @@ def train():
                          loop)
     # Parallel implementation
     else:
-        pass
+        train_parallel(config_dict,
+                       execution_device_list,
+                       enable_dummy_process,
+                       is_verbose_on,
+                       loop)
 # Sequential Inner Loop
 if __name__ == "__main__":
     train()
