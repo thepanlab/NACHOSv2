@@ -1,4 +1,4 @@
-filename,absolute_filepath,subject,category,label
+filename,absolute_filepath,fold_name,category,label
 39_k4_medulla.jpg,/home/pcallec/NACHOS/data/pig_kidney_subset/k4/k4_medulla/39_k4_medulla.jpg,k4,medulla,1
 15_k4_medulla.jpg,/home/pcallec/NACHOS/data/pig_kidney_subset/k4/k4_medulla/15_k4_medulla.jpg,k4,medulla,1
 45_k4_medulla.jpg,/home/pcallec/NACHOS/data/pig_kidney_subset/k4/k4_medulla/45_k4_medulla.jpg,k4,medulla,1
