@@ -54,7 +54,7 @@ def add_arguments_to_parser(parser):
     )
     
     parser.add_argument( # Specify parallelization
-        '--dummy_node',
+        '--enable_dummy_process',
         action="store_true",
         help="Enable dummy node when want to use same number of processes on each server"
     )
