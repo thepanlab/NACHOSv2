@@ -45,6 +45,7 @@ test_fold_list:
 validation_fold_list:
   - "k1"
   - "k2"
+  - "k3"
 
 
 image_size:

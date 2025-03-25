@@ -20,7 +20,7 @@ cropping_position:
   y: 10
 
 # Specify single value or range
-n_epochs: 50
+n_epochs: 3
 
 # Specify single value or range
 patience: 5
