@@ -26,6 +26,7 @@ dependencies = [
   "dill",
   "fasteners",
   "PyYAML",
+  "mpi4py",
 ]
 
 [project.urls]
