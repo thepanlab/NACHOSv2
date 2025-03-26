@@ -17,7 +17,16 @@ keywords = [
     'deep learning',
     'medical imaging'
 ]
-
+dependencies = [
+  "termcolor",
+  "pandas",
+  "tensorboard",
+  "scikit-image",
+  "regex",
+  "dill",
+  "fasteners",
+  "PyYAML",
+]
 
 [project.urls]
 Homepage = "https://github.com/thepanlab/NACHOS_v2"
