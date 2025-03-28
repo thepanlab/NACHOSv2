@@ -47,11 +47,11 @@ def add_arguments_to_parser(parser):
         help = 'Determine the type of loop'
     )
     
-    parser.add_argument( # Specify parallelization
-        '--parallel',
-        action="store_true",
-        help="Enable parallelization"
-    )
+    # parser.add_argument( # Specify parallelization
+    #     '--parallel',
+    #     action="store_true",
+    #     help="Enable parallelization"
+    # )
     
     parser.add_argument( # Specify parallelization
         '--enable_dummy_process',

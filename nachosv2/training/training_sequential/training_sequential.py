@@ -468,11 +468,16 @@ def train():
 
     # Defines the arguments
     config_dict = get_config(args['file'])
-    enable_parallelization = args['parallel']
     execution_device_list = args['devices']
     is_verbose_on = args['verbose']
     enable_dummy_process = args['enable_dummy_process']
     loop = args["loop"]
+    
+    comm = MPI.COMM_WORLD
+    if comm.Get_size() > 1:
+        enable_parallelization = True
+    else:
+        enable_parallelization = False
 
     print("execution_device_list",
           execution_device_list)
