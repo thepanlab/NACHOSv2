@@ -1,3 +1,9 @@
+"""test_connection.py
+Run it like this
+mpirun --mca btl ^usnic,self,tcp --hostfile hosts.txt python /home/pcallec/NACHOS/bash/mpi_connection_test.py
+"""
+
+
 from mpi4py import MPI
 
 # Initialize MPI
