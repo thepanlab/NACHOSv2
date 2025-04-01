@@ -3,7 +3,7 @@
 # has single values
 
 use_hpo: false
-configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/OCT_small/hp_single_configuration.yml"
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training/config_files/OCT_small/hp_single_configuration.yml"
 
 number_channels: 1
 

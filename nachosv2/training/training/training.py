@@ -8,7 +8,6 @@ import torch
 from mpi4py import MPI
 from nachosv2.data_processing.read_metadata_csv import read_metadata_csv
 from nachosv2.data_processing.check_unique_subjects import check_unique_subjects
-# from nachosv2.training.training_sequential.execute_training import execute_training
 from nachosv2.setup.utils_training import is_image_3D
 from nachosv2.training.training_processing.partitions import generate_dict_folds_for_partitions
 from nachosv2.training.training_processing.training_fold import TrainingFold
