@@ -331,7 +331,7 @@ def create_random_configurations(hyperparameter_dict: Dict[str,any],
     return l_dict
 
 
-def get_hpo_configuration(config: Dict[str,any]) -> List[Dict[str,any]]:
+def get_hp_configuration(config: Dict[str,any]) -> List[Dict[str,any]]:
     """
     Generate hyperparameter optimization (HPO) configurations based on the provided configuration.
 

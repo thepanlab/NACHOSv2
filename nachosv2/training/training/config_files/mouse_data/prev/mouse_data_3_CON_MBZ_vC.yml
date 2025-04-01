@@ -3,15 +3,15 @@
 # has single values
 
 use_hpo: false
-configuration_filepath: "/home/pcallec/NACHOS/nachosv2/config_files/mouse_data/single_configuration_1.yml"
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/mouse_data/single_configuration_3_vC.yml"
 
 number_channels: 1
 
 data_input_directory: "/home/pcallec/Mouse_data_reprezentative_zip"
 # csv file with the metadata: image_path, label, fold
-path_metadata_csv: "/home/pcallec/analyze_images/results/mouse_data/input_mouse_metadata.csv"
-output_path: "/home/pcallec/NACHOS/results/mouse_data"
-job_name: "mouse_data"
+path_metadata_csv: "/home/pcallec/analyze_images/results/mouse_data/input_mouse_metadata_CON_MBZ.csv"
+output_path: "/home/pcallec/NACHOS/results/mouse_data_CON_MBZ_vC"
+job_name: "mouse_CON_MBZ"
 
 checkpoint_epoch_frequency: 2
 
@@ -27,7 +27,7 @@ use_mixed_precision: false
 
 class_names:
   - "CON"
-  - "COMB"
+  - "MBZ"
 metrics_list: []
 
 fold_list:

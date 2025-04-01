@@ -3,13 +3,13 @@
 # has single values
 
 use_hpo: false
-configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/OCT_small/hp_single_configuration.yml"
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training/config_files/OCT_small/hp_single_configuration.yml"
 
 number_channels: 1
 
-data_input_directory: "/home/pcallec/mif_outer/data/pig_kidney_subset"
+data_input_directory: "/home/pcallec/NACHOS/data/pig_kidney_subset"
 # csv file with the metadata: image_path, label, fold
-path_metadata_csv: "/home/pcallec/NACHOS/data/2D_kidney_csv/metadata_2D_kidney.csv"
+path_metadata_csv: "/home/pcallec/NACHOS/nachosv2/training/metadata_csv/pig_kidney_subset_metadata.csv"
 output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset"
 job_name: "pig_kidney_subset"
 
@@ -45,6 +45,7 @@ test_fold_list:
 validation_fold_list:
   - "k1"
   - "k2"
+  - "k3"
 
 
 image_size:

@@ -1,0 +1,50 @@
+# If use_hpo: true
+# it will verify that the configuration file
+# has single values
+
+use_hpo: false
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/mouse_data/single_configuration_vA.yml"
+
+number_channels: 1
+
+data_input_directory: "/home/pcallec/Mouse_data_reprezentative_zip"
+# csv file with the metadata: image_path, label, fold
+path_metadata_csv: "/home/pcallec/analyze_images/results/mouse_data/input_mouse_metadata_CON_MBZ.csv"
+output_path: "/home/pcallec/NACHOS/results/mouse_data_CON_MBZ_vA"
+job_name: "mouse_CON_MBZ_vA"
+
+checkpoint_epoch_frequency: 5
+
+do_normalize_2d: false
+shuffle_the_images: true
+shuffle_the_folds: false
+seed: 9
+
+# If use_mixed_precision: true,
+#  the model will be trained using mixed precision
+# (fp16/fp32). This can speed up training and reduce
+use_mixed_precision: false
+
+class_names:
+  - "CON"
+  - "MBZ"
+metrics_list: []
+
+fold_list:
+  - "training"
+  - "validation"
+  - "test"
+test_fold_list:
+  - "test"
+
+# validation_fold_list is used only for 
+# cross-validation
+validation_fold_list:
+  - "validation"
+
+image_size:
+  - 1024
+  - 1000
+
+target_height: 1024
+target_width: 1000

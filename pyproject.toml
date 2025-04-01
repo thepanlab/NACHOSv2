@@ -17,14 +17,24 @@ keywords = [
     'deep learning',
     'medical imaging'
 ]
-
+dependencies = [
+  "termcolor",
+  "pandas",
+  "tensorboard",
+  "scikit-image",
+  "regex",
+  "dill",
+  "fasteners",
+  "PyYAML",
+  "mpi4py",
+]
 
 [project.urls]
 Homepage = "https://github.com/thepanlab/NACHOS_v2"
 Repository = "https://github.com/thepanlab/NACHOS_v2"
 
 [project.scripts]
-NACHOSv2_train = "nachosv2.training.training_sequential.training_sequential:run_training"
+NACHOSv2_train = "nachosv2.training.training.training:train"
 NACHOSv2_getsummary = "nachosv2.results_processing.get_summary.get_summary:main"
 NACHOSv2_getconfusionmatrix = "nachosv2.results_processing.confusion_matrix.get_confusion_matrix:main"
 
