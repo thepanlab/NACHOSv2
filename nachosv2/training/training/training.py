@@ -236,12 +236,11 @@ def get_fold_list(partition: str,
             if config_dict['validation_fold_list'] is not None:
                 print(colored("For cross-testing, validation_fold_list is not used"), "yellow")
             return [None]
-        return normalize_to_list(fold_list)
-    
-    # test partition
-    if not fold_list:  # If fold_list is None or empty
-        print(colored("Not fold provided for test fold. Using all folds in fold_list"), "yellow")            
-        return normalize_to_list(fold_list)
+    else:
+        if not fold_list:  # If fold_list is None or empty
+            print(colored("Not fold provided for test fold. Using all folds in fold_list"), "yellow")            
+            return normalize_to_list(fold_list)
+    return normalize_to_list(fold_list)
 
 
 def get_index_device(num_device_to_use: int,
