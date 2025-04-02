@@ -5,7 +5,7 @@
 use_hpo: true
 # seed for the hyperparameter optimization
 seed_hpo: 1234
-configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/OCT_small/hp_random_search.yml"
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training/config_files/OCT_small/hp_random_search.yml"
 
 number_channels: 1
 

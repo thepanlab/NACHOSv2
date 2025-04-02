@@ -12,7 +12,7 @@ n_combinations: 9
 #   - 16
 #   - 128
 batch_size:
-  min: 8
+  min: 16
   max: 128
 
 do_cropping: false
@@ -22,9 +22,7 @@ cropping_position:
   y: 10
 
 # Specify single value or range
-n_epochs:
-  min: 50
-  max: 150
+n_epochs: 5
 
 # Specify single value or range
 patience: 20
@@ -37,17 +35,17 @@ learning_rate:
 # Specify single value or range
 # if you don't want to use momentum, place 0 or omit value
 # e.g. momentum: -1  
-momentum: 
-  - 0.75
-  - 0.8
+momentum:
+  - 0.5
   - 0.9
+  - 0.99
 
 # Specify single value or range
-enable_nesterov: 
+enable_nesterov:
   - true
   - false
 
 # Specify single value or range
-architecture: 
+architecture:
   - InceptionV3
   - ResNet50
