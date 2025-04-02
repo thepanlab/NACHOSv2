@@ -1,3 +1,10 @@
+"""
+Green: indications about where is the training
+Cyan: verbose mode
+Magenta: results
+Yellow: warnings
+Red: errors, fatal or not
+"""
 from pathlib import Path
 import itertools
 from typing import List, Dict, Union
@@ -15,18 +22,9 @@ from nachosv2.modules.timer.precision_timer import PrecisionTimer
 from nachosv2.modules.timer.write_timing_file import write_timing_file
 from nachosv2.output_processing.memory_leak_check import initiate_memory_leak_check, end_memory_leak_check
 from nachosv2.setup.command_line_parser import parse_command_line_args
-from nachosv2.setup.define_execution_device import define_execution_device
 from nachosv2.setup.get_config import get_config
 from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import write_log
 from nachosv2.training.hpo.hpo import get_hp_configuration
-
-"""
-Green: indications about where is the training
-Cyan: verbose mode
-Magenta: results
-Yellow: warnings
-Red: errors, fatal or not
-"""
 
 
 def create_loop_indices(config_dict: dict,
@@ -76,13 +74,47 @@ def perform_single_training(index: int,
                             execution_device: str,
                             config_dict: dict,
                             is_verbose_on: bool = False):
-    
+    """
+    Executes a single training run for a given fold and hyperparameter configuration,
+    handling cross-validation or cross-testing loop scenarios. This function sets up the 
+    appropriate data partitions, configuration parameters, and performs logging before 
+    and after model training.
+
+    Parameters:
+    ----------
+    index : int
+        Index of the current training iteration within the loop.
+    n_combinations : int
+        Total number of training combinations (used for progress display).
+    indices_loop_dict : dict
+        Dictionary containing fold and hyperparameter configuration details.
+        Expected keys: "test", "validation", "hp_configuration".
+    is_cv_loop : bool
+        Indicates whether the function is being run as part of a cross-validation loop.
+    df_metadata : pd.DataFrame
+        Metadata DataFrame containing information related to training samples.
+    execution_device : str
+        Device identifier for computation (e.g., "cuda:0", "cpu").
+    config_dict : dict
+        Dictionary with full configuration for training, including:
+        - fold list
+        - output path
+        - image processing options
+        - other training settings.
+    is_verbose_on : bool, optional
+        Enables verbose output during training if True (default is False).
+
+    Returns:
+    -------
+    None
+        This function performs training and logging but does not return a value.
+    """
+
     test_fold = indices_loop_dict["test"]
     validation_fold = indices_loop_dict["validation"]
     
     hpo_configuration = indices_loop_dict["hp_configuration"]
     hp_config_index = hpo_configuration["hp_config_index"]
-
 
     # Defines if the images are 2D or 3D based
     # on configuration image_size dimensions
@@ -94,23 +126,23 @@ def perform_single_training(index: int,
     # cross-validation loop
     if is_cv_loop:
         print(colored(f'--- Training: {index + 1}/{n_combinations} ---',
-                        'magenta'))
+                       'magenta'))
     # cross-testing loop
     else:
         print(colored(f'--- Training: {index + 1}/{n_combinations} ---',
-                        'magenta'))
+                       'magenta'))
 
     print("Test fold:", test_fold)
     print("Hyperparameter configuration index:", hp_config_index)
     print("Validation folds:", validation_fold)
-            
+
     partitions_dict = generate_dict_folds_for_partitions(
         validation_fold_name=validation_fold,
         is_cv_loop=is_cv_loop,
         fold_list=config_dict['fold_list'],
         test_fold_name=test_fold
         ) 
-    
+
     write_log(
         config=config_dict,
         indices_dict=indices_loop_dict,
@@ -120,9 +152,9 @@ def perform_single_training(index: int,
         is_cv_loop=is_cv_loop,
         rank=None,
     )
-    
+
     training_folds_list = partitions_dict['training']
-    
+
     # Creates and runs the training fold for this subject pair
     training_fold = TrainingFold(
         execution_device=execution_device,  # The name of the device that will be use
@@ -154,6 +186,35 @@ def perform_single_training(index: int,
 def get_fold_list(partition: str,
                   is_cv_loop: bool,
                   config_dict: dict) -> List[Union[str, None]]:
+    """
+    Retrieves the list of folds to be used for a specified data partition 
+    ("validation" or "test") based on the current loop type and configuration.
+
+    Parameters:
+    ----------
+    partition : str
+        The data partition to retrieve fold list for. Must be either "validation" or "test".
+    is_cv_loop : bool
+        Indicates if the current execution is part of a cross-validation loop.
+    config_dict : dict
+        Configuration dictionary containing fold information. Expected keys:
+        - "validation_fold_list"
+        - "test_fold_list"
+        - "fold_list"
+
+    Returns:
+    -------
+    List[Union[str, None]]
+        A list of fold names to be used for the given partition. 
+        - For validation in non-CV mode, returns [None].
+        - For test with no specific test folds provided, returns all folds from `config_dict['fold_list']`.
+
+    Raises:
+    ------
+    ValueError
+        If an invalid partition name is provided.
+    """
+    
     # If the test_subjects list is empty, uses all subjects
 
     if partition not in ["validation", "test"]:
@@ -172,46 +233,72 @@ def get_fold_list(partition: str,
 
     if partition == "validation":
         if not is_cv_loop:
-            if config_dict['validation_fold_list'] is None:
-                print(colored("For cross-tesing, validation_fold_list is not used"), "red")
+            if config_dict['validation_fold_list'] is not None:
+                print(colored("For cross-testing, validation_fold_list is not used"), "yellow")
             return [None]
-        return normalize_to_list(fold_list) 
-    else:
-        if not fold_list:  # If fold_list is None or empty
-            print(colored("Not fold provided for test fold. Using all folds in fold_list"), "red")            
-            return config_dict['fold_list']
-        
+        return normalize_to_list(fold_list)
+    
+    # test partition
+    if not fold_list:  # If fold_list is None or empty
+        print(colored("Not fold provided for test fold. Using all folds in fold_list"), "yellow")            
         return normalize_to_list(fold_list)
 
 
 def get_index_device(num_device_to_use: int,
                      rank: int,
                      enable_dummy_node: bool):
+    """
+    Determines the GPU index to be used by a process based on its rank in a distributed setup.
+
+    Parameters:
+    ----------
+    num_device_to_use : int
+        The number of GPUs intended for use during training.
+    rank : int
+        The rank of the current process (in a multi-process/distributed setting).
+    enable_dummy_node : bool
+        If True, assumes the presence of a dummy node (e.g., for coordination)
+        and adjusts GPU indexing to skip over it.
+
+    Returns:
+    -------
+    int
+        The index of the GPU that should be assigned to this process.
+
+    Notes:
+    ------
+    - When `enable_dummy_node` is True, the modulo operation is performed with (num_device_to_use + 1),
+      effectively treating one rank (usually rank 0) as a dummy that doesn't run training.
+    - GPU indexing starts after the dummy node, with remaining ranks mapped to GPUs in a round-robin manner.
+    """
     num_gpus_available = torch.cuda.device_count()
     
     print(colored(f'Rank {rank}', 'cyan'))
     print("Num GPUs Available: ", num_gpus_available)
     print("Num GPUs to use: ", num_device_to_use)
 
-    index_gpu = -1
-
     if enable_dummy_node:
-    
-        # Assuming we discard one process
-        # Assunming n_gpus 2
+        # In distributed setups, rank 0 is skipped for training.
+        # Rank 0 is the manager process
+        # We map ranks to GPU indices using modulo arithmetic, adjusted for the dummy.
         # mod number is (# gpus +1)
-        # Rank 0 Rank 1  Rank 2
-        #        0       1  
-        # Rank 3 Rank 4  Rank 5
-        # 2      0       1
-        # Rank 6 Rank 7  Rank 8 
-        # 2      0       1      
+        # Example with 2 GPUs and dummy enabled:
+        #     Rank:        0   1   2   3   4   5   6
+        #     GPU index:   2   0   1   2   0   1   2
+        # Assuming you are using 2 GPUs
+        # Valida GPUs indices are 0 and 1    
         
-        # The value 2 will do nothing 
         index_gpu = (rank-1) % (num_device_to_use+1)
         print("index_gpu =", index_gpu)
+        
+        # The GPU index 2 will do nothing
+        # Convert invalid GPU index to -1
+        if index_gpu == num_device_to_use:
+            index_gpu = -1
+        
     else:
         index_gpu = (rank-1) % num_device_to_use
+
     print("rank", rank, "index_gpu", index_gpu)
     return index_gpu
 
@@ -471,7 +558,7 @@ def train():
     is_verbose_on = args['verbose']
     enable_dummy_process = args['enable_dummy_process']
     loop = args["loop"]
-    
+
     comm = MPI.COMM_WORLD
     if comm.Get_size() > 1:
         enable_parallelization = True
