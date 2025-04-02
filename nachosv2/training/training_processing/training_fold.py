@@ -89,6 +89,7 @@ class TrainingFold():
         if is_cv_loop:
             self.prefix_name = f"{configuration['job_name']}" + \
                                f"_test_{self.test_fold}" + \
+                               f"_hp_{self.hp_config_index}" + \
                                f"_val_{self.validation_fold}"
         else:
             self.prefix_name = f"{configuration['job_name']}" + \
@@ -937,14 +938,15 @@ class TrainingFold():
             epoch_index = path.stem.split("_")[-1]
             if epoch_index == "best":
                 best_checkpoint_path = path
-                continue
-            else:
-                epoch_index = int(epoch_index) - 1
-            if epoch_index >= last_checkpoint_epoch:
+            elif epoch_index == "last":
+                last_checkpoint_epoch = int(path.stem.split("_")[-2])
+                last_checkpoint_path = path
+            elif int(epoch_index) >= last_checkpoint_epoch:
                 last_checkpoint_epoch = epoch_index
                 last_checkpoint_path = path
 
-        return last_checkpoint_path, last_checkpoint_epoch, best_checkpoint_path
+        return last_checkpoint_path, last_checkpoint_epoch, \
+               best_checkpoint_path
 
 
     def load_checkpoint(self):
@@ -1015,5 +1017,5 @@ class TrainingFold():
             partitions_info_dict=self.partitions_info_dict, 
             class_names=self.configuration['class_names'],
             is_cv_loop=self.is_cv_loop,
-            enable_prediction_on_test=self.configuration['enable_prediction_on_test'],)
-        
+            enable_prediction_on_test=self.configuration.get('enable_prediction_on_test',False)
+        )
