@@ -303,30 +303,6 @@ def get_index_device(num_device_to_use: int,
     return index_gpu
 
 
-def fill_list_with_dummy_processes(n_proc: int,
-                                   num_device_to_use: int):                               
-    # r: rank
-    # 2 GPUs
-    #           | r0 r1 r2 | r3 r4 r5 | r6 r7 r8 | r9 r10 r11 |
-    # index_gpu       0  1 |  2  0  1 |  2  0  1 |  2   0   1 |
-    #                         ^          ^          ^           
-    # ranks with index_gpu are not used
-    # r3, r6, r9 
-    
-    #                   # processes 
-    # n_unused_ranks = -------------- - 1
-    #                   # gpus + 1
-    # The number of unused ranks is calculated by the formula above
-    # we first divided by the number of of gpus per device to use
-    # plus one ( because of dummy node)
-    # me made a substraction because process rank 0 is the 
-    # manager process
-        
-    n_unused_ranks = int(n_proc/(num_device_to_use+1) - 1)
-    
-    return [(num_device_to_use+1)*i for i in range(1, n_unused_ranks+1)]
-
-
 def determine_if_cv_loop(loop: str) -> bool:
     if loop not in ["cross-validation", "cross-testing"]:
         raise ValueError(f"Invalid loop type: {loop}")
@@ -337,7 +313,8 @@ def determine_if_cv_loop(loop: str) -> bool:
         is_cv_loop = True
         
     return is_cv_loop
-    
+
+
 def train_sequential(config_dict: dict,
                      execution_device_list: list,
                      is_verbose_on: bool,
@@ -458,16 +435,6 @@ def train_parallel(config_dict: dict,
         path_csv_metadata = config_dict["path_metadata_csv"]
         df_metadata = read_metadata_csv(path_csv_metadata)
         
-        # Listen for process messages while running
-        process_finished_list = []
-        # add manually when b_dummy is used 
-        # to avoid problems later
-        if enable_dummy_process:
-            dummy_process_list = fill_list_with_dummy_processes(
-                                    n_proc,
-                                    num_device_to_use)
-            process_finished_list.extend(dummy_process_list)
-        print("process_finished_list =", process_finished_list)
                 
         # Starts a timer
         training_timer = PrecisionTimer()
