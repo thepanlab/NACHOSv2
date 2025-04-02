@@ -304,6 +304,24 @@ def get_index_device(num_device_to_use: int,
 
 
 def determine_if_cv_loop(loop: str) -> bool:
+    """
+    Determines whether the given loop type corresponds to a cross-validation loop.
+
+    Parameters:
+    ----------
+    loop : str
+        The type of training loop. Must be either "cross-validation" or "cross-testing".
+
+    Returns:
+    -------
+    bool
+        True if the loop is "cross-validation", False if "cross-testing".
+
+    Raises:
+    -------
+    ValueError
+        If the provided loop type is not one of the supported values.
+    """
     if loop not in ["cross-validation", "cross-testing"]:
         raise ValueError(f"Invalid loop type: {loop}")
 
@@ -319,7 +337,38 @@ def train_sequential(config_dict: dict,
                      execution_device_list: list,
                      is_verbose_on: bool,
                      loop: str):
+    """
+    Executes a sequential training loop for either cross-validation or cross-testing
+    using a single computational device.
 
+    Parameters:
+    ----------
+    config_dict : dict
+        Configuration dictionary containing training settings such as:
+        - metadata CSV path
+        - fold definitions
+        - output paths
+        - training/test loop types, etc.
+    execution_device_list : list
+        A list containing the single execution device to be used (e.g., ["cuda:0"]).
+        Only one device is allowed in sequential mode.
+    is_verbose_on : bool
+        If True, enables verbose output for logging and status updates.
+    loop : str
+        Specifies the loop type: "cross-validation" or "cross-testing".
+
+    Raises:
+    -------
+    ValueError
+        If more than one device is passed in `execution_device_list`.
+
+    Returns:
+    -------
+    None
+        The function executes training and writes timing results, but does not return a value.
+    """
+
+    # Ensure only one device is used for sequential training
     if len(execution_device_list) > 1:
         raise ValueError("For sequential training, only one device can be used.")
 
@@ -329,8 +378,10 @@ def train_sequential(config_dict: dict,
     # if memory_leak_check_enabled:
     #     memory_snapshot = initiate_memory_leak_check()
 
+    # Determine whether we are in a cross-validation or cross-testing loop
     is_cv_loop = determine_if_cv_loop(loop)
 
+    # Load metadata from the CSV file
     path_csv_metadata = config_dict["path_metadata_csv"]
     df_metadata = read_metadata_csv(path_csv_metadata)
 
@@ -361,14 +412,15 @@ def train_sequential(config_dict: dict,
     if is_verbose_on:  # If the verbose mode is activated
         print(colored("Double-checks of test and validation uniqueness successfully done.", 'cyan'))
 
+    # Create the list of fold combinations for training
     indices_loop_list = create_loop_indices(config_dict,
                                             is_cv_loop)
-
     n_combinations = len(indices_loop_list)
 
-    # Starts a timer
+    # Start measuring elapsed training time
     training_timer = PrecisionTimer()
 
+    # Iterate through each combination of folds and train sequentially
     for index, indices_loop_dict in enumerate(indices_loop_list):
         perform_single_training(index=index,
                                 n_combinations=n_combinations,
@@ -379,12 +431,11 @@ def train_sequential(config_dict: dict,
                                 config_dict=config_dict,
                                 is_verbose_on=is_verbose_on)
         
-    # Stops the timer and prints the elapsed time
+    # Report elapsed training time
     elapsed_time_seconds = training_timer.get_elapsed_time()
     print(colored(f"\nElapsed time: {elapsed_time_seconds:.2f} seconds.", 'magenta'))
 
-    # Creates a file and writes elapsed time in it
-    # Make the next line fit in 80 characters
+    # Save the timing results to a file in the appropriate output directory
     loop_folder = "CT" if not is_cv_loop else "CV"
     timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
     timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
@@ -400,72 +451,97 @@ def train_parallel(config_dict: dict,
                    enable_dummy_process: bool,
                    is_verbose_on: bool,
                    loop: str):
+    """
+    Executes training in parallel using MPI across multiple processes and devices.
     
+    This function distributes training tasks across available processes. Rank 0 coordinates 
+    the distribution, while worker ranks (rank > 0) listen for tasks, perform training, and 
+    report completion.
+
+    Parameters:
+    ----------
+    config_dict : dict
+        Configuration settings including metadata paths, folds, and training parameters.
+    execution_device_list : list
+        List of available devices (e.g., ["cuda:0", "cuda:1"]).
+    enable_dummy_process : bool
+        If True, enables a dummy process for coordination when it is necessary to have 
+        same number of processes per node.
+    is_verbose_on : bool
+        Enables detailed logging and console output.
+    loop : str
+        Specifies whether the loop is "cross-validation" or "cross-testing".
+
+    Raises:
+    -------
+    ValueError
+        If no training configurations are provided or misconfiguration is detected.
+    """
+
     num_device_to_use = len(execution_device_list)
-    # Initialize MPI
+    
+    # Initialize MPI communication
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     n_proc = comm.Get_size()
     
     print("rank", rank, "n_proc", n_proc)
-    # Rank 0 initializes the program and runs the configuration loops
+    
     if rank == 0:
+        # Master process controls configuration and task distribution
         is_cv_loop = determine_if_cv_loop(loop)
 
-        # Double-checks that the validation subjects are unique
+        # Check for uniqueness in validation folds if doing cross-validation
         if is_cv_loop:  # Only if we are in the inner loop
             check_unique_subjects(config_dict["validation_fold_list"],
                                   "validation")
 
-        if is_verbose_on:  # If the verbose mode is activated
+        if is_verbose_on:
             print(colored("Double-checks of test and validation uniqueness successfully done.", 'cyan'))
 
+        # Create task list for training (each entry is a fold/config combo)
         indices_loop_list = create_loop_indices(config_dict,
                                                 is_cv_loop)
-        
         n_tasks = len(indices_loop_list)
 
-        # No configs, no run
         if n_tasks == 0:
-            # TODO: determine if sending False is necesssary
+            # If no configurations exist, inform all workers and exit
             for subrank in range(1, n_proc):
                 comm.send(False, dest=subrank)
             raise ValueError(colored("No configurations given.", 'yellow'))
 
+        # Load metadata from CSV
         path_csv_metadata = config_dict["path_metadata_csv"]
         df_metadata = read_metadata_csv(path_csv_metadata)
         
                 
-        # Starts a timer
+        # Start a training timer
         training_timer = PrecisionTimer()
         
+        # Assign training tasks to workers as they become available
         for index, indices_loop_dict in enumerate(indices_loop_list):
             subrank = comm.recv(source=MPI.ANY_SOURCE)
-            dict_to_send = { "index": index,
-                             "n_combinations": n_tasks,
-                             "indices_loop_dict": indices_loop_dict,
-                             "is_cv_loop": is_cv_loop,
-                             "df_metadata": df_metadata,
-                             "config_dict": config_dict,
-                             "is_verbose_on": is_verbose_on}
+            dict_to_send = { 
+                "index": index,
+                "n_combinations": n_tasks,
+                "indices_loop_dict": indices_loop_dict,
+                "is_cv_loop": is_cv_loop,
+                "df_metadata": df_metadata,
+                "config_dict": config_dict,
+                "is_verbose_on": is_verbose_on
+            }
             comm.send(dict_to_send, dest=subrank)
 
-            # Send task if the process is ready
-            # if indices_loop_list:
-            #     print(colored(f"Rank 0 is sending rank {subrank} its task "
-            #                 f"{len(indices_loop_list)}/{n_tasks}.", 'green'))
-            #     comm.send(indices_loop_list.pop(), dest=subrank)
-            #     next_task_index += 1
+        # Notify all workers that tasks are complete
         for subrank in range(1, n_proc):
             print(colored(f"Rank 0 is terminating rank {subrank}, no tasks to give.", 'red'))
             comm.send(False, dest=subrank)
         
-        # Stops the timer and prints the elapsed time
+        # Stop the timer and log elapsed time
         elapsed_time_seconds = training_timer.get_elapsed_time()
         print(colored(f"\nElapsed time: {elapsed_time_seconds:.2f} seconds.", 'magenta'))
 
-        # Creates a file and writes elapsed time in it
-        # Make the next line fit in 80 characters
+        # Save timing information
         loop_folder = "CT" if not is_cv_loop else "CV"
         timing_directory_path = Path(config_dict["output_path"]) / loop_folder /"training_timings" # The directory's path where to put the timing file
         timing_directory_path.mkdir(mode=0o775, parents=True, exist_ok=True)
@@ -474,10 +550,10 @@ def train_parallel(config_dict: dict,
                           timing_directory_path,
                           config_dict,
                           is_verbose_on)
-            
-    # rank > 0
     else: 
-        
+        # Worker process (rank > 0)
+
+        # Determine which GPU/device this rank should use
         index_device = get_index_device(num_device_to_use,
                                         rank,
                                         enable_dummy_process)
@@ -488,16 +564,14 @@ def train_parallel(config_dict: dict,
         print("enable_dummy_process:", enable_dummy_process)
         
         if index_device != -1:
-
+            # Notify rank 0 that this process is ready to receive a task
             comm.send(rank, dest=0)
 
             print(colored(f'Rank {rank} is listening for process 0.', 'cyan'))
             task = comm.recv(source=0)
             
-            # While there are tasks to run, train
+            # Process training tasks as long as they are being sent
             while task:
-                        
-                # Training loop       
                 perform_single_training(
                         index=task["index"],
                         n_combinations=task["n_combinations"],
@@ -507,26 +581,46 @@ def train_parallel(config_dict: dict,
                         execution_device=execution_device_list[index_device],  # Use the GPU assigned to this rank
                         config_dict=task["config_dict"],
                         is_verbose_on=task["is_verbose_on"])
-                
+
+                # Notify rank 0 that this process is ready for a new task
                 comm.send(rank, dest=0)
                 task = comm.recv(source=0)
-                
-            # Nothing more to run.
+
+
             print(colored(f'Rank {rank} terminated. All jobs finished for this process.', 'yellow'))
 
 
 def train():
+    """
+    Initializes and executes the training process for a machine learning model. 
+    Determines whether to run the training in sequential or parallel mode based 
+    on the MPI communicator size.
 
+    The function:
+    - Parses command-line arguments for configuration settings.
+    - Loads a configuration file for training parameters.
+    - Determines whether to enable parallelization based on the MPI environment.
+    - Executes either a sequential or parallel version of the training pipeline 
+      based on the number of available MPI processes.
+    """
+    
     args = parse_command_line_args()
 
-    # Defines the arguments
+    # Extract argument values
+    # Load training configuration from file
     config_dict = get_config(args['file'])
+     # List of devices to be used for training 
     execution_device_list = args['devices']
+    # Enable verbose output
     is_verbose_on = args['verbose']
+    # Enable dummy process for parallel training
     enable_dummy_process = args['enable_dummy_process']
+    # Whether to loop through training multiple times
     loop = args["loop"]
 
+    # Initialize MPI communication
     comm = MPI.COMM_WORLD
+    # Enable parallelization if more than one MPI process
     if comm.Get_size() > 1:
         enable_parallelization = True
     else:
@@ -534,20 +628,21 @@ def train():
 
     print("execution_device_list",
           execution_device_list)
-    # Sequential implementation
+    # Execute the appropriate training method
     if not enable_parallelization:
+        # Run the sequential version of training
         train_sequential(config_dict,
                          execution_device_list,
                          is_verbose_on,
                          loop)
-    # Parallel implementation
     else:
+        # Run the parallel version of training using MPI
         train_parallel(config_dict,
                        execution_device_list,
                        enable_dummy_process,
                        is_verbose_on,
                        loop)
 
-# Sequential Inner Loop
+
 if __name__ == "__main__":
     train()
