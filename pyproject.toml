@@ -27,6 +27,7 @@ dependencies = [
   "fasteners",
   "PyYAML",
   "mpi4py",
+  "scikit-learn",
 ]
 
 [project.urls]
