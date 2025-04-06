@@ -134,7 +134,7 @@ def perform_single_training(index: int,
 
     print("Test fold:", test_fold)
     print("Hyperparameter configuration index:", hp_config_index)
-    print("Validation folds:", validation_fold)
+    print("Validation fold:", validation_fold)
 
     partitions_dict = generate_dict_folds_for_partitions(
         validation_fold_name=validation_fold,

@@ -212,8 +212,6 @@ class TrainingFold():
         This includes the testing and validation_subjects, file paths,
         label indexes, and labels.
         """
-        # TODO
-        # Add option to choose the name of the column for subject and filepath
 
         l_columns = ["absolute_filepath", "label"]
         
