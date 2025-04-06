@@ -276,43 +276,64 @@ def generate_ct_hp_configurations(best_filepath: Path,
         ct_configuration_path (Path): Path to the CT configuration directory.
     """
 
-    training_config_dict = get_config(configuration_cv_path)
-    if use_hpo:
-        # TODO
-        pass
-    else:
-        hp_config_dict = get_config(training_config_dict["configuration_filepath"])
-
-    data = pd.read_csv(best_filepath, index_col=0)
-
-    # based on config:
-    # * delete validation_fold_list
-    del training_config_dict["validation_fold_list"]
-    hp_config_dict.pop("n_combinations", None)
-    del hp_config_dict["patience"]
+    configuration_cv_path = Path(configuration_cv_path)
+    ensure_path_exists(configuration_cv_path)
+    use_hpo = get_config(configuration_cv_path)["use_hpo"]
 
     ct_configuration_path = results_path / "CT" / "configurations"
     # make directory from path
     ct_configuration_path.mkdir(parents=True, exist_ok=True)
+    
+    df_best = pd.read_csv(best_filepath, index_col=0)
+    
+    if use_hpo:
+        path_hp_configurations = results_path / "CV" / \
+            "hp_random_search" / "hp_configurations.csv"
+                
+        df_hp_random_search = pd.read_csv(path_hp_configurations, index_col=0)
 
-    for row in data.itertuples():
+    for row in df_best.itertuples():
         test_fold = row.test_fold
         hp_config_index = row.hp_config
         n_epochs = round(row.avg_n_epochs)
-        # TODO
-        # if use_hpo==true, then I would need to retrieve the path of the different files and extract its features
-        # change test fold: to values
-        training_config_path = ct_configuration_path / f"training_config_test_{test_fold}_hpconfig_{hp_config_index}.yml"
-        hp_config_path = ct_configuration_path /f"hp_config_test_{test_fold}_hpconfig_{hp_config_index}.yml"
 
-        training_config_dict["configuration_filepath"] = str(hp_config_path)
+        ct_training_config_path = ct_configuration_path / \
+            f"training_config_test_{test_fold}_hpconfig_{hp_config_index}.yml"
+        ct_hp_config_path = ct_configuration_path / \
+            f"hp_config_test_{test_fold}_hpconfig_{hp_config_index}.yml"
+
+        training_config_dict = get_config(configuration_cv_path)
+
+        training_config_dict["configuration_filepath"] = str(ct_hp_config_path)
         training_config_dict["test_fold_list"] = test_fold
 
         # save yml file
-        save_dict_to_yaml(training_config_dict, training_config_path)
+        save_dict_to_yaml(training_config_dict, ct_training_config_path)
 
+        # TODO: debug from here
+        # Epochs should be retrieve from the best configuration
+        # Epochs should 
+
+        if use_hpo:
+            # TODO
+            # Based on the hp_config_index, load the corresponding hyperparameter configuration
+            df_best_hp_config = df_hp_random_search.query("hp_config_index==@hp_config_index")
+            hp_config_dict = df_best_hp_config.to_dict(orient='records')[0]
+        else:
+            hp_config_dict = get_config(training_config_dict["configuration_filepath"])
+            
+            del training_config_dict["validation_fold_list"]
+            hp_config_dict.pop("n_combinations", None)
+            del hp_config_dict["patience"]
+            
         hp_config_dict["n_epochs"] = n_epochs
-        save_dict_to_yaml(hp_config_dict, hp_config_path)
+        save_dict_to_yaml(hp_config_dict, ct_hp_config_path)
+
+            # based on config:
+            # * delete validation_fold_list
+        
+
+
 
 
 def main():
@@ -397,11 +418,7 @@ def main():
         if configuration_cv_path is None:
             raise ValueError("Configuration path('configuration_path')"
                              " must be provided for cross-validation loop.")
-
-        configuration_cv_path = Path(configuration_cv_path)
-        ensure_path_exists(configuration_cv_path)
-        use_hpo = get_config(configuration_cv_path)["use_hpo"]
-        
+       
         # ------------------------------
         # Step 7: Identify best hyperparameters
         # ------------------------------
@@ -417,8 +434,7 @@ def main():
         generate_ct_hp_configurations(
             best_filepath=best_summary_filepath,
             results_path=results_path,
-            configuration_cv_path=configuration_cv_path,
-            use_hpo=use_hpo)
+            configuration_cv_path=configuration_cv_path)
 
 
 if __name__ == "__main__":
