@@ -45,6 +45,19 @@ metric_functions = {
 }
 
 
+def is_metric_allowed(metric: str) -> bool:
+    """
+    Check if the metric is allowed.
+
+    Args:
+        metric (str): The metric to check.
+
+    Returns:
+        bool: True if the metric is allowed, False otherwise.
+    """
+    return metric in metric_functions   
+
+
 def get_partition_from_prediction_file(filepath: Path) -> str:
     partition = filepath.stem.split('_')[-1]
 
@@ -102,22 +115,6 @@ def generate_individual_metric(metrics_list: List[str],
                 metrics_dict[f"{partition}_{metric}"] = [metric_functions[metric](actual, predicted)]
 
     return metrics_dict
-
-    
-    # metrics_dict = {}
-    # # Get the corresponding function and compute the metric
-    # for metric in metrics_list:
-    #     if metric in metric_functions:
-    #         metrics_dict[metric] = metric_functions[metric](actual,predicted)       
-    #     else:
-    #         message_str = f"Metric {metric} not supported. Metrics supported: "
-            
-    #         for key in metric_functions:
-    #             message_str += f"{key}, "
-                
-    #         raise ValueError(message_str)
-    
-    # return metrics_dict
 
 
 def parse_filename(filepath: Path,

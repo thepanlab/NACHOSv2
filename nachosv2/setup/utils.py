@@ -69,31 +69,48 @@ def get_default_folder(path: Path,
                        folder_name: str,
                        is_cv_loop: bool) -> Path:
     """
-    Create a folder under the parent folder of 'training_results' with the name 'folder_name'.
+    Constructs a default output folder path based on the location of cross-validation (CV) 
+    or cross-testing (CT) results.
+
+    The function searches for either a "CT" or "CV" directory in the given path. If the path 
+    is a CSV file, it looks for "CT" or "CV" in the path parts and builds the output folder 
+    path accordingly. If the path is a directory, it recursively searches for a "CT" or "CV" 
+    subfolder. The resulting output path will be `{CT or CV}/{folder_name}`.
 
     Args:
-        path (Path): filepath of csv or a folderfile that contains results, e.g. predictions, history, etc.
-        folder_name (str): The name of the folder to be created.
+        path (Path): A filepath  pointing to a result file (e.g., history CSV) 
+                     or folder structure containing training outputs.
+        folder_name (str): Name of the folder to create or point to under the detected "CT" or "CV" directory.
+        is_cv_loop (bool): Indicates whether to look for the "CV" folder (if True) or "CT" folder (if False).
+
     Returns:
-        Path: The path to the newly created 'confusion_matrix' folder.
+        Path: The constructed path to the output folder under "CT" or "CV".
+
+    Raises:
+        FileNotFoundError: If the function fails to locate a "CT" or "CV" directory in the given path.
     """
 
     default_folder_path = None
     subpath_to_find = "CV" if is_cv_loop else "CT"
+    
     if path.suffix == ".csv":
-        # It searches for the 'CT' or 'CV' index in path
+        # Search for the index of 'CT' or 'CV' in the file path components
         # e.g. /home/pcallec/NACHOS/results/pig_kidney_subset/CT/training_results/test_k1/hpconfig_0/test_k1_hpconfig_0_prediction_results.csv
         index_training_results = None
         for i, part in enumerate(path.parts):
             if part in ("CT", "CV"):
                 index_training_results = i
                 break
-        # It get path until before 'training_results' ,i.e., CT or CV and creates a folder there
+            
+        # Construct base path up to 'CT' or 'CV'
+        # e.g. /home/pcallec/NACHOS/results/pig_kidney_subset/CT
         base_path = Path(*path.parts[:index_training_results + 1])
+        # e.g. /home/pcallec/NACHOS/results/pig_kidney_subset/CT/new_folder
         default_folder_path = base_path / folder_name
     else:
+        # Search recursively in the directory for a subfolder named 'CT' or 'CV'
         for subpath in path.rglob("*"):  # rglob searches recursively for given pattern
-            if subpath.is_dir() and ( subpath.name == subpath_to_find ):
+            if subpath.is_dir() and (subpath.name == subpath_to_find):
                 # Path found, get the parent of 'training_results'
                 default_folder_path = subpath / folder_name
                 break

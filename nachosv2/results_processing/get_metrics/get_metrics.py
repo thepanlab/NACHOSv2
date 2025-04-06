@@ -17,10 +17,13 @@ from nachosv2.setup.utils_processing import parse_filename
 from nachosv2.setup.utils import get_filepath_from_results_path
 
 
-def get_dict_info_and_prediction_path(predictions_path_list,
-                                      is_cv_loop) -> Dict[tuple, List[Path]]:
+def group_predictions_by_metadata(predictions_path_list,
+                                  is_cv_loop) -> Dict[tuple, List[Path]]:
     """
-    Creates a dictionary mapping parsed filename information to corresponding prediction paths.
+    Groups prediction file paths based on parsed metadata extracted from filenames.
+
+    This is useful for organizing predictions by common attributes such as 
+    test fold, hp config, or validation fold.
 
     Args:
         predictions_path_list (List[Path]): List of file paths for predictions.
@@ -30,12 +33,17 @@ def get_dict_info_and_prediction_path(predictions_path_list,
         Dict[Tuple, List[Path]]: A dictionary where keys are tuples of parsed filename info 
                                  and values are lists of corresponding file paths.
     """
-    dict_values = defaultdict(list)
+    grouped_predictions = defaultdict(list)
+
     for predictions_path in predictions_path_list:
-        parsed_info = parse_filename(predictions_path, is_cv_loop)
-        dict_values[tuple(parsed_info.values())].append(predictions_path)
+        # Parse filename to extract metadata (e.g., test fold, hp config, val fold)
+        metadata = parse_filename(predictions_path, is_cv_loop)
+
+        # Use metadata tuple as a key to group files
+        key = tuple(metadata.values())
+        grouped_predictions[key].append(predictions_path)
         
-    return dict_values
+    return grouped_predictions
 
 
 def create_dictionary_from_tuple(tuple_key: tuple) -> dict:
@@ -67,23 +75,16 @@ def generate_metrics_file(metrics_list: List[str],
     """
     Generates a CSV file containing evaluation metrics for machine learning predictions.
 
-    Parameters:
-    ----------
-    metrics_list : List[str]
-        A list of metric names to be extracted from each prediction results file.
-    results_path : Path
-        Path to the directory containing prediction results.
-    is_cv_loop : bool
-        Specifies whether cross-validation (CV) is being used. If True, results 
-        include cross-validation results.
-    output_path : Optional[Path]
-        Directory where the generated metrics file should be saved. If None, 
-        the default results path will be used.
+    Args:
+        metrics_list (List[str]): A list of metric names to be extracted from each prediction results file.
+        results_path (Path): Path to the directory containing prediction results.
+        is_cv_loop (bool): Specifies whether cross-validation (CV) is being used. If True, results 
+            include cross-validation results.
+        output_path (Optional[Path]): Directory where the generated metrics file should be saved. 
+            If None, the default results path will be used.
 
     Returns:
-    -------
-    Path
-        The file path of the generated metrics CSV.
+        Path: The file path of the generated metrics CSV.
     """
         
     # Define filename suffix for prediction result files 
@@ -95,32 +96,34 @@ def generate_metrics_file(metrics_list: List[str],
         string_in_filename=suffix_filename,
         is_cv_loop=is_cv_loop)
     
-    predictions_info_dict = get_dict_info_and_prediction_path(predictions_path_list,
-                                      is_cv_loop)
+    # TODO: Improve name of variables and comments 
+    metadata_predictions_dict = group_predictions_by_metadata(
+                                    predictions_path_list,
+                                    is_cv_loop)
     
     # Initialize an empty DataFrame to store metrics results
     df_results = pd.DataFrame()
 
     # Process each prediction file
-    for key, prediction_list in predictions_info_dict.items():
+    for metadata_key, associated_prediction_files in metadata_predictions_dict.items():
         # Generate a dictionary of extracted metrics
         metrics_dict = generate_individual_metric(metrics_list,
-                                                  prediction_list)
-        summary_dict = create_dictionary_from_tuple(key)
+                                                  associated_prediction_files)
+        summary_dict = create_dictionary_from_tuple(metadata_key)
         summary_dict.update(metrics_dict)
         new_row_df = pd.DataFrame(summary_dict)
 
         # Concatenate the new row to the existing DataFrame
         df_results = pd.concat([df_results, new_row_df], ignore_index=True)
 
-        metrics_filepath = get_filepath_from_results_path(
-            results_path=results_path,
-            folder_name="metrics",
-            file_name="metrics_results.csv",
-            is_cv_loop=is_cv_loop,
-            output_path=output_path)
-        
-        df_results.to_csv(metrics_filepath)
+    metrics_filepath = get_filepath_from_results_path(
+        results_path=results_path,
+        folder_name="metrics",
+        file_name="metrics_results.csv",
+        is_cv_loop=is_cv_loop,
+        output_path=output_path)
+    
+    df_results.to_csv(metrics_filepath)
 
     return metrics_filepath
 
