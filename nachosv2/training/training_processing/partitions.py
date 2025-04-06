@@ -58,9 +58,12 @@ def generate_dict_folds_for_partitions(validation_fold_name: str,
         (list of dict): A list of folds, containing the subjects for testing, validation, and training.
         (int): The number of rotations for the training loop.
     """
-    
+
     # If cross-validation loop.
     if is_cv_loop:
+        if validation_fold_name == test_fold_name:
+            raise ValueError(colored(f"Validation fold name {validation_fold_name} cannot be the same as test fold name {test_fold_name}", 'red'))
+
         partitions_dict = {
             'training': _fill_training_partition(fold_list, test_fold_name,
                                                  validation_fold_name), 
