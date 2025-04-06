@@ -38,6 +38,11 @@ fold_list:
   - "k3"
   - "k4"
   - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
 
 test_fold_list:
   - "k1"
@@ -45,6 +50,12 @@ test_fold_list:
   - "k3"
   - "k4"
   - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
+
 
 # validation_fold_list is used only for 
 # cross-validation
@@ -54,6 +65,11 @@ validation_fold_list:
   - "k3"
   - "k4"
   - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
 
 image_size:
   - 301
