@@ -940,7 +940,7 @@ class TrainingFold():
                 last_checkpoint_epoch = int(path.stem.split("_")[-2])
                 last_checkpoint_path = path
             elif int(epoch_index) >= last_checkpoint_epoch:
-                last_checkpoint_epoch = epoch_index
+                last_checkpoint_epoch = int(epoch_index)
                 last_checkpoint_path = path
 
         return last_checkpoint_path, last_checkpoint_epoch, \
