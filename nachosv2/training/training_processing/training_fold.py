@@ -880,17 +880,19 @@ class TrainingFold():
         
         if is_frequency_checkpoint or is_best or is_last:
 
+            # epoch index is 0-indexed
+            # epoch number in file name is 1-indexed
             l_path_to_save = []
             if is_frequency_checkpoint:
                 checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}.pth"
                 l_path_to_save.append(checkpoint_file_path)
-            if is_best:            
+            if is_best:
                 best_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}_best.pth"
                 l_path_to_save.append(best_checkpoint_file_path)
-            if is_last:            
+            if is_last:
                 last_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}_last.pth"
                 l_path_to_save.append(last_checkpoint_file_path)
-            
+
             for path in l_path_to_save:
                 torch.save({"model_state_dict": self.model.state_dict(),
                             "optimizer_state_dict": self.optimizer.state_dict(),
@@ -931,16 +933,19 @@ class TrainingFold():
         last_checkpoint_path = None
         best_checkpoint_path = None
         
+        # epoch index is 0-indexed
+        # epoch number in file name is 1-indexed
+
         for path in list_paths:
             # epochs in filename start at 1
             epoch_index = path.stem.split("_")[-1]
             if epoch_index == "best":
                 best_checkpoint_path = path
             elif epoch_index == "last":
-                last_checkpoint_epoch = int(path.stem.split("_")[-2])
+                last_checkpoint_epoch = int(path.stem.split("_")[-2]) - 1
                 last_checkpoint_path = path
             elif int(epoch_index) >= last_checkpoint_epoch:
-                last_checkpoint_epoch = int(epoch_index)
+                last_checkpoint_epoch = int(epoch_index) - 1
                 last_checkpoint_path = path
 
         return last_checkpoint_path, last_checkpoint_epoch, \
