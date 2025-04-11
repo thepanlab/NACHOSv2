@@ -69,7 +69,17 @@ def fill_dataframe(filepath: Path,
                 "val_fold==@file_info['val_fold'] and "
                 "hp_config==@file_info['hp_config']"
                 )
-            metric_value = metrics_df.query(query)[metric].item()
+            
+            # Run the query once
+            filtered = metrics_df.query(query)
+            
+            # if for given test, val, and hp config
+            # there are no values in metrics return the same datafram
+            # Check if the metric column has at least one value
+            if filtered[metric].empty:
+                return df
+            
+            metric_value = filtered[metric].item()
 
             if metric == "validation_accuracy":
                 accuracy_difference = abs(best_val_loss_data['validation_accuracy'].item() - metric_value)
@@ -331,9 +341,6 @@ def generate_ct_hp_configurations(best_filepath: Path,
 
             # based on config:
             # * delete validation_fold_list
-        
-
-
 
 
 def main():
