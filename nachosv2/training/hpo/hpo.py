@@ -106,8 +106,8 @@ def extract_default_hyperparameters() -> pd.DataFrame:
 
 def random_power(min_value, max_value, base):
     # Get the exponent range
-    min_exponent = int(round(math.log(min_value, base)))
-    max_exponent = int(round(math.log(max_value, base)))
+    min_exponent = math.floor(math.log(min_value, base))
+    max_exponent = math.ceil(math.log(max_value, base))
     
     # Generate a random exponent within the range
     random_exponent = random.randint(min_exponent, max_exponent)
@@ -163,7 +163,7 @@ def get_value_from_hyperparameter_dict(index: str,
     # specify the random function for each hyperparameter
     random_function = {
         "batch_size": lambda min_val, max_val: random_power(min_val, max_val, base=2),
-        "n_epochs": random_value_factor,
+        "n_epochs": lambda min_val, max_val: random_value_factor(min_val, max_val, scale_factor=10),
         "n_patience": random.randint,
         "learning_rate": lambda min_val, max_val: random_power(min_val, max_val, base=10),
         "momentum": random.uniform
@@ -197,7 +197,7 @@ def is_repeated(dict_values, l_dict):
         dict_hp = existing_dict.copy()
         # delete hp_config_index to compare just the hyperparameter values
         del dict_hp["hp_config_index"]
-        
+
         # comparing dictionaries of hyperparameters    
         if dict_hp == dict_values:
             return True
@@ -343,7 +343,7 @@ def get_hp_configuration(config: Dict[str,any]) -> List[Dict[str,any]]:
     """
     # Retrieve hyperparameter configuration from the specified file
     hyperparameter_dict = get_config(config["configuration_filepath"])
-    
+
     # Extract default hyperparameter values
     df_default = extract_default_hyperparameters()
     
