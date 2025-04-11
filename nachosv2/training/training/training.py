@@ -52,7 +52,7 @@ def create_loop_indices(config_dict: dict,
     if config_dict["use_hpo"]:
         random.seed(config_dict['seed_hpo'])
 
-    hp_list = get_hp_configuration(config_dict)  
+    hp_list = get_hp_configuration(config_dict)
     
     list_loop_indices = []
     for t, h, v in itertools.product(test_fold_list,
