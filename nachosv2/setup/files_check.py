@@ -3,7 +3,7 @@ from pathlib import Path
 from termcolor import colored
 
 
-def ensure_path_exists(path : str|Path):
+def ensure_path_exists(path: str|Path):
     if isinstance(path, str):
         path = Path(path)
     if not path.exists():
