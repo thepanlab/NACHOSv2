@@ -46,14 +46,13 @@ def generate_cf(results_path: Path,
                 output_path: Optional[Path],
                 is_cv_loop: Optional[bool] = None):
     
-    suffix_filename = "prediction_results"
-    predictions_file_path_list = get_filepath_list(results_path,
+    suffix_filename = "prediction"
+    prediction_file_path_list = get_filepath_list(results_path,
                                                    suffix_filename,
                                                    is_cv_loop)
             
     # Extract and print test and validation fold numbers
-    for predictions_path in predictions_file_path_list:
-        filename = predictions_path.name            
+    for predictions_path in prediction_file_path_list:        
         cf_df = generate_individual_confusion_matrix(predictions_path)
 
         cf_filepath = get_newfilepath_from_predictions(predictions_path,
@@ -70,14 +69,14 @@ def main():
     """
     args = parse_command_line_args()
     config_dict = get_config(args['file'])
-    ensure_path_exists(config_dict['results_path'])
     results_path = Path(config_dict['results_path'])
+    ensure_path_exists(results_path)
     
     output_path = config_dict.get('output_path', None)
     if output_path is not None:
         output_path = Path(output_path)
 
-    is_cv_loop = config_dict.get('is_cv_loop', None)
+    is_cv_loop = config_dict.get('is_cv_loop')
     
     generate_cf(results_path, output_path, is_cv_loop)
 
