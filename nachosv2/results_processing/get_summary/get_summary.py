@@ -1,3 +1,5 @@
+"""get_summary.py
+"""
 from pathlib import Path
 from typing import Optional
 from termcolor import colored
@@ -14,13 +16,14 @@ from nachosv2.results_processing.get_metrics.get_metrics import (
     generate_metrics_file
 )
 
+
 def fill_dataframe(filepath: Path,
                    df: pd.DataFrame,
                    is_cv_loop: bool,
                    metrics_filepath: Path) -> pd.DataFrame:
     """
-    Processes a CSV file containing model training history, extracts relevant metrics, 
-    and appends a summarized row to an existing DataFrame.
+    Processes a CSV file containing model training history, extracts relevant
+    metrics, and appends a summarized row to an existing DataFrame.
 
     Args:
         filepath (Path): Path to the CSV file containing the training history.
@@ -42,8 +45,10 @@ def fill_dataframe(filepath: Path,
     
     # Cross-validation loop
     if is_cv_loop:
-        # Example: Extracting the epoch with the lowest loss (assuming a column 'loss' exists)
-        # You need to adjust this based on your actual CSV column names and what you define as 'best'
+        # Example: Extracting the epoch with the lowest loss 
+        # (assuming a column 'loss' exists)
+        # You need to adjust this based on your actual CSV column names
+        # and what you define as 'best'
         # Logic: it identifies the minimum value for 'validation loss'
         best_val_loss_index = history_df['validation_loss'].idxmin()
         best_val_loss_data = history_df.iloc[best_val_loss_index]
@@ -55,7 +60,7 @@ def fill_dataframe(filepath: Path,
             'test_fold': file_info['test_fold'],
             'hp_config': file_info['hp_config'],
             'val_fold': file_info['val_fold'],
-            # since the index is 0-based, we add 1 to get the actual epoch number
+            # since the index is 0-based, we add 1 to get the actual epoch
             'n_epochs': [best_val_loss_index+1],
             'training_loss': [best_val_loss_data['training_loss']],
             'validation_loss': [best_val_loss_data['validation_loss']],
@@ -104,14 +109,14 @@ def fill_dataframe(filepath: Path,
             'test_fold': file_info['test_fold'],
             'hp_config': file_info['hp_config'],
             # since the index is 0-based, we add 1 to get the actual epoch number
-            'n_epochs': [history_df.iloc[-1].name+1], # it extracts 0-based indexed of last row
+            'n_epochs': [history_df.iloc[-1].name+1],
             'training_loss': [history_df.iloc[-1]['training_loss']],
             'training_accuracy': [history_df.iloc[-1]['training_accuracy']],
         }
 
         for metric in metric_columns:
             query = "test_fold==@file_info['test_fold'] and hp_config==@file_info['hp_config']"
-            dict_row[f"test_{metric}"] = metrics_df.query(query)[metric]
+            dict_row[metric] = metrics_df.query(query)[metric]
 
         new_row_df = pd.DataFrame(dict_row)
         df = pd.concat([df, new_row_df], ignore_index=True)
@@ -124,12 +129,12 @@ def generate_summary(results_path: Path,
                      is_cv_loop: Optional[bool],
                      metrics_filepath: Optional[Path]) -> Path:
     """
-    Generates a summary CSV file by combining training history and evaluation metrics
-    from multiple training runs.
+    Generates a summary CSV file by combining training history and evaluation
+    metrics from multiple training runs.
 
-    This function aggregates training data (such as loss, accuracy, and epochs) from 
-    individual history CSV files and merges them with optional evaluation metrics. 
-    The final combined summary is saved to disk.
+    This function aggregates training data (such as loss, accuracy, and epochs)
+    from individual history CSV files and merges them with optional evaluation
+    metrics. The final combined summary is saved to disk.
 
     Args:
         results_path (Path): Path to the directory containing training history files.
