@@ -4,12 +4,16 @@ from pathlib import Path
 from typing import Optional, List
 from termcolor import colored
 import pandas as pd
+import re
+
 
 def get_other_result(path: Path,
                      suffix: str):
     # take path prediction and get class name file
-    other_path = Path(str(path).replace('prediction_results',
-                                         suffix))
+    # other_path = Path(str(path).replace('prediction_results',
+    #                                      suffix))
+    
+    other_path = Path(re.sub(r'prediction_(?:test|validation)', 'class_names', str(path)))
     # verify other_path exists
     if not other_path.exists():
         raise FileNotFoundError(f"The file {other_path} does not exist.")
@@ -145,7 +149,7 @@ def get_newfilepath_from_predictions(predictions_filepath: Path,
         string: The name of the confusion matrix file.
     """
     
-    file_name = predictions_filepath.name.replace("prediction_results",
+    file_name = predictions_filepath.name.replace("prediction",
                                                   suffix_name)
     if output_path is None:
         folder_path = get_default_folder(predictions_filepath,
