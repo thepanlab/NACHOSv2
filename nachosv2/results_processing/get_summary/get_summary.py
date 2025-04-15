@@ -273,20 +273,30 @@ def get_best_hp_for_test_fold(avg_filepath: Path,
 
 def generate_ct_hp_configurations(best_filepath: Path,
                                   results_path: Path,
-                                  configuration_cv_path: Path,
-                                  use_hpo=False):
+                                  configuration_cv_path: Path):
     """
-    Processes a single row from the best configurations file to generate CT training 
-    and HP configuration files.
+    Generates cross-testing (CT) training and hyperparameter configuration files.
 
-    Args:
-        row (pd.Series): Row from the DataFrame containing test fold and hyperparameter index.
-        training_config_dict (Dict): Training configuration dictionary.
-        hp_config_dict (Dict): Hyperparameter configuration dictionary.
-        ct_configuration_path (Path): Path to the CT configuration directory.
+    This function reads the best configuration metrics from a CSV file (best_filepath) 
+    and if hyperparameter random search was used. The best hyperparameter configuration is selected
+    For each entry in the best configurations, it generates a YAML file containing a training configuration 
+    and another YAML file with the corresponding hyperparameter configuration for cross-testing.
+    
+    Parameters:
+        best_filepath (Path): Path to the CSV file containing the best 
+                              configuration metrics, including test fold, 
+                              hyperparameter configuration index, and average 
+                              number of epochs.
+        results_path (Path): Root directory where result directories (e.g.,
+                             CT configurations and CV HPO configurations) are located.
+        configuration_cv_path (Path): Path to the cross-validation configuration file,
+                                      used to retrieve initial settings 
+                                      (including the "use_hpo" flag).
+
+    Returns:
+        None
+        (The function generates configuration YAML files as a side effect.)
     """
-
-    configuration_cv_path = Path(configuration_cv_path)
     ensure_path_exists(configuration_cv_path)
     use_hpo = get_config(configuration_cv_path)["use_hpo"]
 
@@ -316,16 +326,14 @@ def generate_ct_hp_configurations(best_filepath: Path,
 
         training_config_dict["configuration_filepath"] = str(ct_hp_config_path)
         training_config_dict["test_fold_list"] = test_fold
-
+        # empty validation list
+        training_config_dict["validation_fold_list"] = []
+        # use_hpo to False
+        training_config_dict["use_hpo"] = False
         # save yml file
         save_dict_to_yaml(training_config_dict, ct_training_config_path)
 
-        # TODO: debug from here
-        # Epochs should be retrieve from the best configuration
-        # Epochs should 
-
         if use_hpo:
-            # TODO
             # Based on the hp_config_index, load the corresponding hyperparameter configuration
             df_best_hp_config = df_hp_random_search.query("hp_config_index==@hp_config_index")
             hp_config_dict = df_best_hp_config.to_dict(orient='records')[0]
@@ -338,9 +346,6 @@ def generate_ct_hp_configurations(best_filepath: Path,
             
         hp_config_dict["n_epochs"] = n_epochs
         save_dict_to_yaml(hp_config_dict, ct_hp_config_path)
-
-            # based on config:
-            # * delete validation_fold_list
 
 
 def main():
