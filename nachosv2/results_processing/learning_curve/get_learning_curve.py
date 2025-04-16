@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 def generate_individual_learning_curve(history_path: Path,
                                        is_cv_loop: bool,
                                        output_filepath: Path,
-                                       title: Optional[str]=None):
+                                       title: Optional[str] = None):
     df_history = pd.read_csv(history_path,
                              index_col=0)
     
@@ -46,12 +46,13 @@ def generate_individual_learning_curve(history_path: Path,
     fig.savefig(output_filepath,
                 bbox_inches="tight",
                 dpi=300)
+    plt.close(fig)
 
 
 def generate_learning_curve(
         results_path: Path,
         is_cv_loop: bool,
-        custom_output_dir: Optional[Path]=None):
+        custom_output_dir: Optional[Path] = None):
 
     suffix_filename = "history"
 
