@@ -16,10 +16,10 @@ from nachosv2.setup.utils import get_new_filepath_from_suffix
 import matplotlib.pyplot as plt
 
 
-def generate_individual_history(history_path: Path,
-                                is_cv_loop: bool,
-                                output_filepath: Path,
-                                title: Optional[str]=None):
+def generate_individual_learning_curve(history_path: Path,
+                                       is_cv_loop: bool,
+                                       output_filepath: Path,
+                                       title: Optional[str]=None):
     df_history = pd.read_csv(history_path,
                              index_col=0)
     
@@ -70,9 +70,9 @@ def generate_learning_curve(
         
         learning_curve_path = learning_curve_path.with_suffix(".png")
 
-        generate_individual_history(history_path,
-                                    is_cv_loop,
-                                    learning_curve_path)
+        generate_individual_learning_curve(history_path,
+                                           is_cv_loop,
+                                           learning_curve_path)
 
 
 def main():
