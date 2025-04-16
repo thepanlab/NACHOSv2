@@ -41,7 +41,7 @@ def generate_individual_learning_curve(history_path: Path,
         ax.plot(df_history["validation_loss"],
                 label="Validation")
     ax.legend()
-    ax.grid(which = "major", axis = "y")
+    ax.grid(which="major", axis="y")
     
     fig.savefig(output_filepath,
                 bbox_inches="tight",
