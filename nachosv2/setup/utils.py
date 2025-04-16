@@ -13,7 +13,7 @@ def get_other_result(path: Path,
     # other_path = Path(str(path).replace('prediction_results',
     #                                      suffix))
     
-    other_path = Path(re.sub(r'prediction_(?:test|validation)', 'class_names', str(path)))
+    other_path = Path(re.sub(r'prediction_(?:test|val)', 'class_names', str(path)))
     # verify other_path exists
     if not other_path.exists():
         raise FileNotFoundError(f"The file {other_path} does not exist.")
