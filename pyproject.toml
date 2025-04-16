@@ -28,6 +28,7 @@ dependencies = [
   "PyYAML",
   "mpi4py",
   "scikit-learn",
+  "matplotlib",
 ]
 
 [project.urls]
@@ -36,7 +37,7 @@ Repository = "https://github.com/thepanlab/NACHOS_v2"
 
 [project.scripts]
 NACHOSv2_train = "nachosv2.training.training.training:train"
-NACHOSv2_get_summary = "nachosv2.results_processing.get_summary.get_summary:main"
+NACHOSv2_get_summary = "nachosv2.results_processing.summary.get_summary:main"
 NACHOSv2_get_confusion_matrix = "nachosv2.results_processing.confusion_matrix.get_confusion_matrix:main"
 
 [tool.setuptools.packages.find]
