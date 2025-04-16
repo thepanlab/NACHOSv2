@@ -7,7 +7,7 @@ from nachosv2.setup.command_line_parser import parse_command_line_args
 from nachosv2.setup.get_config import get_config
 from nachosv2.setup.utils import get_other_result
 from nachosv2.setup.utils import get_filepath_list
-from nachosv2.setup.utils import get_newfilepath_from_predictions
+from nachosv2.setup.utils import get_new_filepath_from_suffix
 from nachosv2.setup.files_check import ensure_path_exists
 
 
@@ -92,10 +92,11 @@ def generate_cf(results_path: Path,
     for predictions_path in prediction_file_path_list:        
         cf_df = generate_individual_confusion_matrix(predictions_path)
 
-        cf_filepath = get_newfilepath_from_predictions(predictions_path,
-                                                       "confusion_matrix",
-                                                       is_cv_loop,
-                                                       output_path)
+        cf_filepath = get_new_filepath_from_suffix(predictions_path,
+                                                   "prediction",
+                                                   "confusion_matrix",
+                                                   is_cv_loop,
+                                                   output_path)
 
         cf_df.to_csv(cf_filepath)
 
