@@ -135,35 +135,44 @@ def get_folder_path(output_path: Path,
     return folder_path
 
 
-def get_newfilepath_from_predictions(predictions_filepath: Path,
-                                     suffix_name: str,
-                                     is_cv_loop: bool,
-                                     output_path: Optional[Path]):
+def get_new_filepath_from_suffix(
+    input_filepath: Path,
+    old_suffix: str,
+    new_suffix: str,
+    is_cv_loop: bool,
+    custom_output_dir: Optional[Path] = None,
+) -> Path:
     """
-    Get the name of the confusion matrix file.
+    Generate a new file path by replacing a suffix in the file name and ensuring the output directory exists.
 
     Args:
-        path (Path): The path of the confusion matrix file.
+        input_filepath (Path): Original file path to modify.
+        old_suffix (str): Suffix substring in the file name to be replaced.
+        new_suffix (str): Replacement suffix for the file name.
+        is_cross_validation (bool): Whether the file originates from a cross-validation (CV) loop.
+        custom_output_dir (Optional[Path]): If provided, use this directory for the new file. Otherwise, use default.
 
     Returns:
-        string: The name of the confusion matrix file.
+        Path: Full path to the new file with the replaced suffix.
     """
-    
-    file_name = predictions_filepath.name.replace("prediction",
-                                                  suffix_name)
-    if output_path is None:
-        folder_path = get_default_folder(predictions_filepath,
-                                         suffix_name,
-                                         is_cv_loop)
-        print(colored(f"\nUsing default folder: {folder_path}.", 'magenta'))
+    # Replace the old suffix in the base file name with the new suffix
+    original_name = input_filepath.name
+    updated_name = original_name.replace(old_suffix, new_suffix)
+
+    # Determine the output directory
+    if custom_output_dir:
+        target_dir = custom_output_dir
     else:
-        folder_path = output_path
-        
-    folder_path.mkdir(mode=0o777, parents=True, exist_ok=True)
-    
-    filepath = folder_path / file_name
-    
-    return filepath
+        # Compute default directory based on file location, new suffix, and CV flag
+        target_dir = get_default_folder(input_filepath, new_suffix, is_cv_loop)
+        print(colored(f"\nUsing default folder: {target_dir}.", 'magenta'))
+
+    # Ensure the target directory exists with appropriate permissions
+    target_dir.mkdir(mode=0o777, parents=True, exist_ok=True)
+
+    # Construct and return the new file path
+    new_filepath = target_dir / updated_name
+    return new_filepath
 
 
 def get_filepath_from_results_path(results_path: Path,
