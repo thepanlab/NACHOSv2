@@ -12,7 +12,7 @@ from nachosv2.setup.get_config import get_config
 from nachosv2.setup.utils_processing import save_dict_to_yaml
 from nachosv2.setup.utils_processing import parse_filename
 from nachosv2.setup.utils_processing import is_metric_allowed
-from nachosv2.results_processing.get_metrics.get_metrics import (
+from nachosv2.results_processing.metrics.get_metrics import (
     generate_metrics_file
 )
 
