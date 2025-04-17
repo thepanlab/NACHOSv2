@@ -32,7 +32,6 @@ from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import save_me
 # from nachosv2.model_processing.save_model import save_model
 from nachosv2.modules.timer.precision_timer import PrecisionTimer
 from nachosv2.output_processing.result_outputter import predict_and_save_results
-from nachosv2.results_processing.class_recall.epoch_recall import epoch_class_recall
 from nachosv2.model_processing.initialize_model_weights import initialize_model_weights        
 from nachosv2.model_processing.create_model import create_model
 from nachosv2.model_processing.get_metrics_dictionary import get_metrics_dictionary
@@ -844,14 +843,11 @@ class TrainingFold():
         # Calculates the loss and accuracy of the current epoch 
         epoch_loss = running_loss / len(data_loader.dataset)
         epoch_accuracy = float(running_corrects) / len(data_loader.dataset)
-        
+
         # Saves the loss and accuracy of the current epoch into the history
         self.history[f'{partition}_loss'].append(epoch_loss)
         self.history[f'{partition}_accuracy'].append(epoch_accuracy)
-        
-        # if self.metrics_dictionary['recall'] and partition == 'validation':
-        #     epoch_class_recall(self.fold_info.current_configuration['class_names'], epoch, self.all_labels, self.all_predictions, self.history)
-        
+
         return epoch_loss, epoch_accuracy
 
 
