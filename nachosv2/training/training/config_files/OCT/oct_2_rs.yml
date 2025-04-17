@@ -2,18 +2,19 @@
 # it will verify that the configuration file
 # has single values
 
-use_hpo: false
-configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training/config_files/OCT_small/hp_single_configuration.yml"
+use_hpo: true
+seed_hpo: 1234
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training/config_files/OCT/hp_random_search_2.yml"
 
 number_channels: 1
 
-data_input_directory: "/home/pcallec/NACHOS/data/pig_kidney_subset"
+data_input_directory: "/home/pcallec/mif_outer/data/pig_kidney"
 # csv file with the metadata: image_path, label, fold
-path_metadata_csv: "/home/pcallec/NACHOS/nachosv2/training/metadata_csv/pig_kidney_subset_metadata.csv"
-output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset"
-job_name: "pig_kidney_subset"
+path_metadata_csv: "/home/pcallec/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
+output_path: "/home/pcallec/NACHOS/results/pig_kidney_random_search_2"
+job_name: "pig_kidney"
 
-checkpoint_epoch_frequency: 2
+checkpoint_epoch_frequency: 5
 
 do_normalize_2d: true
 shuffle_the_images: true
@@ -37,11 +38,14 @@ fold_list:
   - "k3"
   - "k4"
   - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
 
 test_fold_list:
   - "k1"
-  - "k2"
-  - "k3"
 
 # validation_fold_list is used only for 
 # cross-validation
@@ -51,6 +55,11 @@ validation_fold_list:
   - "k3"
   - "k4"
   - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
 
 image_size:
   - 301
