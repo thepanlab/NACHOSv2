@@ -21,8 +21,6 @@ import torch.nn as nn
 import torch.optim as optim
 
 from nachosv2.training.training_processing.custom_2D_dataset import Dataset2D
-# from nachosv2.training.training_processing.custom_3D_dataset import Custom3DDataset
-from nachosv2.data_processing.normalizer import normalizer
 from nachosv2.image_processing.image_crop import create_crop_box
 from nachosv2.image_processing.image_parser import *
 from nachosv2.checkpoint_processing.checkpointer import Checkpointer
@@ -172,13 +170,6 @@ class TrainingFold():
             self.configuration['job_name'] = new_job_name
 
 
-    def get_normalizer(self):
-        normalizer = None
-        if not self.is_3d:
-            normalizer = normalizer(self.partitions_info_dict["training"]["files"],
-                                    dict_config)
-
-
     def get_files_labels(self,
                          partition:str):
         
@@ -213,11 +204,11 @@ class TrainingFold():
         """
 
         l_columns = ["absolute_filepath", "label"]
-        
+
         # verify values in l_columns are in df_metadata.columns
         if not all(val_col in self.df_metadata.columns.to_list() for val_col in l_columns):
             raise ValueError(f"The columns {l_columns} must be in csv_metadata file.")
-        
+
         for partition, value_dict in self.partitions_info_dict.items():
             value_dict['files'], value_dict['labels'] = self.get_files_labels(partition)
 
@@ -354,21 +345,21 @@ class TrainingFold():
         Returns:
             _is_dataset_created (bool): If the datasets are created or not.
         """
-        
+
         # Gets the datasets for each phase
         for dataset_type in self.partitions_info_dict:
-            
+
             # If there is no files for the current dataset (= no validation = outer loop)
             if not self.partitions_info_dict[dataset_type]['files']:
                 continue  # Skips the rest of the loop
-            
+
             drop_residual = False
             # If the current dataset is the training one
             if dataset_type == "training":
-                
+
                 # Calculates the residual
                 drop_residual = self._residual_compute_and_decide()
-                
+
                 transform = None
                 
                 if self.do_normalize_2d:

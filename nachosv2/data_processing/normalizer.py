@@ -24,38 +24,3 @@ def get_mean_std(dataset):
     mean = channels_sum / num_batches
     std = torch.sqrt((channels_squared_sum / num_batches) - mean**2)
     return mean, std
-
-# Assuming 'dataset' is your PyTorch dataset
-
-
-def normalizer(dataset) -> Callable:
-    """
-    Creates the normalization of the dataset.
-    
-    Args:
-        directory_path (str): The path to the CSV directory.
-        current_configuration (str): The current configuration file.
-    
-    Returns:    
-        normalize_transform (NormalizeTransform): The normalization transformer.
-    """
-    
-    print(colored("Calculing normalization...", 'green'))
-    mean, std = get_mean_std(dataset)
-    print(colored(f"Normalization calculated: Mean={mean}, Std={std}", 'green'))
-    
-    # Creates the normalization transform
-    def normalize_function(tensor):
-        """
-        Applies normalization to a single image.
-
-        Args:
-            image (Tensor): The input image tensor.
-
-        Returns:
-            Tensor: The normalized image tensor.
-        """
-        transform = transforms.Normalize(mean, std)
-        return transform(tensor)
-      
-    return normalize_function
