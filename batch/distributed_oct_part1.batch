@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#SBATCH --partition=disc_quad_a100
+#SBATCH --output=batch_out/%x_%J_stdout.txt
+#SBATCH --error=batch_out/%x_%J_stderr.txt
+#SBATCH --nodes=1
+#SBATCH --ntasks=3
+#SBATCH --mem=50G
+#SBATCH --gres=gpu:2
+#SBATCH --time=48:00:00
+#SBATCH --job-name=oct_p1
+#SBATCH --mail-user=pcallec@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2
+
+#################################################
+
+echo "Nodes=${SLURM_JOB_NODELIST}"
+
+# Dynamically get GPU IDs assigned to this job
+gpu_ids=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ')
+echo "Assigned GPUs: $gpu_ids"
+
+# Convert GPU IDs into proper CUDA device string
+device_string=$(echo $gpu_ids | sed 's/\([0-9]\)/cuda:\1/g')
+
+echo "Using devices: $device_string"
+
+mpirun -n 3 NACHOSv2_train \
+    --file /ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT/oct_1_rs_p1.yml \
+    --loop "cross-validation" \
+    --devices $device_string
