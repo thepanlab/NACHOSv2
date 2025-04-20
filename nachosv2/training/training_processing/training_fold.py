@@ -173,31 +173,6 @@ class TrainingFold():
 
             self.configuration['job_name'] = new_job_name
 
-    # def get_files_labels(self,
-    #                      partition:str):
-        
-    #     # Dictionary mapping partitions to their respective fold names or conditions
-    #     partition_queries = {
-    #         'test': f"fold_name == @self.test_fold",
-    #         'validation': f"fold_name == @self.validation_fold",
-    #         'training': f"fold_name in @self.training_folds_list"
-    #     }
-
-    #     # Validate the partition argument
-    #     if partition not in partition_queries:
-    #         raise ValueError(f"Invalid partition specified: {partition}."
-    #                          " Must be 'test', 'validation', or 'training'.")
-
-    #     # Query the DataFrame once per function call
-    #     partition_query = partition_queries[partition]
-    #     filtered_data = self.df_metadata.query(partition_query)
-
-    #     # Extract files and labels lists
-    #     files = filtered_data['absolute_filepath'].tolist()
-    #     labels = filtered_data['label'].tolist()
-
-    #     return files, labels
-
 
     def get_dataset_info(self):
         """
