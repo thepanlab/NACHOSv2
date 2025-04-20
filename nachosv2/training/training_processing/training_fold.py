@@ -956,7 +956,8 @@ class TrainingFold():
             self.start_epoch = last_checkpoint_epoch + 1
             # retrieve specific checkpoint file
             checkpoint = torch.load(last_checkpoint_path,
-                                    weights_only=True)
+                                    weights_only=True,
+                                    map_location=self.execution_device)
 
         if best_checkpoint_path is not None:
             self.prev_best_checkpoint_file_path = best_checkpoint_path
