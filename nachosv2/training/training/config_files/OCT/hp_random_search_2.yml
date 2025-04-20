@@ -1,6 +1,6 @@
 
 # only used when use_hpo: true
-n_combinations: 30
+n_combinations: 25
 
 # Specify single value or range e.g.
 # if using a single value use
