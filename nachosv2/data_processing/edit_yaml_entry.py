@@ -2,30 +2,31 @@ import argparse
 from pathlib import Path
 import yaml
 
-def modify_yaml_value(yaml_path: Path,
-                      key_to_modify: str,
-                      new_value: str,
-                      output_folder: Path = None):
+
+def update_yaml_key_value(yaml_path: Path,
+                          target_key: str,
+                          updated_value: str,
+                          output_dir: Path = None):
 
     # Read the YAML file
     with open(yaml_path, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
 
     # Modify the value if the key exists
-    if key_to_modify in data:
-        data[key_to_modify] = new_value
+    if target_key in data:
+        data[target_key] = updated_value
     else:
-        print(f"Key '{key_to_modify}' not found in the YAML file.")
+        print(f"Key '{target_key}' not found in the YAML file.")
         return
 
     # Write back to the same file (or change this to a new path)
-    if output_folder:
-        yaml_path = output_folder / yaml_path.name
+    if output_dir:
+        yaml_path = output_dir / yaml_path.name
     
     with open(yaml_path, 'w', encoding='utf-8') as f:
         yaml.safe_dump(data, f, sort_keys=False)
 
-    print(f"Updated '{key_to_modify}' to: {new_value}")
+    print(f"Updated '{target_key}' to: {updated_value}. Save at {yaml_path}")
 
 
 def main():
@@ -34,37 +35,39 @@ def main():
 
     # Definition of all arguments
     parser.add_argument( # Allows to specify the config file in command line
-        '--yml_path',
+        '--yaml_path',
         type = str, default = None, required = True,
-        help = 'Path for yml file.'
+        help = 'Path to the input YAML file.'
     )
     
     parser.add_argument( # Allows to specify the config file in command line
-        '--output_folder',
+        '--output_dir',
         type = str, default = None, required = False,
         help = 'Output folder path for new yml file.'
+               'If not provided, the original file will be overwritten.'
     )
     
     parser.add_argument( # Allows to specify the config file in command line
         '--key',
         type = str, default = None, required = True,
-        help = 'Output folder path for new yml file.'
+        help = 'Key in the YAML file whose value should be updated.'
     )
 
     parser.add_argument( # Allows to specify the config file in command line
         '--value',
         type = str, default = None, required = True,
-        help = 'Output folder path for new yml file.'
+        help = 'New value to assign to the specified key.'
     )
 
     args = parser.parse_args()
     
-    modify_yaml_value(yaml_path= Path(args.yml_path),
-                      key_to_modify=args.key,
-                      new_value=args.value,
-                      output_folder=Path(args.output_folder) if args.output_folder else None)
+    update_yaml_key_value(
+        yaml_path= Path(args.yaml_path),
+        target_key=args.key,
+        updated_value=args.value,
+        output_dir=Path(args.output_dir) if args.output_dir else None
+    )
 
 
 if __name__ == "__main__":
     main()
-    
