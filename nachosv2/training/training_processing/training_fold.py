@@ -4,8 +4,6 @@ from collections import OrderedDict
 from typing import Optional, Callable, Union, Tuple, List
 from pathlib import Path
 import math
-from typing import Union, List
-
 from termcolor import colored
 import pandas as pd
 from datetime import datetime
@@ -41,6 +39,7 @@ from nachosv2.setup.utils_training import create_empty_history
 from nachosv2.setup.utils_training import get_files_labels
 from nachosv2.setup.utils_training import get_mean_stddev
 
+
 class TrainingFold():
     def __init__(
         self,
@@ -62,30 +61,24 @@ class TrainingFold():
             execution_device (str): The name of the device that will be use.
             rotation_index (int): The fold index within the loop.
             configuration (dict): The training configuration.
-            
             testing_subject (str): The test subject name.
             validation_subject (str): The validation_subject name.
-            
             fold_list (list of dict): A list of fold partitions.
-            
             data_dictionary (dict of list): The data dictionary.
             number_of_epochs (int): The number of epochs.
-                    
             mpi_rank (int): An optional value of some MPI rank. Default is none. (Optional)
             is_outer_loop (bool): If this is of the outer loop. Default is false. (Optional)
             is_verbose_on (bool): If the verbose mode is activated. Default is false. (Optional)
         """
-                
+
         self.training_index = training_index
         self.configuration = configuration
-        
         self.indices_loop_dict = indices_loop_dict
-        
         self.test_fold = indices_loop_dict["test"]
         self.validation_fold = indices_loop_dict["validation"]
         self.hyperparameters = indices_loop_dict["hp_configuration"]
         self.hp_config_index = self.hyperparameters["hp_config_index"]
-        
+
         if is_cv_loop:
             self.prefix_name = f"{configuration['job_name']}" + \
                                f"_test_{self.test_fold}" + \
@@ -96,19 +89,10 @@ class TrainingFold():
                                f"_test_{self.test_fold}"
 
         self.training_folds_list = training_folds_list
-        
         self.df_metadata = df_metadata
         # hyperparameter
         self.number_of_epochs = self.hyperparameters["n_epochs"]
         self.metrics_dictionary = get_metrics_dictionary(self.configuration['metrics_list'])
-        
-
-        # self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
-        #     [('training', {'files': [], 'labels': [], 'dataloader': None}),
-        #      ('validation', {'files': [], 'labels': [], 'dataloader': None}),
-        #      ('test', {'files': [], 'labels': [], 'dataloader': None}),
-        #     ]
-        #     )
         
         # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
         # The input is expected to contain the unnormalized logits for each class
@@ -118,33 +102,28 @@ class TrainingFold():
         #https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html
         #https://discuss.pytorch.org/t/bceloss-vs-bcewithlogitsloss/33586
         self.loss_function = nn.CrossEntropyLoss()
-        
+
         self.model = None
         self.optimizer = None
         self.scheduler = None
-        
+
         self.execution_device = execution_device
-        
         self.is_cv_loop = is_cv_loop
-        
         self.history = create_empty_history(self.is_cv_loop, 
                                             self.metrics_dictionary)
         self.time_elapsed = None
-        
         self.counter_early_stopping = 0
-        
+
         self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
             [('training', {'files': [], 'labels': [], 'dataloader': None}),
              ('validation', {'files': [], 'labels': [], 'dataloader': None}),
              ('test', {'files': [], 'labels': [], 'dataloader': None}),
             ]
             )
-        
         self.use_mixed_precision = use_mixed_precision
-
         self.is_3d = is_3d
         self.do_normalize_2d = do_normalize_2d
-        
+
         if self.hyperparameters["do_cropping"]:
             self.crop_box = create_crop_box(
                 self.hyperparameters['cropping_position']["x"], # The height of the offset
@@ -155,15 +134,15 @@ class TrainingFold():
             )
         else:
             self.crop_box = None
-        
+
         loop_folder = 'CV' if self.is_cv_loop else 'CT'
         self.checkpoint_folder_path = Path(self.configuration['output_path']) / loop_folder /'checkpoints'
         self.start_epoch = 0
-        
+
         self.prev_checkpoint_file_path = None
         self.prev_best_checkpoint_file_path = None
         self.last_checkpoint_file_path = None
-        
+
         # TODO: verify it doesnt contradict with prefix
         if is_cv_loop: 
             new_job_name = f"{configuration['job_name']}_test_{self.test_fold}"+ \
@@ -201,7 +180,7 @@ class TrainingFold():
         """
         Creates the initial model for training and initializes its weights.
         """
-        
+
         # Creates the model
         self.model = create_model(self.configuration,
                                   self.hyperparameters)
@@ -216,12 +195,12 @@ class TrainingFold():
         Runs all of the steps for the training process.
         Training itself depends on the state of the training fold.
         Checks for insufficient dataset.
-        """               
+        """
         self.get_dataset_info()
         self.create_model()
         self.optimizer = create_optimizer(self.model,
                                           self.hyperparameters)
-        
+
         # scheduler https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
       
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
@@ -231,7 +210,6 @@ class TrainingFold():
                                                               verbose='deprecated')
         
         # self.save_state()
-            
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
             fold_timer = PrecisionTimer()
@@ -245,22 +223,19 @@ class TrainingFold():
         """
         Loads the latest training state.
         """
-        
         # Loads the log file
         log = read_item_list_in_log(
             self.configuration['output_path'],
             self.configuration['job_name'], 
             ['fold_info']
         )
-        
         # If there is no log or on fold_info in log, returns None
         if log is None or 'fold_info' not in log:
             logged_fold_info = None
-        
         # If there is log, returns it
         else:
             logged_fold_info = log['fold_info']
-        
+
         return logged_fold_info
 
 
@@ -268,7 +243,7 @@ class TrainingFold():
         """
         Saves the state of the fold to a log.
         """
-       
+
         save_metadata_checkpoint(
             output_directory=self.configuration['output_path'],
             prefix_filename=self.configuration['job_name'],
@@ -282,7 +257,7 @@ class TrainingFold():
         Creates the dataset needed to trains the model.
         It will map the image paths into their respective image and label pairs.
         TODO Complete any image-reading changes here for different file types.
-        
+
         Returns:
             _is_dataset_created (bool): If the datasets are created or not.
         """
@@ -302,7 +277,7 @@ class TrainingFold():
                 drop_residual = self._residual_compute_and_decide()
 
                 transform = None
-                
+
                 if self.do_normalize_2d:
                     dataset_before_normalization = Dataset2D(
                         dictionary_partition=self.partitions_info_dict[partition],
@@ -320,7 +295,7 @@ class TrainingFold():
                         drop_last=drop_residual,
                         num_workers=0  # Default
                     )
-                    
+
                     mean, stddev = get_mean_stddev(
                         number_channels=self.configuration['number_channels'],
                         dataloader=dataloader)
@@ -332,7 +307,7 @@ class TrainingFold():
                     self.configuration['data_input_directory'],   # The file path prefix = the path to the directory where the images are
                     self.partitions_info_dict[partition],               # The data dictionary
                 )
-                
+
             else:
                 dataset = Dataset2D(
                     dictionary_partition = self.partitions_info_dict[partition], # The data dictionary
@@ -357,16 +332,16 @@ class TrainingFold():
                 drop_last = drop_residual,
                 num_workers = 4
             )
-            
+
             # Adds the dataloader to the dictionary
             self.partitions_info_dict[partition]['dataloader'] = dataloader
-        
+
         # If the datasets are empty, cannot train
         _is_dataset_created = self._check_create_dataset()
-        
+
         return _is_dataset_created
 
-    
+
     def _residual_compute_and_decide(self) -> bool:
         """
         Calculates the residual and choses to use it or not.
@@ -378,18 +353,17 @@ class TrainingFold():
         # Calculates the residual
         residual = len(self.partitions_info_dict["training"]['files']) % self.hyperparameters['batch_size']
         print("Residual for Batch training =", residual)
-        
-        
+
         # If the residual is too small, it is discarded
         if residual < (self.hyperparameters['batch_size']/2):
             print("Residual discarded")
             drop_residual = True
-        
+
         # If the residual is ok, it is used
         else:
             print("Residual not discarded")
             drop_residual = False
-        
+
         return drop_residual
 
 
@@ -404,14 +378,13 @@ class TrainingFold():
         Returns:
             _shuffled_dataset (Custom2DDataset): The shuffled dataset.
         """
-                
+
         if partition == 'training': # For the training
             do_shuffle = True # Lets the dataloader shuffle the images
-        
-        
+
         else: # For the other datasets
             do_shuffle = False # Doesn't let the dataloader shuffle the images
-            
+
             # Shuffles the images manually to keep a track on the indexes
             indexes_list = list(range(len(dataset)))    # Gets the list of indexes
             random.shuffle(indexes_list)                # Shuffles it
@@ -451,19 +424,19 @@ class TrainingFold():
         # If both are not empty
         else:
             _is_dataset_created = True
-            
-        return _is_dataset_created
-    
 
-    def process_one_epoch(self, epoch_index, partition):       
-           
+        return _is_dataset_created
+
+
+    def process_one_epoch(self, epoch_index, partition):
+
         # Defines the data loader
         data_loader = self.get_dataloader(partition)
         
         # Initializations
         running_loss = 0.0
         running_corrects = 0
-        
+
         self.all_labels = []
         self.all_predictions = []
 
@@ -475,7 +448,7 @@ class TrainingFold():
             # Set the model to evaluation mode, disabling dropout and using population
             # statistics for batch normalization.
             self.model.eval()
-            
+
         # Iterates over data
         for i, (inputs, labels, _ ) in enumerate(data_loader):
             print(f"Epoch: {epoch_index+1} of {self.number_of_epochs}. {partition} Progress: {i/len(data_loader)*100:.1f}%\r",
@@ -485,7 +458,7 @@ class TrainingFold():
                 partition, inputs, labels,
                 self.use_mixed_precision
             )
-            
+
             running_loss += loss_update
             running_corrects += corrects_update
 
@@ -498,7 +471,7 @@ class TrainingFold():
 
         self.loss_hist[partition][epoch_index] = epoch_loss
         self.accuracy_hist[partition][epoch_index] = epoch_accuracy
-        
+
         # it saves history when self.is_cv_loop and for validation
         # or when not self.is_cv_loop, that is, cross-testing loop
         if partition == 'validation' or not self.is_cv_loop:
@@ -509,11 +482,8 @@ class TrainingFold():
                                 validation_fold=self.validation_fold,
                                 is_cv_loop=self.is_cv_loop)
 
-        
-        
         # Saves the best model
         if partition == 'validation':
-            
             # print epoch results
             print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} |'
                   f'val_loss: {epoch_loss:.4f} | '
@@ -528,19 +498,17 @@ class TrainingFold():
             self.early_stopping(epoch_loss)
             self.counter_early_stopping = self.early_stopping.get_counter()
             self.do_early_stop = self.early_stopping.do_early_stop
-            
             self.save_model(epoch_index, epoch_loss,
                             epoch_accuracy, is_best)
-        
+
         elif not self.is_cv_loop:
             # print epoch results
             print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} |'
                   f'accuracy: {self.accuracy_hist["training"][epoch_index]:.4f} |')
-
             self.save_model(epoch_index, epoch_loss,
                             epoch_accuracy, False)
-            
-        return 
+
+        return
 
 
     def train(self):
@@ -549,9 +517,7 @@ class TrainingFold():
         """
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.writer = SummaryWriter(log_dir=f'runs/nachosv2_{timestamp}')
-        
         # TODO: get history if interruped by reading file
-        
         checkpoint = self.load_checkpoint()
         # verify is less than the expected 
         #TODO: use values of checkpoint to load into model
@@ -562,9 +528,7 @@ class TrainingFold():
             self.accuracy_hist = checkpoint["accuracy_hist"]
             self.best_valid_loss = checkpoint["best_val_loss"]
             self.history = checkpoint["history"] 
-
             self.counter_early_stopping = checkpoint["counter_early_stopping"]
-            
             self.early_stopping = EarlyStopping(patience=self.hyperparameters['patience'],
                                            verbose=True,
                                            counter=self.counter_early_stopping,
@@ -581,19 +545,16 @@ class TrainingFold():
                                            best_val_loss=self.best_valid_loss)    
 
         self.scaler = GradScaler() if self.use_mixed_precision else None
-        
+
         # For each epoch
         for epoch in range(self.start_epoch, self.number_of_epochs):
-            
             # Prints the current epoch
             print('-' * 60)
             print(f'Epoch {epoch + 1}/{self.number_of_epochs}')
-            
             # Defines the list of partitions
             # AHPO/CV: ["train", "validation"]
             # Cross-testing: ["train"]
             partitions_list = self.get_partitions()
-            
             for partition in partitions_list:
                 self.process_one_epoch(epoch, partition)
 
@@ -604,12 +565,11 @@ class TrainingFold():
                         self.scheduler.step()
                 else:
                     # In a cross-testing loop, step the scheduler after training                  
-                    self.scheduler.step()
-                                
+                    self.scheduler.step()          
             if self.is_cv_loop and self.do_early_stop:
                 print("Early stopping")
                 break
-     
+
 
     def get_partitions(self) -> List[str]:
         """
@@ -620,7 +580,6 @@ class TrainingFold():
         Returns:
             list[str]: A list containing the partitions 'train' and optionally 'validation'.
         """
-    
         partitions = ['training']
         if self.is_cv_loop:
             partitions.append('validation')
@@ -641,7 +600,6 @@ class TrainingFold():
         Raises:
             ValueError: If the specified partition is not supported.
         """
-        
         if partition == 'training': # Training phase
             data_loader = self.partitions_info_dict['training']['dataloader'] # Loads the training set
         elif partition == 'validation': # Validation phase
@@ -651,7 +609,8 @@ class TrainingFold():
         else:
             raise ValueError(f"Partition {partition} is not valid.")
         return data_loader
-    
+
+
     def process_batch_mixed_precision(self, partition, inputs, labels):
         # Uses mixed precision to use less memory
         with autocast(enabled=True, dtype=torch.float16,
@@ -680,10 +639,10 @@ class TrainingFold():
                 self.scaler.step(self.optimizer)
                 # Updates the scale for next iteration. 
                 self.scaler.update()
-        
+
         return outputs, loss
 
-    
+
     def process_batch_standard(self, partition, inputs, labels):
         # forward + backward + optimize
         # Make predictions for this batch
@@ -695,8 +654,9 @@ class TrainingFold():
             loss.backward()
             # Adjust learning weights
             self.optimizer.step()
-        
+
         return outputs, loss
+
 
     def process_batch(self,
                       partition: str,
@@ -730,24 +690,24 @@ class TrainingFold():
             # Sends the inputs and labels to the execution device
             inputs = inputs.to(self.execution_device)
             labels = labels.to(self.execution_device)
-            
+
             # Zero your gradients for every batch!
             self.optimizer.zero_grad()
-            
+
             if use_mixed_precision:
                 outputs, loss = self.process_batch_mixed_precision(partition, inputs, labels)
             else:
                 outputs, loss = self.process_batch_standard(partition, inputs, labels)
-            
+
             # Converts the outputs to predictions 
             # max returns a tuple of two output tensors max, max_indices
             _, predictions = torch.max(outputs, dim=1)
-                
+
             # Saves informations to calculates the recall
             # if 'recall' in self.metrics_dictionary and partition == 'validation':
             #     self.all_labels.append(labels)
             #     self.all_predictions.append(predictions)
-                
+
             # Statistics
             batch_loss = loss.item() * inputs.size(0)
             batch_corrects = torch.sum(predictions == labels.data).item()
@@ -773,7 +733,6 @@ class TrainingFold():
             epoch_loss (float): The average loss for the epoch.
             epoch_accuracy (float): The accuracy for the epoch.
         """
-
         # Calculates the loss and accuracy of the current epoch 
         epoch_loss = running_loss / len(data_loader.dataset)
         epoch_accuracy = float(running_corrects) / len(data_loader.dataset)
@@ -801,13 +760,13 @@ class TrainingFold():
         # If the directory does not exist, creates it
         if not self.checkpoint_folder_path.exists():
             self.checkpoint_folder_path.mkdir(mode=0o775, parents=True, exist_ok=True)
-        
+
         # If the epoch is within the frequency steps, saves it
         checkpoint_frequency = self.configuration['checkpoint_epoch_frequency']
         is_frequency_checkpoint = ( (epoch_index+1) % checkpoint_frequency == 0)
         # Determine if it is the last epoch
         is_last = ( epoch_index+1 == self.number_of_epochs)
-        
+
         if is_frequency_checkpoint or is_best or is_last:
 
             # epoch index is 0-indexed
@@ -833,28 +792,25 @@ class TrainingFold():
                             "loss_hist": self.loss_hist,
                             "history": self.history
                            }, path)
-            
+
                 print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs} at {path}.", 'cyan'))
-            
+
             # Keeps only the previous checkpoint for the most recent training fold, to save memory.           
             # Delete previous checkpoint
             if is_frequency_checkpoint:
                 if self.prev_checkpoint_file_path and \
                    self.prev_checkpoint_file_path.exists():
                     os.remove(self.prev_checkpoint_file_path)
-        
                 self.prev_checkpoint_file_path = checkpoint_file_path
             if is_best:
                 if self.prev_best_checkpoint_file_path and \
                    self.prev_best_checkpoint_file_path.exists():
                     os.remove(self.prev_best_checkpoint_file_path)
-
                 self.prev_best_checkpoint_file_path = best_checkpoint_file_path
-
             if is_last:
                 self.last_checkpoint_file_path = last_checkpoint_file_path
-                
-                
+
+
     def get_checkpoint_info(self,
                             list_paths: List[Path]):
         """
@@ -862,7 +818,7 @@ class TrainingFold():
         last_checkpoint_epoch = 0
         last_checkpoint_path = None
         best_checkpoint_path = None
-        
+
         # epoch index is 0-indexed
         # epoch number in file name is 1-indexed
 
@@ -891,7 +847,7 @@ class TrainingFold():
         
         # TODO: regex to obtain specific epoch
         last_checkpoint_path, last_checkpoint_epoch, best_checkpoint_path = self.get_checkpoint_info(checkpoint_list)
-        
+
         if last_checkpoint_path is not None:
             self.prev_checkpoint_path = last_checkpoint_path
             # the checkpoint_epoch is finished
@@ -904,10 +860,10 @@ class TrainingFold():
 
         if best_checkpoint_path is not None:
             self.prev_best_checkpoint_file_path = best_checkpoint_path
-            
+
         return checkpoint
 
-    
+
     def process_results(self):
         """
         Outputs the training results in files.
@@ -921,25 +877,24 @@ class TrainingFold():
             else self.last_checkpoint_file_path
         )
 
-        
         print(colored(f"For predictions using checkpoint file: {checkpoint_path}", 'green'))
         checkpoint = torch.load(checkpoint_path,
                                 weights_only=True)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        
+
         # Sets the model to evaluation mode
         self.model.eval()
-        
+
         # self.model.load_state_dict(torch.load(best_model_path))
         if self.is_cv_loop:
             end_message = f"Finished training for test fold '{self.test_fold}'" + \
                           f" and validation fold '{self.validation_fold}'."
         else:
             end_message = f"Finished training for test fold '{self.test_fold}'"
-            
+
         print(colored(end_message, 'green'))
-        
+
         predict_and_save_results(
             execution_device=self.execution_device,
             output_path=Path(self.configuration['output_path']), 
