@@ -19,10 +19,11 @@ from torch.utils.data import DataLoader, Subset
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torch.optim as optim
+from torchvision import transforms
 
 from nachosv2.training.training_processing.custom_2D_dataset import Dataset2D
 from nachosv2.image_processing.image_crop import create_crop_box
-from nachosv2.image_processing.image_parser import *
+# from nachosv2.image_processing.image_parser import *
 from nachosv2.checkpoint_processing.checkpointer import Checkpointer
 from nachosv2.checkpoint_processing.delete_log import delete_log_file
 from nachosv2.checkpoint_processing.read_log import read_item_list_in_log
@@ -37,6 +38,8 @@ from nachosv2.modules.optimizer.optimizer_creator import create_optimizer
 from nachosv2.modules.early_stopping.earlystopping import EarlyStopping
 from nachosv2.output_processing.result_outputter import save_history_to_csv
 from nachosv2.setup.utils_training import create_empty_history
+from nachosv2.setup.utils_training import get_files_labels
+from nachosv2.setup.utils_training import get_mean_stddev
 
 class TrainingFold():
     def __init__(
@@ -99,13 +102,14 @@ class TrainingFold():
         self.number_of_epochs = self.hyperparameters["n_epochs"]
         self.metrics_dictionary = get_metrics_dictionary(self.configuration['metrics_list'])
         
-        self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
-            [('training', {'files': [], 'labels': [], 'dataloader': None}),
-             ('validation', {'files': [], 'labels': [], 'dataloader': None}),
-             ('test', {'files': [], 'labels': [], 'dataloader': None}),
-            ]
-            )
 
+        # self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
+        #     [('training', {'files': [], 'labels': [], 'dataloader': None}),
+        #      ('validation', {'files': [], 'labels': [], 'dataloader': None}),
+        #      ('test', {'files': [], 'labels': [], 'dataloader': None}),
+        #     ]
+        #     )
+        
         # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
         # The input is expected to contain the unnormalized logits for each class
         # TODO: define as binary cross entropy 
@@ -169,31 +173,30 @@ class TrainingFold():
 
             self.configuration['job_name'] = new_job_name
 
-
-    def get_files_labels(self,
-                         partition:str):
+    # def get_files_labels(self,
+    #                      partition:str):
         
-        # Dictionary mapping partitions to their respective fold names or conditions
-        partition_queries = {
-            'test': f"fold_name == @self.test_fold",
-            'validation': f"fold_name == @self.validation_fold",
-            'training': f"fold_name in @self.training_folds_list"
-        }
+    #     # Dictionary mapping partitions to their respective fold names or conditions
+    #     partition_queries = {
+    #         'test': f"fold_name == @self.test_fold",
+    #         'validation': f"fold_name == @self.validation_fold",
+    #         'training': f"fold_name in @self.training_folds_list"
+    #     }
 
-        # Validate the partition argument
-        if partition not in partition_queries:
-            raise ValueError(f"Invalid partition specified: {partition}."
-                             " Must be 'test', 'validation', or 'training'.")
+    #     # Validate the partition argument
+    #     if partition not in partition_queries:
+    #         raise ValueError(f"Invalid partition specified: {partition}."
+    #                          " Must be 'test', 'validation', or 'training'.")
 
-        # Query the DataFrame once per function call
-        partition_query = partition_queries[partition]
-        filtered_data = self.df_metadata.query(partition_query)
+    #     # Query the DataFrame once per function call
+    #     partition_query = partition_queries[partition]
+    #     filtered_data = self.df_metadata.query(partition_query)
 
-        # Extract files and labels lists
-        files = filtered_data['absolute_filepath'].tolist()
-        labels = filtered_data['label'].tolist()
+    #     # Extract files and labels lists
+    #     files = filtered_data['absolute_filepath'].tolist()
+    #     labels = filtered_data['label'].tolist()
 
-        return files, labels
+    #     return files, labels
 
 
     def get_dataset_info(self):
@@ -210,7 +213,13 @@ class TrainingFold():
             raise ValueError(f"The columns {l_columns} must be in csv_metadata file.")
 
         for partition, value_dict in self.partitions_info_dict.items():
-            value_dict['files'], value_dict['labels'] = self.get_files_labels(partition)
+            value_dict['files'], value_dict['labels'] = get_files_labels(
+                partition,
+                self.df_metadata,
+                self.test_fold,
+                self.validation_fold,
+                self.training_folds_list
+            )
 
 
     def create_model(self):
@@ -291,51 +300,8 @@ class TrainingFold():
             dict_to_save={'fold_info': self.fold_info},
             use_lock=self.mpi_rank != None
         )
-   
-    
-    float_or_list_floats = Union[float, List[float]]
-    def get_mean_stddev(self, dataloader: DataLoader)->Tuple[float_or_list_floats,
-                                                             float_or_list_floats]:
-        """
-        Calculate the mean and standard deviation for grayscale (1 channel) or RGB (3 channels) datasets.
 
-        Args:
-            dataloader (DataLoader): DataLoader providing batches of images.
-            
-        Returns:
-            Tuple[Union[float, List[float]], Union[float, List[float]]]: 
-            (mean, std), where mean and std are scalars (float) for grayscale 
-            or lists of floats for RGB.
-        """
 
-        total_sum = torch.zeros(self.configuration["number_channels"])
-        total_sum_squared = torch.zeros(self.configuration["number_channels"])
-        num_pixels = 0
-        
-        # Iterate through the dataset
-        for images, _, _ in dataloader:
-            batch_size, channels, height, width = images.shape
-
-            images = images.view(batch_size, channels, -1)
-            
-            # Accumulate sum and squared sum
-            total_sum += images.sum(dim=(0, 2))  # Sum over batch and spatial dimensions
-            total_sum_squared += (images ** 2).sum(dim=(0, 2))  # Sum of squares
-            num_pixels += batch_size * height * width  # Total number of pixels per channel
-
-        # Calculate mean and standard deviation
-        mean = total_sum / num_pixels
-        stddev = (total_sum_squared / num_pixels - mean ** 2).sqrt()
-            
-        # Convert to scalars for grayscale or lists for RGB
-        if self.configuration["number_channels"] == 1:
-            return mean.item(), stddev.item()
-        elif self.configuration["number_channels"] == 3:
-            return mean.tolist(), stddev.tolist()
-        else:
-            raise ValueError("Number of channels must be 1 or 3.")
-        
-        
     def create_dataset(self) -> bool:
         """
         Creates the dataset needed to trains the model.
@@ -347,15 +313,15 @@ class TrainingFold():
         """
 
         # Gets the datasets for each phase
-        for dataset_type in self.partitions_info_dict:
+        for partition in self.partitions_info_dict:
 
             # If there is no files for the current dataset (= no validation = outer loop)
-            if not self.partitions_info_dict[dataset_type]['files']:
+            if not self.partitions_info_dict[partition]['files']:
                 continue  # Skips the rest of the loop
 
             drop_residual = False
             # If the current dataset is the training one
-            if dataset_type == "training":
+            if partition == "training":
 
                 # Calculates the residual
                 drop_residual = self._residual_compute_and_decide()
@@ -364,35 +330,37 @@ class TrainingFold():
                 
                 if self.do_normalize_2d:
                     dataset_before_normalization = Dataset2D(
-                        dictionary_partition = self.partitions_info_dict[dataset_type],
-                        number_channels = self.configuration['number_channels'],
-                        image_size = (self.configuration['target_height'], self.configuration['target_width']),
-                        do_cropping = self.hyperparameters['do_cropping'],
-                        crop_box = self.crop_box,
+                        dictionary_partition=self.partitions_info_dict[partition],
+                        number_channels=self.configuration['number_channels'],
+                        image_size=(self.configuration['target_height'], self.configuration['target_width']),
+                        do_cropping=self.hyperparameters['do_cropping'],
+                        crop_box=self.crop_box,
                         transform=None
                     )
 
                     dataloader = DataLoader(
-                        dataset = dataset_before_normalization,
-                        batch_size = self.hyperparameters['batch_size'],
-                        shuffle = False,
-                        drop_last = drop_residual,
-                        num_workers = 0 # Default
+                        dataset=dataset_before_normalization,
+                        batch_size=self.hyperparameters['batch_size'],
+                        shuffle=False,
+                        drop_last=drop_residual,
+                        num_workers=0  # Default
                     )
                     
-                    mean, stddev = self.get_mean_stddev(dataloader=dataloader)
+                    mean, stddev = get_mean_stddev(
+                        number_channels=self.configuration['number_channels'],
+                        dataloader=dataloader)
                     transform = transforms.Normalize(mean=mean, std=stddev)
 
             # Creates the dataset
             if self.is_3d:
                 dataset = Custom3DDataset(
                     self.configuration['data_input_directory'],   # The file path prefix = the path to the directory where the images are
-                    self.partitions_info_dict[dataset_type],               # The data dictionary
+                    self.partitions_info_dict[partition],               # The data dictionary
                 )
                 
             else:
                 dataset = Dataset2D(
-                    dictionary_partition = self.partitions_info_dict[dataset_type], # The data dictionary
+                    dictionary_partition = self.partitions_info_dict[partition], # The data dictionary
                     number_channels = self.configuration['number_channels'],      # The number of channels in an image
                     image_size = (self.configuration['target_height'], self.configuration['target_width']),
                     do_cropping = self.hyperparameters['do_cropping'],              # Whether to crop the image
@@ -402,7 +370,7 @@ class TrainingFold():
 
             # TODO verify the shuffle           
             # Shuffles the images
-            dataset, do_shuffle = self._shuffle_dataset(dataset, dataset_type)
+            dataset, do_shuffle = self._shuffle_dataset(dataset, partition)
 
             # Apply normalization to the dataset
 
@@ -416,7 +384,7 @@ class TrainingFold():
             )
             
             # Adds the dataloader to the dictionary
-            self.partitions_info_dict[dataset_type]['dataloader'] = dataloader
+            self.partitions_info_dict[partition]['dataloader'] = dataloader
         
         # If the datasets are empty, cannot train
         _is_dataset_created = self._check_create_dataset()
@@ -450,7 +418,7 @@ class TrainingFold():
         return drop_residual
 
 
-    def _shuffle_dataset(self, dataset, dataset_type):
+    def _shuffle_dataset(self, dataset, partition):
         """
         Creates the shuffled dataset.
         It's a subdataset. The only difference with the base dataset is the image order.
@@ -462,7 +430,7 @@ class TrainingFold():
             _shuffled_dataset (Custom2DDataset): The shuffled dataset.
         """
                 
-        if dataset_type == 'training': # For the training
+        if partition == 'training': # For the training
             do_shuffle = True # Lets the dataloader shuffle the images
         
         
