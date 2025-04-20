@@ -26,7 +26,7 @@ def modify_metadata(csv_path: Path,
     # Save the updated CSV
     cvs_new_path = new_parent_folder / csv_path.name
     df.to_csv(cvs_new_path, index=False)
-    
+    print(f"New metadata CSV saved at: {cvs_new_path}")
     return str(cvs_new_path)
 
 
