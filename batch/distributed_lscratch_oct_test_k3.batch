@@ -61,7 +61,7 @@ echo "Finished copying data to LSCRATCH..."
 # Modify metadata CSV
 # -----------------------------------------
 # It modifies the metadata and save it to $LSCRATCH
-python ./nachosv2/data_processing/modify_and_save_absolute_path.py \
+python ./nachosv2/data_processing/update_csv_absolute_filepath.py \
  --csv_filepath "${METADATA_CSV}" \
  --retain_subpath_from pig_kidney \
  --updated_parent_dir "${NEW_PARENT_FOLDER}"
@@ -71,7 +71,7 @@ python ./nachosv2/data_processing/modify_and_save_absolute_path.py \
 # -----------------------------------------
 # Change key in configuration and save new configuration0 
 # save it to $LSCRATCH
-python ./nachosv2/data_processing/modify_and_save_yml.py \
+python ./nachosv2/data_processing/edit_yaml_entry.py \
 --yaml_path "${CONFIG_YML}" \
 --output_dir "${LSCRATCH}" \
 --key path_metadata_csv \
