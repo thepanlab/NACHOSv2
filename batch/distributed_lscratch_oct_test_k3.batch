@@ -1,13 +1,14 @@
 #!/bin/bash
 
-#SBATCH --partition=disc
+#SBATCH --partition=disc_quad_a100
 #SBATCH --output=batch_out/%x_%J_stdout.txt
 #SBATCH --error=batch_out/%x_%J_stderr.txt
 #SBATCH --nodes=1
-#SBATCH --mem=10G
-#SBATCH --gres=gpu:1
-#SBATCH --time=00:20:00
-#SBATCH --job-name=test_lscratch
+#SBATCH --ntasks=32
+#SBATCH --mem=50G
+#SBATCH --gres=gpu:4  # ngpus per node
+#SBATCH --time=48:00:00
+#SBATCH --job-name=t_k3
 #SBATCH --mail-user=pcallec@ou.edu
 #SBATCH --mail-type=ALL
 #SBATCH --chdir=/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2
@@ -31,18 +32,20 @@ gpu_ids=$CUDA_VISIBLE_DEVICES
 echo "Assigned GPUs: $gpu_ids"
 
 # Convert GPU IDs into proper CUDA device string
-device_string=$(echo $gpu_ids | sed 's/\([0-9]\)/cuda:\1/g')
+# e.g. It transforms from "0,1" to "cuda:0 cuda:1"
+device_string=$(echo $gpu_ids | tr ',' ' ' | sed 's/,/ /g; s/[0-9]\+/cuda:&/g')
 echo "Using devices: $device_string"
+
 
 # -----------------------------------------
 # Define paths
 # -----------------------------------------
-SOURCE_DIR="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/data/pig_kidney_subset"
-METADATA_CSV="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/analyze_images/results/pig_kidney_subset/pig_kidney_subset_metadata.csv"
-CONFIG_YML="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT_small/oct_small_1_oscer.yml"
-MODIFIED_CONFIG_YML="${LSCRATCH}/oct_small_1_oscer.yml"
+SOURCE_DIR="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/data/pig_kidney"
+METADATA_CSV="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
+CONFIG_YML="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT/oct_1_rs_oscer_test_k3.yml"
+MODIFIED_CONFIG_YML="${LSCRATCH}/oct_1_rs_oscer_test_k3.yml"
 NEW_PARENT_FOLDER="${LSCRATCH}"
-MODIFIED_METADATA_CSV="${LSCRATCH}/pig_kidney_subset_metadata.csv"
+MODIFIED_METADATA_CSV="${NEW_PARENT_FOLDER}/pig_kidney_metadata.csv"
 
 # -----------------------------------------
 # Copy data to LSCRATCH
@@ -58,9 +61,9 @@ echo "Finished copying data to LSCRATCH..."
 # Modify metadata CSV
 # -----------------------------------------
 # It modifies the metadata and save it to $LSCRATCH
-python ./nachosv2/data_processing/update_csv_absolute_filepath.py \
+python ./nachosv2/data_processing/modify_and_save_absolute_path.py \
  --csv_filepath "${METADATA_CSV}" \
- --retain_subpath_from pig_kidney_subset \
+ --retain_subpath_from pig_kidney \
  --updated_parent_dir "${NEW_PARENT_FOLDER}"
 
 # -----------------------------------------
@@ -68,16 +71,16 @@ python ./nachosv2/data_processing/update_csv_absolute_filepath.py \
 # -----------------------------------------
 # Change key in configuration and save new configuration0 
 # save it to $LSCRATCH
-python ./nachosv2/data_processing/edit_yaml_entry.py \
+python ./nachosv2/data_processing/modify_and_save_yml.py \
 --yaml_path "${CONFIG_YML}" \
 --output_dir "${LSCRATCH}" \
 --key path_metadata_csv \
 --value "${MODIFIED_METADATA_CSV}"
 
 # -----------------------------------------
-# Launch training
+# Launch training using MPI
 # -----------------------------------------
-NACHOSv2_train \
+mpirun -n 5 NACHOSv2_train \
     --file "${MODIFIED_CONFIG_YML}" \
     --loop "cross-validation" \
-    --devices ${device_string}
+    --devices $device_string
