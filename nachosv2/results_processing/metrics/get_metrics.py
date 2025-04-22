@@ -10,7 +10,6 @@ from nachosv2.setup.utils import get_other_result
 from nachosv2.setup.utils import get_filepath_list
 from nachosv2.setup.utils import determine_if_cv_loop
 from nachosv2.setup.utils import get_default_folder
-from nachosv2.setup.utils import get_newfilepath_from_predictions
 from nachosv2.setup.files_check import ensure_path_exists
 from nachosv2.setup.utils_processing import generate_individual_metric
 from nachosv2.setup.utils_processing import parse_filename
