@@ -97,7 +97,7 @@ def create_model(configuration_file:dict,
     # training_model = ModelClass(configuration_file)
 
     training_model = get_model(model_name=model_name,
-                                number_classes=number_classes,
-                                number_channels=number_channels)
+                               number_classes=number_classes,
+                               number_channels=number_channels)
 
     return training_model
