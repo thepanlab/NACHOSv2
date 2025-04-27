@@ -46,6 +46,7 @@ CONFIG_YML="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/traini
 MODIFIED_CONFIG_YML="${LSCRATCH}/oct_1_rs_oscer_test_k5.yml"
 NEW_PARENT_FOLDER="${LSCRATCH}"
 MODIFIED_METADATA_CSV="${NEW_PARENT_FOLDER}/pig_kidney_metadata.csv"
+RETAIN_SUBPATH_FROM="pig_kidney_subset"
 
 # -----------------------------------------
 # Copy data to LSCRATCH
@@ -63,7 +64,7 @@ echo "Finished copying data to LSCRATCH..."
 # It modifies the metadata and save it to $LSCRATCH
 python ./nachosv2/data_processing/update_csv_absolute_filepath.py \
  --csv_filepath "${METADATA_CSV}" \
- --retain_subpath_from pig_kidney \
+ --retain_subpath_from "${RETAIN_SUBPATH_FROM}" \
  --updated_parent_dir "${NEW_PARENT_FOLDER}"
 
  # -----------------------------------------
