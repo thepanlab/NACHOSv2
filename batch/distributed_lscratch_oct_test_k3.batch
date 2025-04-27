@@ -46,7 +46,7 @@ CONFIG_YML="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/traini
 MODIFIED_CONFIG_YML="${LSCRATCH}/oct_1_rs_oscer_test_k3.yml"
 NEW_PARENT_FOLDER="${LSCRATCH}"
 MODIFIED_METADATA_CSV="${NEW_PARENT_FOLDER}/pig_kidney_metadata.csv"
-RETAIN_SUBPATH_FROM="pig_kidney_subset"
+RETAIN_SUBPATH_FROM="pig_kidney"
 
 # -----------------------------------------
 # Copy data to LSCRATCH
