@@ -123,6 +123,7 @@ class TrainingFold():
         self.use_mixed_precision = use_mixed_precision
         self.is_3d = is_3d
         self.do_normalize_2d = do_normalize_2d
+        self.do_shuffle_the_images = configuration["do_shuffle_the_images"]
 
         if self.hyperparameters["do_cropping"]:
             self.crop_box = create_crop_box(
@@ -310,27 +311,27 @@ class TrainingFold():
 
             else:
                 dataset = Dataset2D(
-                    dictionary_partition = self.partitions_info_dict[partition], # The data dictionary
-                    number_channels = self.configuration['number_channels'],      # The number of channels in an image
-                    image_size = (self.configuration['target_height'], self.configuration['target_width']),
-                    do_cropping = self.hyperparameters['do_cropping'],              # Whether to crop the image
-                    crop_box = self.crop_box,                                       # The dimensions after cropping
+                    dictionary_partition=self.partitions_info_dict[partition], # The data dictionary
+                    number_channels=self.configuration['number_channels'],      # The number of channels in an image
+                    image_size=(self.configuration['target_height'], self.configuration['target_width']),
+                    do_cropping=self.hyperparameters['do_cropping'],              # Whether to crop the image
+                    crop_box=self.crop_box,                                       # The dimensions after cropping
                     transform=transform
                 )
 
             # TODO verify the shuffle           
             # Shuffles the images
-            dataset, do_shuffle = self._shuffle_dataset(dataset, partition)
+            do_shuffle = self.determine_shuffle_dataset(partition)
 
             # Apply normalization to the dataset
 
             # Creates dataloader
             dataloader = DataLoader(
-                dataset = dataset,
-                batch_size = self.hyperparameters['batch_size'],
-                shuffle = do_shuffle,
-                drop_last = drop_residual,
-                num_workers = 4
+                dataset=dataset,
+                batch_size=self.hyperparameters['batch_size'],
+                shuffle=do_shuffle,
+                drop_last=drop_residual,
+                num_workers=4
             )
 
             # Adds the dataloader to the dictionary
@@ -367,7 +368,7 @@ class TrainingFold():
         return drop_residual
 
 
-    def _shuffle_dataset(self, dataset, partition):
+    def determine_shuffle_dataset(self, partition):
         """
         Creates the shuffled dataset.
         It's a subdataset. The only difference with the base dataset is the image order.
@@ -378,20 +379,9 @@ class TrainingFold():
         Returns:
             _shuffled_dataset (Custom2DDataset): The shuffled dataset.
         """
-
-        if partition == 'training': # For the training
-            do_shuffle = True # Lets the dataloader shuffle the images
-
-        else: # For the other datasets
-            do_shuffle = False # Doesn't let the dataloader shuffle the images
-
-            # Shuffles the images manually to keep a track on the indexes
-            indexes_list = list(range(len(dataset)))    # Gets the list of indexes
-            random.shuffle(indexes_list)                # Shuffles it
-            dataset = Subset(dataset, indexes_list)     # Creates a shuffled dataset
-
-
-        return dataset, do_shuffle
+        if not self.do_shuffle_the_images:
+            return False
+        return partition == 'training'
 
 
     def _check_create_dataset(self):
