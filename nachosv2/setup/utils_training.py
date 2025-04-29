@@ -5,7 +5,7 @@ import torch
 FloatOrListFloats = Union[float, List[float]]
 def get_mean_stddev(
     number_channels: int,
-    dataloader: "torch.utils.data.Dataloader",       
+    dataloader: "torch.utils.data.DataLoader",       
     )->Tuple[FloatOrListFloats, FloatOrListFloats]:
     """
     Calculate the mean and standard deviation for grayscale (1 channel) or RGB (3 channels) datasets.
@@ -84,14 +84,17 @@ def create_empty_history(is_cv_loop: bool,
     # Creates the base history
     if is_cv_loop:
         history = {'training_loss': [], 'validation_loss': [],
-                   'training_accuracy': [], 'validation_accuracy': []}
+                   'training_accuracy': [], 'validation_accuracy': [],
+                   'learning_rate': []}
     else:
-        history = {'training_loss': [], 'training_accuracy': []}
+        history = {'training_loss': [], 'training_accuracy': [],
+                   'learning_rate': []}
     
     # Adds the wanted metrics to the history dictionary
     # add_lists_to_history(history, metrics_dictionary)
 
     return history
+
 
 def is_image_3D(configuration: dict) -> bool:
     """
