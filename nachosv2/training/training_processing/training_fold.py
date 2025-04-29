@@ -465,6 +465,7 @@ class TrainingFold():
         # it saves history when self.is_cv_loop and for validation
         # or when not self.is_cv_loop, that is, cross-testing loop
         if partition == 'validation' or not self.is_cv_loop:
+            self.history["learning_rate"].append(self.scheduler.get_last_lr()[0])
             save_history_to_csv(history=self.history,
                                 output_path=Path(self.configuration['output_path']),
                                 test_fold=self.test_fold,
