@@ -1,0 +1,84 @@
+# If use_hpo: true
+# it will verify that the configuration file
+# has single values
+
+use_hpo: false
+configuration_filepath: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT/nachosv1_rs_config/hp_rs_1_oscer.yml"
+
+number_channels: 1
+
+# csv file with the metadata: image_path, label, fold
+path_metadata_csv: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
+output_path: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/results/pig_kidney_nachosv1_rs_1"
+job_name: "pig_kidney"
+
+checkpoint_epoch_frequency: 5
+
+do_normalize_2d: false
+do_shuffle_the_images: true
+shuffle_the_folds: false
+seed: 123
+
+# If use_mixed_precision: true,
+#  the model will be trained using mixed precision
+# (fp16/fp32). This can speed up training and reduce
+use_mixed_precision: false
+
+class_names:
+  - "cortex"
+  - "medulla"
+  - "pelvis-calyx"
+metrics_list: []
+
+fold_list:
+  - "k1"
+  - "k2"
+  - "k3"
+  - "k4"
+  - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
+
+test_fold_list:
+  - "k1"
+  - "k2"
+  - "k3"
+  - "k4"
+  - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
+
+# validation_fold_list is used only for 
+# cross-validation
+validation_fold_list:
+  - "k1"
+  - "k2"
+  - "k3"
+  - "k4"
+  - "k5"
+  - "k6"
+  - "k7"
+  - "k8"
+  - "k9"
+  - "k10"
+
+
+image_size:
+  - 301
+  - 235
+
+# if images are of different sizes,
+# they will be resized to the target size
+target_height: 301
+target_width: 235
+
+# Only useful in cross-validation, default is false
+# If true, in addition to the predictions on the validation fold,
+# the predictions on the test fold will be computed
+enable_prediction_on_test: true
