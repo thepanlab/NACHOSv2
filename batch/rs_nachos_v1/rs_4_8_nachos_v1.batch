@@ -1,0 +1,90 @@
+#!/bin/bash
+
+#SBATCH --partition=disc
+#SBATCH --output=batch_out/%x_%a_%J_stdout.txt
+#SBATCH --error=batch_out/%x_%a_%J_stderr.txt
+#SBATCH --array=4-8
+#SBATCH --nodes=1
+#SBATCH --ntasks=32
+#SBATCH --mem=50G
+#SBATCH --gres=gpu:2  # ngpus per node
+#SBATCH --time=48:00:00
+#SBATCH --job-name=rs
+#SBATCH --mail-user=pcallec@ou.edu
+#SBATCH --mail-type=ALL
+#SBATCH --chdir=/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2
+
+#################################################
+
+array_index = "${SLURM_ARRAY_TASK_ID}""
+
+# Before using sbatch, you should something like the following:
+# module load Anaconda3
+# conda activate nachosv2
+# module load OpenMPI
+
+echo "Nodes=${SLURM_JOB_NODELIST}"
+echo "LSCRATCH directory: ${LSCRATCH}"
+
+# -----------------------------------------
+# Get assigned GPU devices
+# -----------------------------------------
+# Dynamically get GPU IDs assigned to this job
+# gpu_ids=$(nvidia-smi --query-gpu=index --format=csv,noheader | tr '\n' ' ')
+gpu_ids=$CUDA_VISIBLE_DEVICES
+echo "Assigned GPUs: $gpu_ids"
+
+# Convert GPU IDs into proper CUDA device string
+# e.g. It transforms from "0,1" to "cuda:0 cuda:1"
+device_string=$(echo $gpu_ids | tr ',' ' ' | sed 's/,/ /g; s/[0-9]\+/cuda:&/g')
+echo "Using devices: $device_string"
+
+
+# -----------------------------------------
+# Define paths
+# -----------------------------------------
+SOURCE_DIR="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/data/pig_kidney"
+METADATA_CSV="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
+CONFIG_YML="/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT/nachosv1_rs_config/oct_rs_${array_index}_oscer.yml"
+MODIFIED_CONFIG_YML="${LSCRATCH}/oct_rs_${array_index}_oscer.yml"
+NEW_PARENT_FOLDER="${LSCRATCH}"
+MODIFIED_METADATA_CSV="${NEW_PARENT_FOLDER}/pig_kidney_metadata.csv"
+RETAIN_SUBPATH_FROM="pig_kidney"
+
+# -----------------------------------------
+# Copy data to LSCRATCH
+# -----------------------------------------
+# Source: https://www.ou.edu/disc/resources/cpu-and-gpu-resources-on-the-oscer-supercomputer
+# 852GB * cpus-per-task / available_threads
+# Copy data to lscratch
+echo "Copying data to LSCRATCH..."
+cp -a "${SOURCE_DIR}" "${LSCRATCH}"
+echo "Finished copying data to LSCRATCH..."
+
+# -----------------------------------------
+# Modify metadata CSV
+# -----------------------------------------
+# It modifies the metadata and save it to $LSCRATCH
+python ./nachosv2/data_processing/update_csv_absolute_filepath.py \
+ --csv_filepath "${METADATA_CSV}" \
+ --retain_subpath_from "${RETAIN_SUBPATH_FROM}" \
+ --updated_parent_dir "${NEW_PARENT_FOLDER}"
+
+# -----------------------------------------
+# Modify config YAML to use updated metadata path
+# -----------------------------------------
+# Change key in configuration and save new configuration0 
+# save it to $LSCRATCH
+python ./nachosv2/data_processing/edit_yaml_entry.py \
+--yaml_path "${CONFIG_YML}" \
+--output_dir "${LSCRATCH}" \
+--key path_metadata_csv \
+--value "${MODIFIED_METADATA_CSV}"
+
+# -----------------------------------------
+# Launch training using MPI
+# -----------------------------------------
+mpirun -n 3 NACHOSv2_train \
+    --file "${MODIFIED_CONFIG_YML}" \
+    --loop "cross-validation" \
+    --devices $device_string
