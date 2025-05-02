@@ -75,6 +75,18 @@ def get_files_labels(partition: str,
     return files, labels
 
 
+def create_empty_learning_rate_freq_step_history():
+    """
+    TODO
+    """
+    
+    # Creates the base history
+    lr_history = {'epoch': [], 'step': [],
+                  'learning_rate': []}
+    
+    return lr_history
+
+
 def create_empty_history(is_cv_loop: bool,
                          metrics_dictionary: dict):
     """

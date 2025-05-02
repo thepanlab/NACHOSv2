@@ -36,8 +36,10 @@ from nachosv2.modules.optimizer.optimizer_creator import create_optimizer
 from nachosv2.modules.early_stopping.earlystopping import EarlyStopping
 from nachosv2.output_processing.result_outputter import save_history_to_csv
 from nachosv2.setup.utils_training import create_empty_history
+from nachosv2.setup.utils_training import create_empty_learning_rate_freq_step_history
 from nachosv2.setup.utils_training import get_files_labels
 from nachosv2.setup.utils_training import get_mean_stddev
+from nachosv2.setup.learning_rate_scheduler import get_lr_scheduler
 
 
 class TrainingFold():
@@ -111,6 +113,7 @@ class TrainingFold():
         self.is_cv_loop = is_cv_loop
         self.history = create_empty_history(self.is_cv_loop, 
                                             self.metrics_dictionary)
+
         self.time_elapsed = None
         self.counter_early_stopping = 0
 
@@ -204,11 +207,19 @@ class TrainingFold():
 
         # scheduler https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
       
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
-                                                              T_max=5,
-                                                              eta_min=self.hyperparameters['learning_rate']/100,
-                                                              last_epoch=-1,
-                                                              verbose='deprecated')
+        self.scheduler, self.scheduler_update_frequency = get_lr_scheduler(
+            self.optimizer,
+            self.hyperparameters.get("learning_rate_scheduler", None),
+            self.hyperparameters.get("learning_rate_scheduler_parameters", None),
+            )
+        
+        if self.scheduler_update_frequency == "step":
+            self.lr_history = create_empty_learning_rate_freq_step_history()
+        # self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
+        #                                                       T_max=5,
+        #                                                       eta_min=self.hyperparameters['learning_rate']/100,
+        #                                                       last_epoch=-1,
+        #                                                       verbose='deprecated')
         
         # self.save_state()
         # Creates the datasets and trains them (Datasets cannot be logged.)
@@ -434,20 +445,48 @@ class TrainingFold():
         if partition == 'training':
             # Make sure gradient tracking is on, and do a pass over the data
             self.model.train(True)
+            if self.scheduler:
+                self.history["learning_rate"].append(self.scheduler.get_last_lr()[0])
+            else:
+                self.history["learning_rate"].append(self.hyperparameters['learning_rate'])
+
         elif partition == "validation":
             # Set the model to evaluation mode, disabling dropout and using population
             # statistics for batch normalization.
             self.model.eval()
 
+
+
         # Iterates over data
         for i, (inputs, labels, _ ) in enumerate(data_loader):
-            print(f"Epoch: {epoch_index+1} of {self.number_of_epochs}. {partition} Progress: {i/len(data_loader)*100:.1f}%\r",
+            print(f"Epoch: {epoch_index+1} of {self.number_of_epochs}. {partition} Progress: {(i+1)/len(data_loader)*100:.1f}% Step:{i+1}/{len(data_loader)}\r",
                   end="")
+            if i == len(data_loader)-1 :
+                print()
             # Runs the fit loop
             loss_update, corrects_update = self.process_batch(
                 partition, inputs, labels,
                 self.use_mixed_precision
             )
+
+            if partition == "training" and self.scheduler_update_frequency == "step" :
+                self.lr_history['epoch'].append(epoch_index+1)
+                self.lr_history['step'].append(i + 1 + epoch_index * len(data_loader))
+                self.lr_history['learning_rate'].append(self.scheduler.get_last_lr()[0])
+                save_history_to_csv(
+                    history=self.lr_history,
+                    output_path=Path(self.configuration['output_path']),
+                    test_fold=self.test_fold,
+                    hp_config_index=self.hp_config_index,
+                    validation_fold=self.validation_fold,
+                    is_cv_loop=self.is_cv_loop,
+                    suffix='lr_history',
+                )
+                self.scheduler.step()
+
+            # # Create file with loss and accuracy for the current batch
+            # self.history[f'{partition}_loss'].append(loss_update)
+            
 
             running_loss += loss_update
             running_corrects += corrects_update
@@ -464,21 +503,24 @@ class TrainingFold():
 
         # it saves history when self.is_cv_loop and for validation
         # or when not self.is_cv_loop, that is, cross-testing loop
-        if partition == 'validation' or not self.is_cv_loop:
-            self.history["learning_rate"].append(self.scheduler.get_last_lr()[0])
-            save_history_to_csv(history=self.history,
-                                output_path=Path(self.configuration['output_path']),
-                                test_fold=self.test_fold,
-                                hp_config_index=self.hp_config_index,
-                                validation_fold=self.validation_fold,
-                                is_cv_loop=self.is_cv_loop)
+        if partition == 'validation' or not self.is_cv_loop:           
+            save_history_to_csv(
+                history=self.history,
+                output_path=Path(self.configuration['output_path']),
+                test_fold=self.test_fold,
+                hp_config_index=self.hp_config_index,
+                validation_fold=self.validation_fold,
+                is_cv_loop=self.is_cv_loop,
+                suffix='history',
+                )
 
         # Saves the best model
         if partition == 'validation':
             # print epoch results
-            print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} |'
+            print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} | '
                   f'val_loss: {epoch_loss:.4f} | '
-                  f'accuracy: {self.accuracy_hist["training"][epoch_index]:.4f} |' f'val_accuracy: {epoch_accuracy:.4f}')
+                  f'accuracy: {self.accuracy_hist["training"][epoch_index]:.4f} | '
+                  f'val_accuracy: {epoch_accuracy:.4f}')
 
             is_best = False
             if epoch_loss < self.best_valid_loss:
@@ -543,20 +585,24 @@ class TrainingFold():
             print('-' * 60)
             print(f'Epoch {epoch + 1}/{self.number_of_epochs}')
             # Defines the list of partitions
-            # AHPO/CV: ["train", "validation"]
-            # Cross-testing: ["train"]
+            # AHPO/CV: ["training", "validation"]
+            # Cross-testing: ["training"]
             partitions_list = self.get_partitions()
+            
+            
+            
             for partition in partitions_list:
                 self.process_one_epoch(epoch, partition)
 
                 # Do a step                 
                 if self.is_cv_loop: 
                     # In a cross-validation loop, step the scheduler only after validating                  
-                    if partition == "validation":
+                    if partition == "validation" and self.scheduler_update_frequency == "epoch":
                         self.scheduler.step()
                 else:
-                    # In a cross-testing loop, step the scheduler after training                  
-                    self.scheduler.step()          
+                    # In a cross-testing loop, step the scheduler after training
+                    if self.scheduler_update_frequency == "epoch" :
+                        self.scheduler.step()          
             if self.is_cv_loop and self.do_early_stop:
                 print("Early stopping")
                 break

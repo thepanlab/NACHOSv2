@@ -109,7 +109,8 @@ def save_history_to_csv(history: dict,
                         hp_config_index: int,
                         validation_fold: str,
                         is_cv_loop: bool,
-                        rank: int=None):
+                        suffix: str,
+                        rank: int = None):
     
     prefix, path_folder_output = get_prefix_and_folder_path(test_fold,
                                                             hp_config_index,
@@ -120,7 +121,7 @@ def save_history_to_csv(history: dict,
     # Saves the history
     save_csv_from_list_dict(history,
                             path_folder_output,
-                            f"{prefix}_history.csv")
+                            f"{prefix}_{suffix}.csv")
 
 
 def predict_and_save_results(execution_device: str,

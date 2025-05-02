@@ -4,6 +4,8 @@
 2,"n_epochs",50,int
 3,"patience",20,int
 4,"learning_rate",0.001,float
-5,"momentum",0.9,float
-6,"enable_nesterov",False,bool
-7,"architecture","InceptionV3",str
+5,"learning_rate_scheduler","constant",str
+6,"learning_rate_scheduler_parameters",,
+7,"momentum",0.9,float
+8,"enable_nesterov",False,bool
+9,"architecture","InceptionV3",str

@@ -18,7 +18,7 @@ def verify_single_values(hyperparameter: dict):
         ValueError: If any hyperparameter is a dictionary (except for allowed keys) or a list with more than one value.
     """
     # only value allowed to be a list with more than one value
-    l_dict_allowed = ["cropping_position"]
+    l_dict_allowed = ["cropping_position", "learning_rate_scheduler_parameters"]
     for key, value in hyperparameter.items():
         if key in l_dict_allowed:
             continue
@@ -29,7 +29,7 @@ def verify_single_values(hyperparameter: dict):
 
 
 def convert_type(val: str,
-                 type: str):
+                 type_val: str):
     """
     Convert a string value to a specified type.
 
@@ -51,7 +51,10 @@ def convert_type(val: str,
         'str': str
     }
     
-    return converter_dict[type](val)
+    if isinstance(type_val, float) and math.isnan(type_val):
+        return None
+    
+    return converter_dict[type_val](val)
 
 
 def extract_values_single(df_default:pd.DataFrame,

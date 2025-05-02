@@ -13,11 +13,12 @@ path_metadata_csv: "/home/pcallec/NACHOS/nachosv2/training/metadata_csv/pig_kidn
 output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset"
 job_name: "pig_kidney_subset"
 
+
 checkpoint_epoch_frequency: 2
 
 do_normalize_2d: true
-shuffle_the_images: true
-shuffle_the_folds: false
+do_shuffle_the_images: true
+do_shuffle_the_folds: false
 seed: 9
 
 # If use_mixed_precision: true,
@@ -40,17 +41,13 @@ fold_list:
 
 test_fold_list:
   - "k1"
-  - "k2"
-  - "k3"
+
 
 # validation_fold_list is used only for 
 # cross-validation
 validation_fold_list:
   - "k1"
   - "k2"
-  - "k3"
-  - "k4"
-  - "k5"
 
 image_size:
   - 301
