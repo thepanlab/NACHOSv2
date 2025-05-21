@@ -174,6 +174,10 @@ def get_value_from_hyperparameter_dict(index: str,
     
     value = hyperparameter_dict.get(index, df_default.loc[index, "value_converted"])
 
+    # It only allows one learning rate scheduler and its properties
+    if index == "learning_rate_scheduler_parameters":
+        return hyperparameter_dict.get(index, df_default.loc[index, "value_converted"])
+
     if isinstance(value, list):
         return random.choice(value) if len(value) > 1 else value[0]
     if isinstance(value, dict):
