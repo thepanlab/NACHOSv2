@@ -17,8 +17,8 @@ job_name: "pig_kidney"
 checkpoint_epoch_frequency: 5
 
 do_normalize_2d: true
-shuffle_the_images: true
-shuffle_the_folds: false
+do_shuffle_the_images: true
+do_shuffle_the_folds: false
 seed: 9
 
 # If use_mixed_precision: true,

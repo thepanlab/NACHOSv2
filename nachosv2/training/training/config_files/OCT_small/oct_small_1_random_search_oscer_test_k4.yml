@@ -18,8 +18,8 @@ job_name: "pig_kidney_subset"
 checkpoint_epoch_frequency: 5
 
 do_normalize_2d: true
-shuffle_the_images: true
-shuffle_the_folds: false
+do_shuffle_the_images: true
+do_shuffle_the_folds: false
 
 # If use_mixed_precision: true,
 #  the model will be trained using mixed precision

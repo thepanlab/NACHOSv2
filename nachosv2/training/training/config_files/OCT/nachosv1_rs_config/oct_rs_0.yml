@@ -9,9 +9,9 @@ number_channels: 1
 
 data_input_directory: "/home/pcallec/mif_outer/data/pig_kidney"
 # csv file with the metadata: image_path, label, fold
-path_metadata_csv: "/home/pcallec/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
-output_path: "/home/pcallec/NACHOS/results/pig_kidney_nachosv1_rs_0"
-job_name: "pig_kidney"
+path_metadata_csv: "/home/pcallec/analyze_images/results/CW_2D/CW_2D_metadata.csv"
+output_path: "/home/pcallec/NACHOS/results/oct_kidney_partition_nachosv1_rs_0"
+job_name: "oct_kidney_partition"
 
 checkpoint_epoch_frequency: 5
 
@@ -28,7 +28,7 @@ use_mixed_precision: false
 class_names:
   - "cortex"
   - "medulla"
-  - "pelvis-calyx"
+  - "pelvis"
 metrics_list: []
 
 fold_list:
@@ -71,13 +71,13 @@ validation_fold_list:
 
 
 image_size:
-  - 301
-  - 235
+  - 210
+  - 185
 
 # if images are of different sizes,
 # they will be resized to the target size
-target_height: 301
-target_width: 235
+target_height: 210
+target_width: 185
 
 # Only useful in cross-validation, default is false
 # If true, in addition to the predictions on the validation fold,
