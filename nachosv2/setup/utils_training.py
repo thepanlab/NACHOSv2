@@ -5,7 +5,8 @@ import torch
 FloatOrListFloats = Union[float, List[float]]
 def get_mean_stddev(
     number_channels: int,
-    dataloader: "torch.utils.data.DataLoader",       
+    dataloader: "torch.utils.data.DataLoader",
+    device: str,       
     )->Tuple[FloatOrListFloats, FloatOrListFloats]:
     """
     Calculate the mean and standard deviation for grayscale (1 channel) or RGB (3 channels) datasets.
@@ -25,6 +26,7 @@ def get_mean_stddev(
     
     # Iterate through the dataset
     for images, _, _ in dataloader:
+        images = images.to(device)
         batch_size, channels, height, width = images.shape
 
         images = images.view(batch_size, channels, -1)

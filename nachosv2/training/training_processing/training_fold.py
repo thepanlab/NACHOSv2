@@ -310,7 +310,8 @@ class TrainingFold():
 
                     mean, stddev = get_mean_stddev(
                         number_channels=self.configuration['number_channels'],
-                        dataloader=dataloader)
+                        dataloader=dataloader,
+                        device=self.execution_device)
                     transform = transforms.Normalize(mean=mean, std=stddev)
 
             # Creates the dataset
