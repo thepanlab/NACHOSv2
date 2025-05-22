@@ -9,20 +9,13 @@ from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from nachosv2.setup.command_line_parser import parse_command_line_args
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from nachosv2.data_processing.read_metadata_csv import read_metadata_csv
-from nachosv2.setup.utils import get_filepath_list
-from nachosv2.setup.utils import get_filepath_from_results_path
 from nachosv2.setup.files_check import ensure_path_exists
 from nachosv2.setup.get_config import get_config
-from nachosv2.setup.utils_processing import save_dict_to_yaml
-from nachosv2.setup.utils_processing import parse_filename
-from nachosv2.setup.utils_processing import is_metric_allowed
 from nachosv2.setup.utils_training import get_files_labels_for_fold
-from nachosv2.setup.utils import get_new_filepath_from_suffix
 from nachosv2.model_processing.create_model import get_model
 from PIL import Image
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from nachosv2.training.training_processing.custom_2D_dataset import Dataset2D
@@ -59,7 +52,7 @@ def process_single_image(model,
                      config_dict["target_layer"])]
 
     index_class = config_dict.get("class_index_for_explainability", -1)
-    index_class =  class_predictions.item() if index_class == -1 else index_class
+    index_class = class_predictions.item() if index_class == -1 else index_class
 
     targets = [ClassifierOutputTarget(index_class)]
 
@@ -96,7 +89,6 @@ def process_single_image(model,
 
 def apply_gradcam_single_image(model, config_dict,
                                image_path, transform):
-
     if not image_path.exists():
         raise FileNotFoundError(f"Image path {image_path} does not exist.")
 
@@ -140,7 +132,7 @@ def main():
     model.to("cuda")
 
     validate_exclusive_options(config_dict,
-                               ["fold", "image_path","image_folder"])
+                               ["fold", "image_path", "image_folder"])
 
     df_metadata = read_metadata_csv(config_dict["metadata_path"])
 
@@ -160,13 +152,12 @@ def main():
         ])
     else:
         transform = transforms.Compose([
-        transforms.Resize((config_dict["target_height"],
-                               config_dict["target_width"])), # Resize to expected input size
-        transforms.ToTensor(),                 # Convert to tensor and normalize to [0, 1]
+            transforms.Resize((config_dict["target_height"],
+                                config_dict["target_width"])), # Resize to expected input size
+            transforms.ToTensor(),                 # Convert to tensor and normalize to [0, 1]
         ])
-        
+
     if config_dict.get("fold"):
-        
         fold_info_dict = {'files': [], 'labels': [], 'dataloader': None}
         fold_info_dict['files'], fold_info_dict['labels'] = get_files_labels_for_fold(
             df_metadata=df_metadata,
@@ -189,19 +180,16 @@ def main():
             drop_last=False,
             num_workers=0
         )
-        
+
         for i, (inputs, labels, filepath) in enumerate(dataloader):
             prediction = process_single_image(model, config_dict,
                                               inputs, filepath[0])
-            print(i, filepath, "truth", labels.item(), "prediction", prediction )
-            
+            print(i, filepath, "truth", labels.item(), "prediction", prediction)
     elif config_dict.get("image_path"):
         image_path = config_dict.get("image_path")
         apply_gradcam_single_image(model, config_dict,
                                    Path(image_path), transform)
-        
     elif config_dict.get("image_folder"):
-        
         image_folder = Path(config_dict.get("image_folder"))
         if not image_folder.exists():
             raise FileNotFoundError(f"Image folder {image_folder} does not exist.")
@@ -216,5 +204,5 @@ def main():
                                        Path(image_path), transform)
 
 
-if __name__ == "__main__":   
+if __name__ == "__main__":
     main()

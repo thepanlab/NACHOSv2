@@ -20,7 +20,7 @@ class_index_for_explainability: -1
 target_height: 301
 target_width: 235
 
-do_normalize: true
+do_normalize: false
 normalization_values:
   mean: 0.19031469523906708
   stddev: 0.2582910358905792
@@ -29,9 +29,9 @@ output_folder: /home/pcallec/NACHOS/results/pig_kidney_subset/GradCAM/
 # Optional
 suffix: null
 
-fold: "k5"
+# fold: "k5"
 metadata_path: "/home/pcallec/analyze_images/results/pig_kidney_subset/pig_kidney_subset_metadata.csv"
 # Otherwise, specify image path
-image_path: null
+# image_path: "/home/pcallec/NACHOS/data/pig_kidney_subset/k1/k1_cortex/1_k1_cortex.jpg"
 # OR image folder with images
-image_folder: null
+image_folder: "/home/pcallec/NACHOS/data/pig_kidney_subset/k1/k1_cortex/"
