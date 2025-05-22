@@ -1,6 +1,7 @@
 model_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/CV/checkpoints/pig_kidney_subset_test_k1_hp_0_val_k2_epoch_1_best.pth"
 model_name: ResNet50
 # output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/CT/metrics"
+device: "cuda"
 
 # Inception
 # target_layer: "Mixed_7c"

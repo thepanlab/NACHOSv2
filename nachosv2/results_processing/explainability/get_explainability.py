@@ -41,8 +41,9 @@ def get_submodule_by_name(model, name: str):
 def process_single_image(model,
                          config_dict,
                          inputs,
-                         filepath):
-    inputs = inputs.to("cuda")
+                         filepath,
+                         device):
+    inputs = inputs.to(device)
     outputs = model(inputs)
     # Gets the predicted class indices
     _, class_predictions = torch.max(outputs, 1)
@@ -88,7 +89,8 @@ def process_single_image(model,
 
 
 def apply_gradcam_single_image(model, config_dict,
-                               image_path, transform):
+                               image_path, transform,
+                               device):
     if not image_path.exists():
         raise FileNotFoundError(f"Image path {image_path} does not exist.")
 
@@ -99,7 +101,8 @@ def apply_gradcam_single_image(model, config_dict,
 
     input_tensor = transform(image).unsqueeze(0)  # Add batch dimension (1, C, H, W)
     prediction = process_single_image(model, config_dict,
-                                      input_tensor, image_path)
+                                      input_tensor, image_path,
+                                      device)
     print(image_path, prediction)
 
 
@@ -126,10 +129,12 @@ def main():
 
     n_classes = len(config_dict["class_names"])
 
+    device = config_dict["device"]
+
     model = get_model(model_name,
                       number_classes=n_classes,
                       number_channels=config_dict["number_channels"])
-    model.to("cuda")
+    model.to(device)
 
     validate_exclusive_options(config_dict,
                                ["fold", "image_path", "image_folder"])
@@ -188,7 +193,8 @@ def main():
     elif config_dict.get("image_path"):
         image_path = config_dict.get("image_path")
         apply_gradcam_single_image(model, config_dict,
-                                   Path(image_path), transform)
+                                   Path(image_path), transform,
+                                   device)
     elif config_dict.get("image_folder"):
         image_folder = Path(config_dict.get("image_folder"))
         if not image_folder.exists():
