@@ -86,15 +86,16 @@ def process_single_image(model,
         
     path_output_folder = Path(config_dict['output_folder'])
     path_output_folder.mkdir(parents=True, exist_ok=True)
-        
-    filepath_output = path_output_folder / f"{filename}.png"
+
+    filepath_output = path_output_folder / f"{filename}_gradcam.png"
     
     image.save(filepath_output)
     
     return class_predictions.item()
 
 
-def apply_gradcam_single_image(model, config_dict, image_path):
+def apply_gradcam_single_image(model, config_dict,
+                               image_path, transform):
 
     if not image_path.exists():
         raise FileNotFoundError(f"Image path {image_path} does not exist.")
@@ -104,7 +105,7 @@ def apply_gradcam_single_image(model, config_dict, image_path):
     elif config_dict["number_channels"] == 3:
         image = Image.open(image_path).convert("RGB")
 
-    input_tensor = transform(image).unsqueeze(0)  # Add batch dimension (1, C, H, W)    
+    input_tensor = transform(image).unsqueeze(0)  # Add batch dimension (1, C, H, W)
     prediction = process_single_image(model, config_dict,
                                       input_tensor, image_path)
     print(image_path, prediction)
@@ -143,14 +144,29 @@ def main():
 
     df_metadata = read_metadata_csv(config_dict["metadata_path"])
 
-
-    if config_dict.get("do_normalize", None):
-        transform = transforms.Normalize(mean=config_dict["normalization_values"]["mean"],
-                                            std=config_dict["normalization_values"]["stddev"])
+    if config_dict.get("do_normalize", None) and config_dict.get("fold"):
+        transform = transforms.Normalize(
+            mean=config_dict["normalization_values"]["mean"],
+            std=config_dict["normalization_values"]["stddev"])
+    elif config_dict.get("do_normalize", None):
+        transform = transforms.Compose([
+            transforms.Resize((config_dict["target_height"],
+                               config_dict["target_width"])), # Resize to expected input size
+            transforms.ToTensor(),                 # Convert to tensor and normalize to [0, 1]
+            transforms.Normalize(                  # Apply same normalization used during training
+                mean=config_dict["normalization_values"]["mean"],        # For ImageNet-pretrained models
+                std=config_dict["normalization_values"]["stddev"]
+            )
+        ])
     else:
-        transform = None
-
+        transform = transforms.Compose([
+        transforms.Resize((config_dict["target_height"],
+                               config_dict["target_width"])), # Resize to expected input size
+        transforms.ToTensor(),                 # Convert to tensor and normalize to [0, 1]
+        ])
+        
     if config_dict.get("fold"):
+        
         fold_info_dict = {'files': [], 'labels': [], 'dataloader': None}
         fold_info_dict['files'], fold_info_dict['labels'] = get_files_labels_for_fold(
             df_metadata=df_metadata,
@@ -160,7 +176,7 @@ def main():
             dictionary_partition=fold_info_dict,
             number_channels=config_dict["number_channels"],
             image_size=(config_dict["target_height"],
-                          config_dict["target_width"]),
+                        config_dict["target_width"]),
             do_cropping=False,
             crop_box=None,
             transform=transform
@@ -181,11 +197,12 @@ def main():
             
     elif config_dict.get("image_path"):
         image_path = config_dict.get("image_path")
-        apply_gradcam_single_image(model, config_dict, image_path)
+        apply_gradcam_single_image(model, config_dict,
+                                   Path(image_path), transform)
         
     elif config_dict.get("image_folder"):
         
-        image_folder = config_dict.get("image_folder")
+        image_folder = Path(config_dict.get("image_folder"))
         if not image_folder.exists():
             raise FileNotFoundError(f"Image folder {image_folder} does not exist.")
 
@@ -195,7 +212,8 @@ def main():
                       list(image_folder.glob("*.jpeg"))
 
         for image_path in image_files:
-            apply_gradcam_single_image(model, config_dict, image_path)
+            apply_gradcam_single_image(model, config_dict,
+                                       Path(image_path), transform)
 
 
 if __name__ == "__main__":   
