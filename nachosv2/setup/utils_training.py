@@ -20,8 +20,8 @@ def get_mean_stddev(
         or lists of floats for RGB.
     """
 
-    total_sum = torch.zeros(number_channels)
-    total_sum_squared = torch.zeros(number_channels)
+    total_sum = torch.zeros(number_channels, device=device)
+    total_sum_squared = torch.zeros(number_channels, device=device)
     num_pixels = 0
     
     # Iterate through the dataset
