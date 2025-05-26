@@ -76,6 +76,24 @@ def get_files_labels(partition: str,
 
     return files, labels
 
+def get_files_labels_for_fold(df_metadata,
+                              fold_or_list_fold: Union[str, List[str]]) -> tuple:   
+    # Query the DataFrame once per function call
+    if isinstance(fold_or_list_fold, str):
+        query = "fold_name == @fold_or_list_fold"
+    elif isinstance(fold_or_list_fold, list):
+        query = "fold_name in @fold_or_list_fold"    
+    else:
+        raise ValueError(f"Invalid type for {fold_or_list_fold}."
+                          " Must be string or list of strings.")
+    filtered_data = df_metadata.query(query)
+
+    # Extract files and labels lists
+    files = filtered_data['absolute_filepath'].tolist()
+    labels = filtered_data['label'].tolist()
+
+    return files, labels
+
 
 def create_empty_learning_rate_freq_step_history():
     """

@@ -34,7 +34,7 @@ from nachosv2.model_processing.create_model import create_model
 from nachosv2.model_processing.get_metrics_dictionary import get_metrics_dictionary
 from nachosv2.modules.optimizer.optimizer_creator import create_optimizer
 from nachosv2.modules.early_stopping.earlystopping import EarlyStopping
-from nachosv2.output_processing.result_outputter import save_history_to_csv
+from nachosv2.output_processing.result_outputter import save_dict_to_csv
 from nachosv2.setup.utils_training import create_empty_history
 from nachosv2.setup.utils_training import create_empty_learning_rate_freq_step_history
 from nachosv2.setup.utils_training import get_files_labels
@@ -312,6 +312,26 @@ class TrainingFold():
                         number_channels=self.configuration['number_channels'],
                         dataloader=dataloader,
                         device=self.execution_device)
+                    
+                    mean_stddev_dict = {
+                        "mean": [mean],
+                        "stddev": [stddev]
+                    }
+                    
+                    save_dict_to_csv(
+                        dictionary=mean_stddev_dict,
+                        output_path=Path(self.configuration['output_path']),
+                        test_fold=self.test_fold,
+                        hp_config_index=self.hp_config_index,
+                        validation_fold=self.validation_fold,
+                        is_cv_loop=self.is_cv_loop,
+                        suffix='mean_stddev',
+                        )
+                    
+                    # TODO: store mean and stddev
+                    print("Mean and stddev calculated for the training set: ", mean, stddev)
+                    
+                    
                     transform = transforms.Normalize(mean=mean, std=stddev)
 
             # Creates the dataset
@@ -474,8 +494,8 @@ class TrainingFold():
                 self.lr_history['epoch'].append(epoch_index+1)
                 self.lr_history['step'].append(i + 1 + epoch_index * len(data_loader))
                 self.lr_history['learning_rate'].append(self.scheduler.get_last_lr()[0])
-                save_history_to_csv(
-                    history=self.lr_history,
+                save_dict_to_csv(
+                    dictionary=self.lr_history,
                     output_path=Path(self.configuration['output_path']),
                     test_fold=self.test_fold,
                     hp_config_index=self.hp_config_index,
@@ -505,8 +525,8 @@ class TrainingFold():
         # it saves history when self.is_cv_loop and for validation
         # or when not self.is_cv_loop, that is, cross-testing loop
         if partition == 'validation' or not self.is_cv_loop:           
-            save_history_to_csv(
-                history=self.history,
+            save_dict_to_csv(
+                dictionary=self.history,
                 output_path=Path(self.configuration['output_path']),
                 test_fold=self.test_fold,
                 hp_config_index=self.hp_config_index,

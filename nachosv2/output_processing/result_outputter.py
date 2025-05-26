@@ -12,9 +12,9 @@ from nachosv2.model_processing.save_model import save_model
 from nachosv2.model_processing.predict_model import predict_model
 
 
-def save_csv_from_list_dict(values: List[dict],
-                           path: Path,
-                           filename: str):
+def save_dict_or_listdict_to_csv(values: Union[dict,List[dict]],
+                                 path: Path,
+                                 filename: str):
     """
     Writes some list in a file.
 
@@ -27,6 +27,9 @@ def save_csv_from_list_dict(values: List[dict],
     # create directory for path
     values_df = pd.DataFrame(values)   
     values_df.to_csv(path / filename)
+    
+    print(f"File {filename} stored at {path}")
+    
 
 def get_prefix_and_folder_path(test_fold: str,
                                hp_config_index: int,
@@ -98,19 +101,19 @@ def save_prediction_results(partition_type: str,
 
     filename = filename_map[partition_type]
 
-    save_csv_from_list_dict(prediction_rows,
-                            output_path,
-                            filename)
+    save_dict_or_listdict_to_csv(prediction_rows,
+                                 output_path,
+                                 filename)
 
 
-def save_history_to_csv(history: dict,
-                        output_path: Path,
-                        test_fold: str,
-                        hp_config_index: int,
-                        validation_fold: str,
-                        is_cv_loop: bool,
-                        suffix: str,
-                        rank: int = None):
+def save_dict_to_csv(dictionary: dict,
+                     output_path: Path,
+                     test_fold: str,
+                     hp_config_index: int,
+                     validation_fold: str,
+                     is_cv_loop: bool,
+                     suffix: str,
+                     rank: int = None):
     
     prefix, path_folder_output = get_prefix_and_folder_path(test_fold,
                                                             hp_config_index,
@@ -119,9 +122,9 @@ def save_history_to_csv(history: dict,
                                                             output_path)
 
     # Saves the history
-    save_csv_from_list_dict(history,
-                            path_folder_output,
-                            f"{prefix}_{suffix}.csv")
+    save_dict_or_listdict_to_csv(dictionary,
+                                 path_folder_output,
+                                 f"{prefix}_{suffix}.csv")
 
 
 def predict_and_save_results(execution_device: str,
@@ -171,15 +174,15 @@ def predict_and_save_results(execution_device: str,
     # Saves Class/Categories indices with corresponding names   
     categories_info =[{"index": index, "class_name": class_names[index]} \
                       for index in range(len(class_names))]
-    save_csv_from_list_dict(categories_info,
-                            path_folder_output,
-                            f"{prefix}_class_names.csv") 
+    save_dict_or_listdict_to_csv(categories_info,
+                                 path_folder_output,
+                                 f"{prefix}_class_names.csv") 
     
     # Saves Total time of training
     time_info = [{"time_total": time_elapsed}]
-    save_csv_from_list_dict(time_info,
-                            path_folder_output,
-                            f"{prefix}_time_total.csv.csv")
+    save_dict_or_listdict_to_csv(time_info,
+                                 path_folder_output,
+                                 f"{prefix}_time_total.csv.csv")
 
 
     # Adds the predictions et true labels to the metric dictionary
