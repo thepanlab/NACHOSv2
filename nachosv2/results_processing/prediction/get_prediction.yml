@@ -1,0 +1,29 @@
+model_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/CV/checkpoints/pig_kidney_subset_test_k1_hp_0_val_k2_epoch_8_best.pth"
+model_name: ResNet50
+
+device: "cuda:0"
+
+number_channels: 1
+class_names:
+  - "cortex"
+  - "medulla"
+  - "pelvis-calyx"
+
+# -1: class index for class predicted
+class_index_for_explainability: -1
+
+target_height: 301
+target_width: 235
+
+do_normalize: true
+normalization_values:
+  mean: 0.19031469523906708
+  stddev: 0.2582910358905792
+
+output_folder: /home/pcallec/NACHOS/results/pig_kidney_subset/predictions/
+# Optional
+suffix: null
+
+# image_path: "/home/pcallec/NACHOS/data/pig_kidney_subset/k1/k1_cortex/1_k1_cortex.jpg"
+# OR image folder with images
+image_folder: "/home/pcallec/NACHOS/data/pig_kidney_subset/k1/k1_cortex/"
