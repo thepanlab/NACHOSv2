@@ -114,7 +114,7 @@ class TrainingFold():
         self.history = create_empty_history(self.is_cv_loop, 
                                             self.metrics_dictionary)
 
-        self.time_elapsed = None
+        self.time_elapsed = 0
         self.counter_early_stopping = 0
 
         self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
@@ -224,10 +224,9 @@ class TrainingFold():
         # self.save_state()
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
-            fold_timer = PrecisionTimer()
+            self.fold_timer = PrecisionTimer()
             self.train()
-            self.time_elapsed = fold_timer.get_elapsed_time() 
-            # TODO reorganize and rename functions to make it more understandable
+            self.time_elapsed = self.fold_timer.get_elapsed_time() 
             self.process_results()
 
 
@@ -482,7 +481,7 @@ class TrainingFold():
         for i, (inputs, labels, _ ) in enumerate(data_loader):
             print(f"Epoch: {epoch_index+1} of {self.number_of_epochs}. {partition} Progress: {(i+1)/len(data_loader)*100:.1f}% Step:{i+1}/{len(data_loader)}\r",
                   end="")
-            if i == len(data_loader)-1 :
+            if i == len(data_loader) - 1:
                 print()
             # Runs the fit loop
             loss_update, corrects_update = self.process_batch(
@@ -575,13 +574,17 @@ class TrainingFold():
         checkpoint = self.load_checkpoint()
         # verify is less than the expected 
         #TODO: use values of checkpoint to load into model
-        if checkpoint is not None:
+        if checkpoint:
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.loss_hist = checkpoint["loss_hist"]
             self.accuracy_hist = checkpoint["accuracy_hist"]
             self.best_valid_loss = checkpoint["best_val_loss"]
-            self.history = checkpoint["history"] 
+            self.history = checkpoint["history"]
+            
+            if self.start_epoch < self.number_of_epochs:
+                self.fold_timer.set_additional_time(checkpoint["time_total"])
+            
             self.counter_early_stopping = checkpoint["counter_early_stopping"]
             self.early_stopping = EarlyStopping(patience=self.hyperparameters['patience'],
                                            verbose=True,
@@ -594,9 +597,9 @@ class TrainingFold():
                                   "validation": [0.0] * self.number_of_epochs}
             self.best_valid_loss = math.inf
             self.early_stopping = EarlyStopping(patience=self.hyperparameters['patience'],
-                                           verbose=True,
-                                           counter=self.counter_early_stopping,
-                                           best_val_loss=self.best_valid_loss)    
+                                                verbose=True,
+                                                counter=self.counter_early_stopping,
+                                                best_val_loss=self.best_valid_loss)    
 
         self.scaler = GradScaler() if self.use_mixed_precision else None
 
@@ -609,9 +612,7 @@ class TrainingFold():
             # AHPO/CV: ["training", "validation"]
             # Cross-testing: ["training"]
             partitions_list = self.get_partitions()
-            
-            
-            
+
             for partition in partitions_list:
                 self.process_one_epoch(epoch, partition)
 
@@ -848,7 +849,8 @@ class TrainingFold():
                             "best_val_loss": self.best_valid_loss,
                             "accuracy_hist": self.accuracy_hist,
                             "loss_hist": self.loss_hist,
-                            "history": self.history
+                            "history": self.history,
+                            "time_total": self.fold_timer.get_elapsed_time(),
                            }, path)
 
                 print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs} at {path}.", 'cyan'))

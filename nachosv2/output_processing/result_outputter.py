@@ -14,7 +14,8 @@ from nachosv2.model_processing.predict_model import predict_model
 
 def save_dict_or_listdict_to_csv(values: Union[dict,List[dict]],
                                  path: Path,
-                                 filename: str):
+                                 filename: str,
+                                 overwrite: bool):
     """
     Writes some list in a file.
 
@@ -25,11 +26,15 @@ def save_dict_or_listdict_to_csv(values: Union[dict,List[dict]],
     """
     path.mkdir(parents=True, exist_ok=True)
     # create directory for path
-    values_df = pd.DataFrame(values)   
-    values_df.to_csv(path / filename)
+    values_df = pd.DataFrame(values)
+    filepath = path / filename
     
+    if filepath.exists() and not overwrite:
+        return
+    
+    values_df.to_csv(filepath)
     print(f"File {filename} stored at {path}")
-    
+
 
 def get_prefix_and_folder_path(test_fold: str,
                                hp_config_index: int,
@@ -74,6 +79,18 @@ def save_prediction_results(partition_type: str,
     
     if partition_type not in ["validation", "test"]:
         raise ValueError(f"partition_type should be either 'validation' or 'test', but got {partition_type}.")
+
+    filename_map = {
+        "validation": f"{file_prefix}_prediction_val.csv",
+        "test": f"{file_prefix}_prediction_test.csv"
+    }
+
+    filename = filename_map[partition_type]
+    
+    filepath = output_path / filename
+    
+    if filepath.exists():
+        return
     
     preds, pred_probs, true_labels, filepaths = predict_model(
                                                 execution_device,
@@ -94,16 +111,10 @@ def save_prediction_results(partition_type: str,
             dict_temp[f"class_{i}_prob"] = pred_probs[index][i]
         prediction_rows.append(dict_temp)
 
-    filename_map = {
-        "validation": f"{file_prefix}_prediction_val.csv",
-        "test": f"{file_prefix}_prediction_test.csv"
-    }
-
-    filename = filename_map[partition_type]
-
     save_dict_or_listdict_to_csv(prediction_rows,
                                  output_path,
-                                 filename)
+                                 filename,
+                                 True)
 
 
 def save_dict_to_csv(dictionary: dict,
@@ -124,7 +135,8 @@ def save_dict_to_csv(dictionary: dict,
     # Saves the history
     save_dict_or_listdict_to_csv(dictionary,
                                  path_folder_output,
-                                 f"{prefix}_{suffix}.csv")
+                                 f"{prefix}_{suffix}.csv",
+                                 True)
 
 
 def predict_and_save_results(execution_device: str,
@@ -176,13 +188,15 @@ def predict_and_save_results(execution_device: str,
                       for index in range(len(class_names))]
     save_dict_or_listdict_to_csv(categories_info,
                                  path_folder_output,
-                                 f"{prefix}_class_names.csv") 
+                                 f"{prefix}_class_names.csv",
+                                 True) 
     
     # Saves Total time of training
     time_info = [{"time_total": time_elapsed}]
     save_dict_or_listdict_to_csv(time_info,
                                  path_folder_output,
-                                 f"{prefix}_time_total.csv.csv")
+                                 f"{prefix}_time_total.csv.csv",
+                                 False)
 
 
     # Adds the predictions et true labels to the metric dictionary
