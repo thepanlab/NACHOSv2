@@ -143,16 +143,6 @@ def perform_single_training(index: int,
         test_fold_name=test_fold
         ) 
 
-    write_log(
-        config=config_dict,
-        indices_dict=indices_loop_dict,
-        training_index=index,
-        is_training_finished=False,
-        output_directory=config_dict['output_path'],
-        is_cv_loop=is_cv_loop,
-        rank=None,
-    )
-
     training_folds_list = partitions_dict['training']
 
     # Creates and runs the training fold for this subject pair
@@ -171,16 +161,6 @@ def perform_single_training(index: int,
     )
     
     training_fold.run_all_steps()
-    
-    write_log(
-        config=config_dict,
-        indices_dict=indices_loop_dict,
-        training_index=index,
-        is_training_finished=True,
-        output_directory=config_dict['output_path'],
-        is_cv_loop=is_cv_loop,
-        rank=None,
-    )
 
 
 def get_fold_list(partition: str,
@@ -383,25 +363,6 @@ def train_sequential(config_dict: dict,
     # Load metadata from the CSV file
     path_csv_metadata = config_dict["path_metadata_csv"]
     df_metadata = read_metadata_csv(path_csv_metadata)
-
-    # # Reads in the log's subject list, if it exists
-    # log_list = read_item_list_in_log(
-    #     dict_config['output_path'],    # The directory containing the log files
-    #     dict_config['job_name'],       # The prefix of the log
-    #     dict_config['test_subjects'],  # The list of dictionary keys to read
-    #     is_verbose_on                  # If the verbose mode is activated
-    # )
-
-    # # Creates the list of test subjects
-    # if log_list and 'subject_list' in log_list: # From the log file if it exists
-    #     test_subjects_list = log_list['test_subjects']
-        
-    # else: # From scratch if the log file doesn't exists
-    #     test_subjects_list = dict_config['test_subjects']
-        
-
-    # Double-checks that the test subjects are unique
-    # check_unique_subjects(test_subjects_list, "test")
 
     # Double-checks that the validation subjects are unique
     if is_cv_loop:  # Only if we are in the inner loop
