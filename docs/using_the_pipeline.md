@@ -2,7 +2,7 @@
 
 1. The metadata (label, fold, etc) shoould be located in a CSV file.
 
-The CVS should have minimum the colums: `fold_name`,`absolute_filepath`,`label`. e.g.
+The CVS should have minimum the colums: `fold_name`,`absolute_filepath`,`label` (0-indexed). e.g.
 
 | fold_name | absolute_filepath | label |
 |-----------|-------------------|-------|
@@ -21,6 +21,8 @@ The CSV can have more columns; however, they won't be used.
 
 ### Basic Command
 
+#### Training
+
 To start training, use the following command:
 
 ```bash
@@ -33,47 +35,33 @@ python NACHOSv2_train --loop "cross-validation" --device cuda:0 --file config_tr
 - `--verbose` or `--v`: Activate verbose mode for more detailed output.
 - `--device` or `--d`: Choose the CUDA device for execution. default `cuda:0` 
 
+#### Get summary
+
 To get summary results:
 ```bash
-python3 NACHOSv2_getsummary --file config_summary_cv.yml
+python NACHOSv2_get_summary --file config_summary_cv.yml
 ```
 If are getting summary for `cross-validation`, it will automatically generate the configuration files to train `for cross-testing` inside the folder ``
 
+#### Get confusion matrix
+
 To get confusion matrix:
 ```bash
-python3 NACHOSv2_getconfusionmatrix --file config_confusionmatrix_cv.yml
+python3 NACHOSv2_get_confusion_matrix --file config_confusionmatrix_cv.yml
 ```
 
+### Get learning curve
 
-## Processing Results
+To get learning curve:
+```bash
+python3 NACHOSv2_get_learning_curve --file config_confusionmatrix_cv.yml
+```
 
-After training, use the following command structure to process results:
+### Get predictions
 
 ```bash
-python3 src/results_processing/[processing_type]/[specific_script].py
+python3 NACHOSv2_get_predictions --file config_confusionmatrix_cv.yml
 ```
-
-Example:
-```bash
-python3 src/results_processing/learning_curve/learning_curve_many.py
-```
-
-Note: Each result processing function requires its own configuration file.
-
-## Customizing the Pipeline
-
-### Adding Custom Models
-
-1. Create a new file in `src/model_processing/models/` for your model.
-2. Add the model name to the dictionary of possible models in `src/model_processing/create_model.py`.
-
-## Best Practices and Tips
-
-1. Always double-check your configuration file before starting a training session.
-2. Use verbose mode (`--verbose`) for detailed logs during training.
-3. When running on a shared system, be mindful of resource usage and use the `--device` argument to specify which GPU to use.
-4. Regularly backup your configuration files and results.
-5. For reproducibility, consider versioning your configuration files alongside your code.
 
 ## Troubleshooting
 
