@@ -76,7 +76,7 @@ enable_prediction_on_test: true
 * `use_hpo`: `true` if hyperparameter optimization is used. If not, just provide single values inside `configuration_filepath`
 * `configuration_filepath`: hyperparameter YAML file
 * `number_channels`: number of channels for images. Grayscale: 1, RGB: 3.
-* `path_metadata_csv`: csv file that would be used to extract fold id, label, and image filepath. An example how to get it can be found at [this link](https://github.com/pcallec/analyze_images/blob/main/scripts/)
+* `path_metadata_csv`: csv file that would be used to extract fold id, label, and image filepath. An example how to get it can be found at [this link](../nachosv2/training/hpo/hpo_default_values.csv)
 * `output_path`: output folder to place results
 * `checkpoint_epoch_frequency`: checkpoint frequency saving
 * `do_normalize_2d`: `true`` if data would be normalize with mean and standard deviation from training partition
