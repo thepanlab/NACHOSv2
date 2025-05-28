@@ -19,21 +19,46 @@ The CSV can have more columns; however, they won't be used.
 
 ## Running the Pipeline
 
-### Basic Command
 
-#### Training
+### Training
 
 To start training, use the following command:
+
+#### Sequential version
 
 ```bash
 python NACHOSv2_train --loop "cross-validation" --device cuda:0 --file config_training.yml 
 ```
 
-- `--file` or `--config_file`: Specify a single configuration filepath.
+- `--file` or `--config_file`: Specify a single configuration filepath. More details in [training_guide.md](docs/training_guide.md)
 - `--loop`: selects between `cross-validation` or `cross-testing`
 - `--folder` or `--config_folder`: Specify a folder containing multiple configuration files to run several training sessions.
 - `--verbose` or `--v`: Activate verbose mode for more detailed output.
 - `--device` or `--d`: Choose the CUDA device for execution. default `cuda:0` 
+
+#### Parallelize version
+For 2 GPUs in one node
+```bash
+mpirun -n 3 NACHOSv2_train --loop "cross-validation" --device cuda:0 cuda:1 --file config_training.yml 
+```
+
+For 2 GPUs in two nodes
+```bash
+mpirun --host 10.999.999.98:3,10.999.999.99:2 NACHOSv2_train --loop "cross-validation" --device "cuda:0" "cuda:1" --file config_training.yml
+```
+
+For SLURM system
+For 2 GPUs in two nodes. SLURM system splits the processes equally; therefore, it is necessary to use flag `enable_dummy_process` to use a dummy process. Look at the comple [batch file](../batch/distributed_lscratch_small_oct_test_k4.batch)
+
+```bash
+mpirun -n 6 NACHOSv2_train \
+    --file "${MODIFIED_CONFIG_YML}" \
+    --loop "cross-validation" \
+    --devices $device_string \
+    --enable_dummy_process
+```
+
+
 
 #### Get summary
 

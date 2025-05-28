@@ -1,162 +1,168 @@
-# Training Guide
+# Configurations File
 
-This guide provides detailed information on training models using our image classification pipeline. It covers configuration, parameters, and best practices for effective model training.
+The training process is controlled by two YAML configuration files.
 
-## Configuration File
+The first YMAL file configures the main properties:
 
-The training process is controlled by a JSON configuration file. Here's an example of its structure with explanations:
+```yml
+# hpo (HyperParameter Optimization using Random Search)
+# If use_hpo: false
+# it will verify that the configuration file
+# has single values
 
-```json
-{
-    "hyperparameters": {
-        "batch_size": 32,
-        "channels": 1,
-        "cropping_position": [40, 10],
-        "decay": 0.001,
-        "do_cropping": false,
-        "epochs": 20,
-        "learning_rate": 0.0005,
-        "momentum": 0.9,
-        "bool_nesterov": true,
-        "patience": 10
-    },
+use_hpo: true
+# file with hyperparameter configurations
+configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training/config_files/OCT_small/hp_single_configuration.yml"
 
-    "data_input_directory": "/ssd/sly/CW_treated_tiff",
-    "csv_input_directory": "data/3D_kidney_csv",
-    "output_path": "results/distributed/3D_pig_kidney_subset_parallel",
-    "job_name": "3D_pig_kidney_subset",
-    
-    "k_epoch_checkpoint_frequency": 1,
+number_channels: 1
 
-    "shuffle_the_images": true,
-    "shuffle_the_folds": false,
-    "seed": 9,
+# csv file with the metadata: image_path, label, fold
+path_metadata_csv: "/home/pcallec/NACHOS/nachosv2/training/metadata_csv/pig_kidney_subset_metadata.csv"
+# results output
+output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset"
+# job_name is used as suffix for some files
+job_name: "pig_kidney_subset"
 
-    "class_names": ["cortex", "medulla", "pelvis-calyx"],
-    "selected_model_name": "Conv3DModel",
-    "metrics": [],
-    
-    "subject_list": ["Kidney_01", "Kidney_02", "Kidney_03", "Kidney_04", "Kidney_05", "Kidney_06", "Kidney_07", "Kidney_08", "Kidney_09", "Kidney_10"],
-    "test_subjects": ["Kidney_01", "Kidney_02", "Kidney_03", "Kidney_04", "Kidney_05", "Kidney_06", "Kidney_07", "Kidney_08", "Kidney_09", "Kidney_10"],
-    "validation_subjects": ["Kidney_01", "Kidney_02", "Kidney_03", "Kidney_04", "Kidney_05", "Kidney_06", "Kidney_07", "Kidney_08", "Kidney_09", "Kidney_10"],
-    
-    "image_size": [185, 210, 185],
-    "target_height": 301,
-    "target_width": 235
-}
+checkpoint_epoch_frequency: 2
+
+do_normalize_2d: true
+do_shuffle_the_images: true
+do_shuffle_the_folds: false
+
+# If use_mixed_precision: true,
+#  the model will be trained using mixed precision
+# (fp16/fp32). This can speed up training and reduce
+use_mixed_precision: false
+
+class_names:
+  - "cortex"
+  - "medulla"
+  - "pelvis-calyx"
+
+# Accuracy is used by default, add more to analysis
+metrics_list: []
+
+fold_list:
+  - "k1"
+  - "k2"
+  - "k3"
+  - "k4"
+  - "k5"
+
+test_fold_list:
+  - "k1"
+
+# validation_fold_list is used only for 
+# cross-validation
+validation_fold_list:
+  - "k1"
+  - "k2"
+  - "k3"
+
+# if images are of different sizes,
+# they will be resized to the target size
+
+# if image is 2D. First dimension is height, and second is width
+target_dimensions:
+  - 301
+  - 235
+
+# Only useful in cross-validation, default is false
+# If true, in addition to the predictions on the validation fold,
+# the predictions on the test fold will be computed
+enable_prediction_on_test: true
 ```
 
-### Key Configuration Parameters
+* `use_hpo`: `true` if hyperparameter optimization is used. If not, just provide single values inside `configuration_filepath`
+* `configuration_filepath`: hyperparameter YAML file
+* `number_channels`: number of channels for images. Grayscale: 1, RGB: 3.
+* `path_metadata_csv`: csv file that would be used to extract fold id, label, and image filepath. An example how to get it can be found at [this link](https://github.com/pcallec/analyze_images/blob/main/scripts/)
+* `output_path`: output folder to place results
+* `checkpoint_epoch_frequency`: checkpoint frequency saving
+* `do_normalize_2d`: `true`` if data would be normalize with mean and standard deviation from training partition
+* `do_shuffle_the_images`: `true` if data should be shuffled for each training epoch
+* `use_mixed_precision`: `true` enables mixed precision (fp16/fp32) while training
+* `class_names`: include class names in the order used for `path_metadata_csv`
+* `metrics_list`: add metrics to be calculated during training
+* `fold_list`: folds to be used for training, validation or test
+* `test_fold_list`: folds to be used for test
+* `validation_fold_list`: folds to be used for validation
+*  `target_dimensions`: list of dimensions. If images are smaller or larger, they will be reshaped.
+* `enable_prediction_on_test`: `true` if want to have results for test when doing cross-validation loop
 
-1. **Hyperparameters**:
-   - `batch_size`: Number of samples per batch during training. Decrease this value if you encounter "out of memory" errors.
-   - `channels`: Number of input channels in the image. Use 1 for grayscale images, 3 for RGB images.
-   - `epochs`: Total number of training epochs.
-   - `learning_rate`: Step size at each iteration while moving toward a minimum of the loss function.
-   - `momentum`: Accelerates gradient descent in the relevant direction.
-   - `bool_nesterov`: Whether to use Nesterov momentum.
-   - `patience`: Number of epochs with no improvement after which training will be stopped.
+The second YAML controls the hyperparameter configurations:
 
-2. **Data and Output**:
-   - `data_input_directory`: Path to the input image data.
-   - `csv_input_directory`: Path to CSV files containing data information.
-   - `output_path`: Where to save the results.
-   - `job_name`: Name given to the training job. This will be used for naming folders and files related to this training run.
+```yml
+# only used when use_hpo: true
+n_combinations: 9
 
-3. **Training Process**:
-   - `k_epoch_checkpoint_frequency`: How often to save model checkpoints.
-   - `shuffle_the_images`: Whether to shuffle images during training.
-   - `shuffle_the_folds`: Whether to shuffle the folds in cross-validation.
-   - `seed`: Random seed for reproducibility.
+# Specify single value or range e.g.
+# if using a single value use
+# batch_size: 32 OR
+# batch_size: 
+#   - 32 
+# if using a range specify the min and max values
+# batch_size:
+#   - 16
+#   - 128
+batch_size:
+  min: 16
+  max: 128
 
-4. **Model and Data Specifics**:
-   - `class_names`: List of class names for classification.
-   - `selected_model_name`: The model architecture to use. This must be a key in the model dictionary in `src/model_processing/model_creator.py`.
-   - `metrics`: List of metrics to track during training. By default, it includes accuracy and loss. You can also add 'recall' if needed.
-   - `subject_list`: Subjects to use for training.
-   - `test_subjects`: Subjects to use for testing.
-   - `validation_subjects`: Subjects to use for validation.
-   - `image_size`: Dimensions of the input images.
-   - `target_height` and `target_width`: Dimensions used to create the crop box for images.
+do_cropping: false
+# x and y cropping position
+cropping_position:
+  x: 40
+  y: 10
 
-## Training Process
+# Specify single value or range
+n_epochs: 5
 
-1. **Data Preparation**:
-   - Ensure your data is in the correct format and location as specified in the configuration file.
-   - For 2D images, the pipeline will perform normalization. 3D images are not normalized.
+# Specify single value or range
+patience: 20
 
-2. **Model Selection**:
-   - Specify the model in `selected_model_name`. The current example uses "Conv3DModel".
+# Specify single value or range
+learning_rate:
+  min: 0.0001
+  max: 0.01
 
-3. **Training Phases**:
-   - The pipeline uses a nested cross-validation approach.
-   - Training and validation phases are handled within `training_fold.py`.
+# Specify scheduler learning rate
+# If not specified learning rate is constant
+learning_rate_scheduler: "InverseTimeDecay"
+learning_rate_scheduler_parameters:
+  decay: 0.01
 
-4. **Performance Monitoring**:
-   - The pipeline tracks accuracy and loss for each epoch.
-   - Final accuracy and loss are reported at the end of training.
+# Specify single value or range
+# if you don't want to use momentum, place 0 or omit value
+# e.g. momentum: -1  
+momentum:
+  - 0.5
+  - 0.9
+  - 0.99
 
-## Hyperparameter Tuning
+# Specify single value or range
+enable_nesterov:
+  - true
+  - false
 
-Adjust hyperparameters in the configuration file to optimize model performance:
+# Specify single value or range
+architecture:
+  - InceptionV3
+  - ResNet50
+```
 
-- Increase `batch_size` for faster training, but be mindful of memory constraints.
-- Adjust `learning_rate` to control the step size of optimization.
-- Modify `epochs` and `patience` to control training duration and early stopping.
+* `n_combinations`: number of hyperparameters configurations to generate
+* `batch_size`: provide single value, list or min and max values (power of two).
+* `do_cropping`: true if cropping image, use `cropping_position`
+* `cropping_position`: `x`: value, `y`: value
+* `n_epochs`: provide single value, list or min and max values (multiple of 10)
+* `patience`: provide single value, list or min and max values
+* `learning_rate`: provide single value, list or min and max values (power of ten).
+* `learning_rate_scheduler`: specified the learning rate scheduler
+* `learning_rate_scheduler_parameters`: specified the learning rate scheduler parameters
+* `momentum`: provide single value, list or min and max values
+* `enable_nesterov`: value or list of values (true or false).
+* `architecture`: single value or list of values for architecture
+/home/pcallec/NACHOS/nachosv2/training/hpo/hpo_default_values.csv
 
-## Preventing Overfitting
-
-1. **Early Stopping**: 
-   - The `patience` parameter in the configuration helps prevent overfitting by stopping training when performance plateaus.
-
-2. **Learning Rate Scheduling**:
-   - The pipeline implements a learning rate scheduler to adjust the learning rate during training.
-
-## Supercomputer Considerations
-
-1. **Memory Management**:
-   - Be cautious with `batch_size` and model complexity to avoid exceeding available memory.
-   - If the pipeline crashes, it may be due to insufficient memory. Try reducing `batch_size` or using a simpler model.
-
-2. **Checkpointing**:
-   - Use `k_epoch_checkpoint_frequency` to save model states regularly. This allows resuming training if interrupted.
-
-3. **Resource Allocation**:
-   - Ensure you request appropriate resources (CPU, GPU, memory) when submitting jobs to the supercomputer.
-
-## Best Practices
-
-1. **Reproducibility**: 
-   - Set a fixed `seed` for reproducible results.
-
-2. **Data Shuffling**: 
-   - Use `shuffle_the_images` to randomize the order of training samples, which can improve model generalization.
-
-3. **Monitoring**: 
-   - Regularly check the training output for signs of overfitting or underfitting.
-
-4. **Experimentation**: 
-   - Start with default parameters and gradually adjust based on model performance.
-
-5. **Version Control**: 
-   - Keep track of different configuration files and their corresponding results for easy comparison and reproducibility.
-
-6. **Model Selection**: 
-   - Ensure that the `selected_model_name` in your configuration file matches one of the models defined in `src/model_processing/model_creator.py`.
-
-7. **Memory Management**:
-   - If you encounter "out of memory" errors, try reducing the `batch_size` in your configuration file.
-
-8. **Image Channels**:
-   - Set `channels` to 1 for grayscale images and 3 for RGB images. Ensure this matches your input data format.
-
-9. **Metrics Tracking**:
-   - By default, the pipeline tracks accuracy and loss. If you need to track recall as well, add it to the `metrics` list in your configuration file.
-
-10. **Cross-validation**:
-    - Use `shuffle_the_folds` parameter to control whether the folds in cross-validation should be shuffled.
-
-11. **Image Cropping**:
-    - Adjust `target_height` and `target_width` to control the dimensions of the crop box for your images. Ensure these values are appropriate for your dataset and model architecture.
-
-Remember, the optimal configuration may vary depending on your specific dataset and classification task. Don't hesitate to experiment with different settings to achieve the best results.
+If not specified, default values are retrieved from [this file](../nachosv2/training/hpo/hpo_default_values.csv)
