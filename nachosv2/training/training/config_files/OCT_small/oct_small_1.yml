@@ -20,7 +20,6 @@ checkpoint_epoch_frequency: 2
 
 do_normalize_2d: true
 do_shuffle_the_images: true
-do_shuffle_the_folds: false
 
 # If use_mixed_precision: true,
 #  the model will be trained using mixed precision
