@@ -65,6 +65,8 @@ def get_model(model_name: str,
             padding=model.conv1.padding,
             bias=model.conv1.bias  # is not None
         )
+    else:
+        raise ValueError(colored(f"Error: Model '{model_name}' not found in the list of possible models: {l_models}.", 'red'))
     return model
 
 
