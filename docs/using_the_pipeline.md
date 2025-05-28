@@ -30,7 +30,7 @@ To start training, use the following command:
 python NACHOSv2_train --loop "cross-validation" --device cuda:0 --file config_training.yml 
 ```
 
-- `--file` or `--config_file`: Specify a single configuration filepath. More details in [training_guide.md](docs/training_guide.md)
+- `--file` or `--config_file`: Specify a single configuration filepath. More details in [training_guide.md](training_guide.md)
 - `--loop`: selects between `cross-validation` or `cross-testing`
 - `--folder` or `--config_folder`: Specify a folder containing multiple configuration files to run several training sessions.
 - `--verbose` or `--v`: Activate verbose mode for more detailed output.
