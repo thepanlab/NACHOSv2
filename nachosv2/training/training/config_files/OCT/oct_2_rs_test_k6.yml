@@ -11,7 +11,7 @@ number_channels: 1
 data_input_directory: "/home/pcallec/mif_outer/data/pig_kidney"
 # csv file with the metadata: image_path, label, fold
 path_metadata_csv: "/home/pcallec/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
-output_path: "/home/pcallec/NACHOS/results/pig_kidney_random_search_2"
+output_path: "/home/pcallec/NACHOS/results/pig_kidney_random_search_2_test_k6"
 job_name: "pig_kidney"
 
 checkpoint_epoch_frequency: 5
@@ -44,7 +44,7 @@ fold_list:
   - "k10"
 
 test_fold_list:
-  - "k1"
+  - "k6"
 
 # validation_fold_list is used only for 
 # cross-validation

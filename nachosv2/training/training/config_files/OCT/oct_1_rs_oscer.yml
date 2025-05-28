@@ -18,7 +18,6 @@ checkpoint_epoch_frequency: 5
 do_normalize_2d: true
 do_shuffle_the_images: true
 do_shuffle_the_folds: false
-seed: 9
 
 # If use_mixed_precision: true,
 #  the model will be trained using mixed precision
@@ -70,14 +69,13 @@ validation_fold_list:
   - "k9"
   - "k10"
 
-image_size:
-  - 301
-  - 235
-
 # if images are of different sizes,
 # they will be resized to the target size
-target_height: 301
-target_width: 235
+
+# if image is 2D. First dimension is height, and second is width
+target_dimensions:
+  - 301
+  - 235
 
 # Only useful in cross-validation, default is false
 # If true, in addition to the predictions on the validation fold,

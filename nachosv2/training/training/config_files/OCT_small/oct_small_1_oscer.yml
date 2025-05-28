@@ -29,6 +29,7 @@ class_names:
   - "cortex"
   - "medulla"
   - "pelvis-calyx"
+
 metrics_list: []
 
 fold_list:
@@ -47,15 +48,13 @@ validation_fold_list:
   - "k2"
   - "k3"
 
-
-image_size:
-  - 301
-  - 235
-
 # if images are of different sizes,
 # they will be resized to the target size
-target_height: 301
-target_width: 235
+
+# if image is 2D. First dimension is height, and second is width
+target_dimensions:
+  - 301
+  - 235
 
 # Only useful in cross-validation, default is false
 # If true, in addition to the predictions on the validation fold,

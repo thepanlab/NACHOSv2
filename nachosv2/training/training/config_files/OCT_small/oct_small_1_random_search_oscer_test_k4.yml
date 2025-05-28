@@ -9,7 +9,6 @@ configuration_filepath: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/na
 
 number_channels: 1
 
-data_input_directory: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/data/pig_kidney_subset"
 # csv file with the metadata: image_path, label, fold
 path_metadata_csv: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/analyze_images/results/pig_kidney_subset/pig_kidney_subset_metadata.csv"
 output_path: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/results/pig_kidney_subset_random_search"
@@ -30,6 +29,7 @@ class_names:
   - "cortex"
   - "medulla"
   - "pelvis-calyx"
+
 metrics_list: []
 
 fold_list:
@@ -38,6 +38,7 @@ fold_list:
   - "k3"
   - "k4"
   - "k5"
+
 test_fold_list:
   - "k4"
 
@@ -50,11 +51,15 @@ validation_fold_list:
   - "k4"
   - "k5"
 
-image_size:
+# if images are of different sizes,
+# they will be resized to the target size
+
+# if image is 2D. First dimension is height, and second is width
+target_dimensions:
   - 301
   - 235
 
-# if images are of different sizes,
-# they will be resized to the target size
-target_height: 301
-target_width: 235
+# Only useful in cross-validation, default is false
+# If true, in addition to the predictions on the validation fold,
+# the predictions on the test fold will be computed
+enable_prediction_on_test: true

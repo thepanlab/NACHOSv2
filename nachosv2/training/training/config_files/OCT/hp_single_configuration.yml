@@ -28,6 +28,12 @@ patience: 5
 # Specify single value or range
 learning_rate: 0.0001
 
+# Specify scheduler learning rate
+# If not specified learning rate is constant
+learning_rate_scheduler: "InverseTimeDecay"
+learning_rate_scheduler_parameters:
+  decay: 0.01
+
 # Specify single value or range
 # if you don't want to use momentum, place 0 or omit value
 # e.g. momentum: -1  

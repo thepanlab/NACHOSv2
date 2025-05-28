@@ -11,12 +11,12 @@ number_channels: 1
 data_input_directory: "/home/pcallec/mif_outer/data/pig_kidney"
 # csv file with the metadata: image_path, label, fold
 path_metadata_csv: "/home/pcallec/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
-output_path: "/home/pcallec/NACHOS/results/pig_kidney_random_search_2"
+output_path: "/home/pcallec/NACHOS/results/pig_kidney_random_search_2_test_k1_no_normalization"
 job_name: "pig_kidney"
 
 checkpoint_epoch_frequency: 5
 
-do_normalize_2d: true
+do_normalize_2d: false
 shuffle_the_images: true
 shuffle_the_folds: false
 

@@ -8,7 +8,6 @@ configuration_filepath: "/home/pcallec/NACHOS/nachosv2/training/training/config_
 
 number_channels: 1
 
-data_input_directory: "/home/pcallec/mif_outer/data/pig_kidney"
 # csv file with the metadata: image_path, label, fold
 path_metadata_csv: "/home/pcallec/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
 output_path: "/home/pcallec/NACHOS/results/pig_kidney_random_search_p1"
@@ -19,7 +18,6 @@ checkpoint_epoch_frequency: 5
 do_normalize_2d: true
 do_shuffle_the_images: true
 do_shuffle_the_folds: false
-seed: 9
 
 # If use_mixed_precision: true,
 #  the model will be trained using mixed precision
@@ -30,6 +28,8 @@ class_names:
   - "cortex"
   - "medulla"
   - "pelvis-calyx"
+
+# Accuracy is used by default, add more to analysis
 metrics_list: []
 
 fold_list:
@@ -65,14 +65,13 @@ validation_fold_list:
   - "k9"
   - "k10"
 
-image_size:
-  - 301
-  - 235
-
 # if images are of different sizes,
 # they will be resized to the target size
-target_height: 301
-target_width: 235
+
+# if image is 2D. First dimension is height, and second is width
+target_dimensions:
+  - 301
+  - 235
 
 # Only useful in cross-validation, default is false
 # If true, in addition to the predictions on the validation fold,
