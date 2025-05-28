@@ -41,6 +41,8 @@ NACHOSv2_train = "nachosv2.training.training.training:train"
 NACHOSv2_get_summary = "nachosv2.results_processing.summary.get_summary:main"
 NACHOSv2_get_confusion_matrix = "nachosv2.results_processing.confusion_matrix.get_confusion_matrix:main"
 NACHOSv2_get_explainability = "nachosv2.results_processing.explainability.get_explainability:main"
+NACHOSv2_get_predictions = "nachosv2.results_processing.prediction.get_prediction:main"
+
 
 [tool.setuptools.packages.find]
 # where = ["."]  # list of folders that contain the packages (["."] by default)
