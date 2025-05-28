@@ -905,20 +905,25 @@ class TrainingFold():
         # get list of checkpoints
         checkpoint_list = list(self.checkpoint_folder_path.glob(f"*{self.prefix_name}*.pth"))
         
-        # TODO: regex to obtain specific epoch
         last_checkpoint_path, last_checkpoint_epoch, best_checkpoint_path = self.get_checkpoint_info(checkpoint_list)
 
-        if last_checkpoint_path is not None:
+        if last_checkpoint_path:
             self.prev_checkpoint_path = last_checkpoint_path
             # the checkpoint_epoch is finished
             # therefore the start should be the next one
+            
+            if last_checkpoint_epoch == self.number_of_epochs - 1:
+                print(colored(f"Last checkpoint epoch {last_checkpoint_epoch + 1} is the last epoch of the training. No further training will be done.", 'yellow'))
+
+                self.last_checkpoint_file_path = last_checkpoint_path
+            
             self.start_epoch = last_checkpoint_epoch + 1
             # retrieve specific checkpoint file
             checkpoint = torch.load(last_checkpoint_path,
                                     weights_only=True,
                                     map_location=self.execution_device)
 
-        if best_checkpoint_path is not None:
+        if best_checkpoint_path:
             self.prev_best_checkpoint_file_path = best_checkpoint_path
 
         return checkpoint
