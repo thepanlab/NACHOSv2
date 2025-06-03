@@ -293,7 +293,8 @@ class TrainingFold():
                     dataset_before_normalization = Dataset2D(
                         dictionary_partition=self.partitions_info_dict[partition],
                         number_channels=self.configuration['number_channels'],
-                        image_size=(self.configuration['target_height'], self.configuration['target_width']),
+                        image_size=(self.configuration['target_dimensions'][0],
+                                    self.configuration['target_dimensions'][1]),
                         do_cropping=self.hyperparameters['do_cropping'],
                         crop_box=self.crop_box,
                         transform=None
