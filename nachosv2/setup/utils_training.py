@@ -5,7 +5,8 @@ import torch
 FloatOrListFloats = Union[float, List[float]]
 def get_mean_stddev(
     number_channels: int,
-    dataloader: "torch.utils.data.DataLoader",       
+    dataloader: "torch.utils.data.DataLoader",
+    device: str,       
     )->Tuple[FloatOrListFloats, FloatOrListFloats]:
     """
     Calculate the mean and standard deviation for grayscale (1 channel) or RGB (3 channels) datasets.
@@ -19,12 +20,13 @@ def get_mean_stddev(
         or lists of floats for RGB.
     """
 
-    total_sum = torch.zeros(number_channels)
-    total_sum_squared = torch.zeros(number_channels)
+    total_sum = torch.zeros(number_channels, device=device)
+    total_sum_squared = torch.zeros(number_channels, device=device)
     num_pixels = 0
     
     # Iterate through the dataset
     for images, _, _ in dataloader:
+        images = images.to(device)
         batch_size, channels, height, width = images.shape
 
         images = images.view(batch_size, channels, -1)
@@ -67,6 +69,24 @@ def get_files_labels(partition: str,
     # Query the DataFrame once per function call
     partition_query = partition_queries[partition]
     filtered_data = df_metadata.query(partition_query)
+
+    # Extract files and labels lists
+    files = filtered_data['absolute_filepath'].tolist()
+    labels = filtered_data['label'].tolist()
+
+    return files, labels
+
+def get_files_labels_for_fold(df_metadata,
+                              fold_or_list_fold: Union[str, List[str]]) -> tuple:   
+    # Query the DataFrame once per function call
+    if isinstance(fold_or_list_fold, str):
+        query = "fold_name == @fold_or_list_fold"
+    elif isinstance(fold_or_list_fold, list):
+        query = "fold_name in @fold_or_list_fold"    
+    else:
+        raise ValueError(f"Invalid type for {fold_or_list_fold}."
+                          " Must be string or list of strings.")
+    filtered_data = df_metadata.query(query)
 
     # Extract files and labels lists
     files = filtered_data['absolute_filepath'].tolist()

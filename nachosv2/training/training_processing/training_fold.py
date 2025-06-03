@@ -34,7 +34,7 @@ from nachosv2.model_processing.create_model import create_model
 from nachosv2.model_processing.get_metrics_dictionary import get_metrics_dictionary
 from nachosv2.modules.optimizer.optimizer_creator import create_optimizer
 from nachosv2.modules.early_stopping.earlystopping import EarlyStopping
-from nachosv2.output_processing.result_outputter import save_history_to_csv
+from nachosv2.output_processing.result_outputter import save_dict_to_csv
 from nachosv2.setup.utils_training import create_empty_history
 from nachosv2.setup.utils_training import create_empty_learning_rate_freq_step_history
 from nachosv2.setup.utils_training import get_files_labels
@@ -114,7 +114,7 @@ class TrainingFold():
         self.history = create_empty_history(self.is_cv_loop, 
                                             self.metrics_dictionary)
 
-        self.time_elapsed = None
+        self.time_elapsed = 0
         self.counter_early_stopping = 0
 
         self.partitions_info_dict = OrderedDict( # Dictionary of dictionaries
@@ -224,10 +224,9 @@ class TrainingFold():
         # self.save_state()
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
-            fold_timer = PrecisionTimer()
+            self.fold_timer = PrecisionTimer()
             self.train()
-            self.time_elapsed = fold_timer.get_elapsed_time() 
-            # TODO reorganize and rename functions to make it more understandable
+            self.time_elapsed = self.fold_timer.get_elapsed_time() 
             self.process_results()
 
 
@@ -310,7 +309,28 @@ class TrainingFold():
 
                     mean, stddev = get_mean_stddev(
                         number_channels=self.configuration['number_channels'],
-                        dataloader=dataloader)
+                        dataloader=dataloader,
+                        device=self.execution_device)
+                    
+                    mean_stddev_dict = {
+                        "mean": [mean],
+                        "stddev": [stddev]
+                    }
+                    
+                    save_dict_to_csv(
+                        dictionary=mean_stddev_dict,
+                        output_path=Path(self.configuration['output_path']),
+                        test_fold=self.test_fold,
+                        hp_config_index=self.hp_config_index,
+                        validation_fold=self.validation_fold,
+                        is_cv_loop=self.is_cv_loop,
+                        suffix='mean_stddev',
+                        )
+                    
+                    # TODO: store mean and stddev
+                    print("Mean and stddev calculated for the training set: ", mean, stddev)
+                    
+                    
                     transform = transforms.Normalize(mean=mean, std=stddev)
 
             # Creates the dataset
@@ -461,7 +481,7 @@ class TrainingFold():
         for i, (inputs, labels, _ ) in enumerate(data_loader):
             print(f"Epoch: {epoch_index+1} of {self.number_of_epochs}. {partition} Progress: {(i+1)/len(data_loader)*100:.1f}% Step:{i+1}/{len(data_loader)}\r",
                   end="")
-            if i == len(data_loader)-1 :
+            if i == len(data_loader) - 1:
                 print()
             # Runs the fit loop
             loss_update, corrects_update = self.process_batch(
@@ -473,8 +493,8 @@ class TrainingFold():
                 self.lr_history['epoch'].append(epoch_index+1)
                 self.lr_history['step'].append(i + 1 + epoch_index * len(data_loader))
                 self.lr_history['learning_rate'].append(self.scheduler.get_last_lr()[0])
-                save_history_to_csv(
-                    history=self.lr_history,
+                save_dict_to_csv(
+                    dictionary=self.lr_history,
                     output_path=Path(self.configuration['output_path']),
                     test_fold=self.test_fold,
                     hp_config_index=self.hp_config_index,
@@ -504,8 +524,8 @@ class TrainingFold():
         # it saves history when self.is_cv_loop and for validation
         # or when not self.is_cv_loop, that is, cross-testing loop
         if partition == 'validation' or not self.is_cv_loop:           
-            save_history_to_csv(
-                history=self.history,
+            save_dict_to_csv(
+                dictionary=self.history,
                 output_path=Path(self.configuration['output_path']),
                 test_fold=self.test_fold,
                 hp_config_index=self.hp_config_index,
@@ -554,13 +574,17 @@ class TrainingFold():
         checkpoint = self.load_checkpoint()
         # verify is less than the expected 
         #TODO: use values of checkpoint to load into model
-        if checkpoint is not None:
+        if checkpoint:
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.loss_hist = checkpoint["loss_hist"]
             self.accuracy_hist = checkpoint["accuracy_hist"]
             self.best_valid_loss = checkpoint["best_val_loss"]
-            self.history = checkpoint["history"] 
+            self.history = checkpoint["history"]
+            
+            if self.start_epoch < self.number_of_epochs:
+                self.fold_timer.set_additional_time(checkpoint["time_total"])
+            
             self.counter_early_stopping = checkpoint["counter_early_stopping"]
             self.early_stopping = EarlyStopping(patience=self.hyperparameters['patience'],
                                            verbose=True,
@@ -573,9 +597,9 @@ class TrainingFold():
                                   "validation": [0.0] * self.number_of_epochs}
             self.best_valid_loss = math.inf
             self.early_stopping = EarlyStopping(patience=self.hyperparameters['patience'],
-                                           verbose=True,
-                                           counter=self.counter_early_stopping,
-                                           best_val_loss=self.best_valid_loss)    
+                                                verbose=True,
+                                                counter=self.counter_early_stopping,
+                                                best_val_loss=self.best_valid_loss)    
 
         self.scaler = GradScaler() if self.use_mixed_precision else None
 
@@ -588,9 +612,7 @@ class TrainingFold():
             # AHPO/CV: ["training", "validation"]
             # Cross-testing: ["training"]
             partitions_list = self.get_partitions()
-            
-            
-            
+
             for partition in partitions_list:
                 self.process_one_epoch(epoch, partition)
 
@@ -827,7 +849,8 @@ class TrainingFold():
                             "best_val_loss": self.best_valid_loss,
                             "accuracy_hist": self.accuracy_hist,
                             "loss_hist": self.loss_hist,
-                            "history": self.history
+                            "history": self.history,
+                            "time_total": self.fold_timer.get_elapsed_time(),
                            }, path)
 
                 print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs} at {path}.", 'cyan'))
@@ -882,20 +905,25 @@ class TrainingFold():
         # get list of checkpoints
         checkpoint_list = list(self.checkpoint_folder_path.glob(f"*{self.prefix_name}*.pth"))
         
-        # TODO: regex to obtain specific epoch
         last_checkpoint_path, last_checkpoint_epoch, best_checkpoint_path = self.get_checkpoint_info(checkpoint_list)
 
-        if last_checkpoint_path is not None:
+        if last_checkpoint_path:
             self.prev_checkpoint_path = last_checkpoint_path
             # the checkpoint_epoch is finished
             # therefore the start should be the next one
+            
+            if last_checkpoint_epoch == self.number_of_epochs - 1:
+                print(colored(f"Last checkpoint epoch {last_checkpoint_epoch + 1} is the last epoch of the training. No further training will be done.", 'yellow'))
+
+                self.last_checkpoint_file_path = last_checkpoint_path
+            
             self.start_epoch = last_checkpoint_epoch + 1
             # retrieve specific checkpoint file
             checkpoint = torch.load(last_checkpoint_path,
                                     weights_only=True,
                                     map_location=self.execution_device)
 
-        if best_checkpoint_path is not None:
+        if best_checkpoint_path:
             self.prev_best_checkpoint_file_path = best_checkpoint_path
 
         return checkpoint

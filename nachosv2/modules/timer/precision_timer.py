@@ -12,6 +12,13 @@ class PrecisionTimer:
         self.timer_name = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.start_time = time.perf_counter() # Actually "starts the timer"
         self.is_running = True # Is the timer running
+        self.additional_time = 0 # Additional time to add to the elapsed time
+        self.end_time = None
+        self.precise_elapsed_time = None
+
+
+    def set_additional_time(self, additional_time):
+        self.additional_time = additional_time
 
 
     def stop_timer(self):
@@ -20,8 +27,7 @@ class PrecisionTimer:
         """
         
         self.end_time = time.perf_counter()
-        self.is_running = False
-        
+
 
     def get_elapsed_time(self):
         """
@@ -31,11 +37,8 @@ class PrecisionTimer:
         Returns:
             precise_time (float): The precise elapsed time in seconds.
         """
-        
-        if self.is_running: # If the timer is running, stops it
-            self.stop_timer()
-
-        self.precise_elapsed_time = self.end_time - self.start_time # Calculates the elapsed time
+        self.stop_timer() # generates new end_time
+        self.precise_elapsed_time = self.end_time - self.start_time + self.additional_time # Calculates the elapsed time
         
         return self.precise_elapsed_time
         

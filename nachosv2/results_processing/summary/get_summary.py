@@ -153,6 +153,8 @@ def generate_summary(results_path: Path,
                                               "history",
                                               is_cv_loop)
 
+    history_filepath_list = [f for f in history_filepath_list if '_lr_history' not in f.name]
+
     # Initialize an empty DataFrame to accumulate all history info
     df_results = pd.DataFrame()
 
@@ -329,7 +331,6 @@ def generate_ct_hp_configurations(best_filepath: Path,
 
         training_config_dict = get_config(configuration_cv_path)
 
-        training_config_dict["configuration_filepath"] = str(ct_hp_config_path)
         training_config_dict["test_fold_list"] = test_fold
         # empty validation list
         training_config_dict["validation_fold_list"] = []
@@ -349,6 +350,7 @@ def generate_ct_hp_configurations(best_filepath: Path,
             hp_config_dict.pop("n_combinations", None)
             del hp_config_dict["patience"]
             
+        training_config_dict["configuration_filepath"] = str(ct_hp_config_path)
         hp_config_dict["n_epochs"] = n_epochs
         save_dict_to_yaml(hp_config_dict, ct_hp_config_path)
 

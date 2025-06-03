@@ -31,11 +31,11 @@ def read_metadata_csv(path_label_csv):
     if not p.is_file():
         raise FileNotFoundError(f"Error: The file '{p.name}' does not exist in the directory '{p.parent}'.")
     
-    df_labels = pd.read_csv(p)
+    df = pd.read_csv(p)
     
     # Checks if the given path is valid
 
-    return df_labels
+    return df
 
 
 # def read_data_csv(directory_path, configuration_file):
