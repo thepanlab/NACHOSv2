@@ -132,8 +132,8 @@ class TrainingFold():
             self.crop_box = create_crop_box(
                 self.hyperparameters['cropping_position']["x"], # The height of the offset
                 self.hyperparameters['cropping_position']["y"], # The width of the offset
-                self.configuration['target_height'],  # The height wanted
-                self.configuration['target_width'],   # The width wanted
+                self.configuration['target_dimensions'][0],  # The height wanted
+                self.configuration['target_dimensions'][1],   # The width wanted
                 is_verbose_on
             )
         else:
@@ -335,16 +335,14 @@ class TrainingFold():
 
             # Creates the dataset
             if self.is_3d:
-                dataset = Custom3DDataset(
-                    self.configuration['data_input_directory'],   # The file path prefix = the path to the directory where the images are
-                    self.partitions_info_dict[partition],               # The data dictionary
-                )
+                pass
+                # TODO
 
             else:
                 dataset = Dataset2D(
                     dictionary_partition=self.partitions_info_dict[partition], # The data dictionary
                     number_channels=self.configuration['number_channels'],      # The number of channels in an image
-                    image_size=(self.configuration['target_height'], self.configuration['target_width']),
+                    image_size=(self.configuration['target_dimensions'][0], self.configuration['target_dimensions'][1]),
                     do_cropping=self.hyperparameters['do_cropping'],              # Whether to crop the image
                     crop_box=self.crop_box,                                       # The dimensions after cropping
                     transform=transform

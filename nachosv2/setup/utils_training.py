@@ -1,4 +1,5 @@
 from typing import Union, List, Tuple
+from termcolor import colored
 import torch
 
 
@@ -139,22 +140,19 @@ def is_image_3D(configuration: dict) -> bool:
         is_3d (bool): The boolean that say of its 2D or 3D. False for 2D, True for 3D.
     """
     
-    try:      
-        # Counts the number of dimensions
-        number_of_dimensions = len(configuration["image_size"])
+ 
+    # Counts the number of dimensions
+    number_of_dimensions = len(configuration["target_dimensions"])
 
-        # The number of dimensions should be 2 or 3
-        if number_of_dimensions not in [2,3]:
-            raise ValueError("The number of image dimensions must be either 2 or 3.")
+    # The number of dimensions should be 2 or 3
+    if number_of_dimensions not in [2,3]:
+        raise ValueError(colored("The number of image dimensions must be either 2 or 3.",
+                         "red"))
 
-        # Defines if it's 2D or 3D
-        if number_of_dimensions == 2:
-            is_3d = False        
-        else:
-            is_3d = True
+    # Defines if it's 2D or 3D
+    if number_of_dimensions == 2:
+        is_3d = False        
+    else:
+        is_3d = True
 
-        return is_3d
-    
-    except ValueError as e:
-        print(colored(e, 'red'))
-        sys.exit()
+    return is_3d

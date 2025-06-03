@@ -474,7 +474,6 @@ def train_parallel(config_dict: dict,
         path_csv_metadata = config_dict["path_metadata_csv"]
         df_metadata = read_metadata_csv(path_csv_metadata)
         
-                
         # Start a training timer
         training_timer = PrecisionTimer()
         
