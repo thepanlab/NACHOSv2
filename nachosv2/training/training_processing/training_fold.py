@@ -186,8 +186,14 @@ class TrainingFold():
         """
 
         # Creates the model
-        self.model = create_model(self.configuration,
-                                  self.hyperparameters)
+        # TODO: add target dimensions, verify output is a list or a tuple
+        self.model, new_dimensions = create_model(self.configuration,
+            self.hyperparameters)
+        
+        if new_dimensions:
+            for i, dimension in enumerate(new_dimensions):
+                self.configuration['target_dimensions'][i] = dimension
+                    
         self.model.to(self.execution_device)
         # Initializes the weights
         # initialize_model_weights(self.model)
