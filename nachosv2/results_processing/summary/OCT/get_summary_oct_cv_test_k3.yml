@@ -4,6 +4,7 @@ is_cv_loop: true
 
 # only if is_cv_loop: true
 configuration_cv_path: /ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT/oct_1_rs_oscer_test_k3.yml
+metric_for_selection: accuracy
 
 # optional, by default it will use validation accuracy
 # complete list of metrics in setup/utils_processing

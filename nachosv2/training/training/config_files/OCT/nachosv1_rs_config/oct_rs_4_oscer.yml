@@ -9,7 +9,7 @@ number_channels: 1
 
 # csv file with the metadata: image_path, label, fold
 path_metadata_csv: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/analyze_images/results/pig_kidney/pig_kidney_metadata.csv"
-output_path: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/results/pig_kidney_nachosv1_rs_5"
+output_path: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/results/pig_kidney_nachosv1_rs_4"
 job_name: "pig_kidney"
 
 checkpoint_epoch_frequency: 5

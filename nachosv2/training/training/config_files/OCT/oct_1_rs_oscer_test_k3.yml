@@ -4,7 +4,7 @@
 
 use_hpo: true
 seed_hpo: 1234
-configuration_filepath: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT/hp_random_search_2.yml"
+configuration_filepath: "/ourdisk/hpc/prebiotics/omicsbio/paulcalle/NACHOS_v2/nachosv2/training/training/config_files/OCT/nachosv1_rs_config/hp_rs_1_oscer.yml"
 
 number_channels: 1
 
