@@ -1,0 +1,3 @@
+results_path: "/home/pcallec/NACHOS/results/mouse_data"
+is_cv_loop: true
+# output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/confusion_matrix"
