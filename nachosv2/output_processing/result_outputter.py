@@ -1,21 +1,19 @@
-import fasteners
-import os
-from termcolor import colored
-from pathlib import Path
 from typing import Optional, Callable, Union, Tuple, List
+from pathlib import Path
+import os
+import fasteners
+from termcolor import colored
 
 from torch import nn
 import pandas as pd
-# from nachosv2.output_processing.result_outputter_utils import create_folders, save_history, save_outer_loop, save_inner_loop, metric_writer, metric_writer2
-from nachosv2.model_processing.evaluate_model import evaluate_model
-from nachosv2.model_processing.save_model import save_model
 from nachosv2.model_processing.predict_model import predict_model
 
 
 def save_dict_or_listdict_to_csv(values: Union[dict,List[dict]],
                                  path: Path,
                                  filename: str,
-                                 overwrite: bool):
+                                 overwrite: bool,
+                                 verbose: bool = True):
     """
     Writes some list in a file.
 
@@ -33,7 +31,8 @@ def save_dict_or_listdict_to_csv(values: Union[dict,List[dict]],
         return
     
     values_df.to_csv(filepath)
-    print(f"File {filename} stored at {path}")
+    if verbose:
+        print(f"File {filename} stored at {path}")
 
 
 def get_prefix_and_folder_path(test_fold: str,
@@ -111,10 +110,13 @@ def save_prediction_results(partition_type: str,
             dict_temp[f"class_{i}_prob"] = pred_probs[index][i]
         prediction_rows.append(dict_temp)
 
-    save_dict_or_listdict_to_csv(prediction_rows,
-                                 output_path,
-                                 filename,
-                                 True)
+    save_dict_or_listdict_to_csv(
+        values=prediction_rows,
+        path=output_path,
+        filename=filename,
+        overwrite=True,
+        verbose=True,
+        )
 
 
 def save_dict_to_csv(dictionary: dict,
@@ -124,7 +126,7 @@ def save_dict_to_csv(dictionary: dict,
                      validation_fold: str,
                      is_cv_loop: bool,
                      suffix: str,
-                     rank: int = None):
+                     verbose: bool = True):
     
     prefix, path_folder_output = get_prefix_and_folder_path(test_fold,
                                                             hp_config_index,
@@ -133,10 +135,13 @@ def save_dict_to_csv(dictionary: dict,
                                                             output_path)
 
     # Saves the history
-    save_dict_or_listdict_to_csv(dictionary,
-                                 path_folder_output,
-                                 f"{prefix}_{suffix}.csv",
-                                 True)
+    save_dict_or_listdict_to_csv(
+        values=dictionary,
+        path=path_folder_output,
+        filename=f"{prefix}_{suffix}.csv",
+        overwrite=True,
+        verbose=verbose,
+        )
 
 
 def predict_and_save_results(execution_device: str,
@@ -186,17 +191,24 @@ def predict_and_save_results(execution_device: str,
     # Saves Class/Categories indices with corresponding names   
     categories_info =[{"index": index, "class_name": class_names[index]} \
                       for index in range(len(class_names))]
-    save_dict_or_listdict_to_csv(categories_info,
-                                 path_folder_output,
-                                 f"{prefix}_class_names.csv",
-                                 True) 
+        
+    save_dict_or_listdict_to_csv(
+        values=categories_info,
+        path=path_folder_output,
+        filename=f"{prefix}_class_names.csv",
+        overwrite=True,
+        verbose=True,
+        ) 
     
     # Saves Total time of training
     time_info = [{"time_total": time_elapsed}]
-    save_dict_or_listdict_to_csv(time_info,
-                                 path_folder_output,
-                                 f"{prefix}_time_total.csv.csv",
-                                 False)
+    save_dict_or_listdict_to_csv(
+        values=time_info,
+        path=path_folder_output,
+        filename=f"{prefix}_time_total.csv.csv",
+        overwrite=True,
+        verbose=True,
+        )
 
 
     # Adds the predictions et true labels to the metric dictionary

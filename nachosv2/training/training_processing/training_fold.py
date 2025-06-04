@@ -231,8 +231,12 @@ class TrainingFold():
         # Creates the datasets and trains them (Datasets cannot be logged.)
         if self.create_dataset():
             self.fold_timer = PrecisionTimer()
+            self.training_already_finished = False
             self.train()
-            self.time_elapsed = self.fold_timer.get_elapsed_time() 
+            if self.training_already_finished:
+                self.time_elapsed = self.fold_timer.additional_time
+            else:
+                self.time_elapsed = self.fold_timer.get_elapsed_time() 
             self.process_results()
 
 
@@ -332,6 +336,7 @@ class TrainingFold():
                         validation_fold=self.validation_fold,
                         is_cv_loop=self.is_cv_loop,
                         suffix='mean_stddev',
+                        verbose=True,
                         )
                     
                     # TODO: store mean and stddev
@@ -506,6 +511,7 @@ class TrainingFold():
                     validation_fold=self.validation_fold,
                     is_cv_loop=self.is_cv_loop,
                     suffix='lr_history',
+                    verbose=False,
                 )
                 self.scheduler.step()
 
@@ -526,7 +532,7 @@ class TrainingFold():
         self.loss_hist[partition][epoch_index] = epoch_loss
         self.accuracy_hist[partition][epoch_index] = epoch_accuracy
 
-        # it saves history when self.is_cv_loop and for validation
+        # it saves history when partition is validation
         # or when not self.is_cv_loop, that is, cross-testing loop
         if partition == 'validation' or not self.is_cv_loop:           
             save_dict_to_csv(
@@ -537,9 +543,10 @@ class TrainingFold():
                 validation_fold=self.validation_fold,
                 is_cv_loop=self.is_cv_loop,
                 suffix='history',
+                verbose=True,
                 )
 
-        # Saves the best model
+        # Saves model
         if partition == 'validation':
             # print epoch results
             print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} | '
@@ -559,6 +566,7 @@ class TrainingFold():
             self.save_model(epoch_index, epoch_loss,
                             epoch_accuracy, is_best)
 
+        # cross-testing loop
         elif not self.is_cv_loop:
             # print epoch results
             print(f' loss: {self.loss_hist["training"][epoch_index]:.4f} |'
@@ -586,15 +594,17 @@ class TrainingFold():
             self.accuracy_hist = checkpoint["accuracy_hist"]
             self.best_valid_loss = checkpoint["best_val_loss"]
             self.history = checkpoint["history"]
+            self.counter_early_stopping = checkpoint["counter_early_stopping"]
             
             if self.start_epoch < self.number_of_epochs:
                 self.fold_timer.set_additional_time(checkpoint["time_total"])
             
-            self.counter_early_stopping = checkpoint["counter_early_stopping"]
-            self.early_stopping = EarlyStopping(patience=self.hyperparameters['patience'],
-                                           verbose=True,
-                                           counter=self.counter_early_stopping,
-                                           best_val_loss=self.best_valid_loss)        
+            self.early_stopping = EarlyStopping(
+                patience=self.hyperparameters['patience'],
+                verbose=True,
+                counter=self.counter_early_stopping,
+                best_val_loss=self.best_valid_loss)
+
         else:        
             self.loss_hist = {"training": [0.0] * self.number_of_epochs,
                               "validation": [0.0] * self.number_of_epochs}
@@ -607,6 +617,11 @@ class TrainingFold():
                                                 best_val_loss=self.best_valid_loss)    
 
         self.scaler = GradScaler() if self.use_mixed_precision else None
+
+        if self.counter_early_stopping == self.hyperparameters['patience']:
+            print("Checkpoint loades is already done due to Early stopping, exiting training")
+            self.training_already_finished = True
+            return
 
         # For each epoch
         for epoch in range(self.start_epoch, self.number_of_epochs):
@@ -829,51 +844,50 @@ class TrainingFold():
         checkpoint_frequency = self.configuration['checkpoint_epoch_frequency']
         is_frequency_checkpoint = ( (epoch_index+1) % checkpoint_frequency == 0)
         # Determine if it is the last epoch
-        is_last = ( epoch_index+1 == self.number_of_epochs)
+        is_last_epoch = ( epoch_index+1 == self.number_of_epochs)
+        # save last
+        is_last_early_stop = ( self.counter_early_stopping == self.hyperparameters['patience'])
 
-        if is_frequency_checkpoint or is_best or is_last:
+        # Prepare checkpoint targets
+        checkpoint_conditions = [
+        (is_frequency_checkpoint,
+         f"{self.prefix_name}_epoch_{epoch_index + 1}.pth",
+         "prev_checkpoint_file_path"),
+        (is_best,
+         f"{self.prefix_name}_epoch_{epoch_index + 1}_best.pth",
+         "prev_best_checkpoint_file_path"),
+        (is_last_epoch,
+         f"{self.prefix_name}_epoch_{epoch_index + 1}_last.pth",
+         "last_checkpoint_file_path"),
+        (is_last_early_stop,
+         f"{self.prefix_name}_epoch_{epoch_index + 1}_last-early-stopping.pth",
+         None),
+        ]
 
-            # epoch index is 0-indexed
-            # epoch number in file name is 1-indexed
-            l_path_to_save = []
-            if is_frequency_checkpoint:
-                checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}.pth"
-                l_path_to_save.append(checkpoint_file_path)
-            if is_best:
-                best_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}_best.pth"
-                l_path_to_save.append(best_checkpoint_file_path)
-            if is_last:
-                last_checkpoint_file_path = self.checkpoint_folder_path / f"{self.prefix_name}_epoch_{epoch_index + 1}_last.pth"
-                l_path_to_save.append(last_checkpoint_file_path)
+        checkpoint_data = {
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "epoch": epoch_index,
+            "counter_early_stopping": self.counter_early_stopping,
+            "best_val_loss": self.best_valid_loss,
+            "accuracy_hist": self.accuracy_hist,
+            "loss_hist": self.loss_hist,
+            "history": self.history,
+            "time_total": self.fold_timer.get_elapsed_time(),
+            }
 
-            for path in l_path_to_save:
-                torch.save({"model_state_dict": self.model.state_dict(),
-                            "optimizer_state_dict": self.optimizer.state_dict(),
-                            "epoch": epoch_index,
-                            "counter_early_stopping": self.counter_early_stopping,
-                            "best_val_loss": self.best_valid_loss,
-                            "accuracy_hist": self.accuracy_hist,
-                            "loss_hist": self.loss_hist,
-                            "history": self.history,
-                            "time_total": self.fold_timer.get_elapsed_time(),
-                           }, path)
+        for condition, filename, prev_attr in checkpoint_conditions:
+            if condition:
+                file_path = self.checkpoint_folder_path / filename
+                torch.save(checkpoint_data, file_path)
+                print(colored(f"Saved checkpoint at epoch {epoch_index + 1}/{self.number_of_epochs} to {file_path}.", 'cyan'))
 
-                print(colored(f"Saved a checkpoint for epoch {epoch_index + 1}/{self.number_of_epochs} at {path}.", 'cyan'))
-
-            # Keeps only the previous checkpoint for the most recent training fold, to save memory.           
-            # Delete previous checkpoint
-            if is_frequency_checkpoint:
-                if self.prev_checkpoint_file_path and \
-                   self.prev_checkpoint_file_path.exists():
-                    os.remove(self.prev_checkpoint_file_path)
-                self.prev_checkpoint_file_path = checkpoint_file_path
-            if is_best:
-                if self.prev_best_checkpoint_file_path and \
-                   self.prev_best_checkpoint_file_path.exists():
-                    os.remove(self.prev_best_checkpoint_file_path)
-                self.prev_best_checkpoint_file_path = best_checkpoint_file_path
-            if is_last:
-                self.last_checkpoint_file_path = last_checkpoint_file_path
+                # Manage memory: remove previous checkpoint
+                if prev_attr:
+                    prev_path = getattr(self, prev_attr, None)
+                    if prev_path and Path(prev_path).exists():
+                        os.remove(prev_path)
+                    setattr(self, prev_attr, file_path)
 
 
     def get_checkpoint_info(self,
@@ -887,15 +901,22 @@ class TrainingFold():
         # epoch index is 0-indexed
         # epoch number in file name is 1-indexed
 
+        bool_last = False
+
         for path in list_paths:
             # epochs in filename start at 1
             epoch_index = path.stem.split("_")[-1]
             if epoch_index == "best":
                 best_checkpoint_path = path
-            elif epoch_index == "last":
+            elif epoch_index == "last" and not bool_last:
                 last_checkpoint_epoch = int(path.stem.split("_")[-2]) - 1
                 last_checkpoint_path = path
-            elif int(epoch_index) >= last_checkpoint_epoch:
+                bool_last = True
+            elif epoch_index == "last-early-stopping" and not bool_last:
+                last_checkpoint_epoch = int(path.stem.split("_")[-2]) - 1
+                last_checkpoint_path = path
+                bool_last = True
+            elif not bool_last: 
                 last_checkpoint_epoch = int(epoch_index) - 1
                 last_checkpoint_path = path
 
