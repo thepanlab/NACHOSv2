@@ -1,0 +1,1 @@
+mpirun -v --host 10.254.214.32:3,10.254.214.27:2 python /home/pcallec/NACHOS/nachosv2/training/training_sequential/training_sequential.py --loop "cross-validation" --device "cuda:0" "cuda:1" --file /home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/OCT_small/oct_small_1.yml --parallel
