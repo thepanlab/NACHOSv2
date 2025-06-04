@@ -1,11 +1,11 @@
-# Medical Imaging Framework
+# NACHOS algorithms
 
-Welcome to the documentation for our data processing pipeline. This guide is designed to help you use our pipeline effectively, even if you're not an IT specialist.
+NACHOS(Nested and Automated Cross-validation and Hyperparameter Optimization using Supercomputing) integrates Nested Cross-Validation (NCV), Automated HyperParameter Optimization (HPO), and High-Performance Computing (HPC) to have a better estimation of the generalization error with uncertainty quantification. More details can be found in [the paper](https://arxiv.org/abs/2503.08589).
 
 
 ## How to get started?
 
-1. [Getting Started](docs/getting_started.md):  Prerequisites, Installation instructions
+1. [Installation instructions](docs/installation_intructions.md)
 
 1. [Pipeline Overview](docs/pipeline_overview.md)
    - What the pipeline does
@@ -18,9 +18,6 @@ Welcome to the documentation for our data processing pipeline. This guide is des
 
 1. [Results Processing](docs/results_processing.md)
    - Understanding and interpreting the output
-
-1. [Troubleshooting](docs/troubleshooting.md)
-   - Common issues and their solutions
 
 
 
