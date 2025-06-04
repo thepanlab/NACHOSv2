@@ -1,0 +1,3 @@
+data_path: "/home/pcallec/NACHOS/results/pig_kidney_subset_all_folds_v3/training_results"
+output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset_all_folds_v3/confusion_matrix"
+is_outer: false
