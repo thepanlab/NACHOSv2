@@ -1,0 +1,15 @@
+results_path: "/home/pcallec/NACHOS/results/oct_kidney_partition_nachosv1_rs_0"
+is_cv_loop: true
+# output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/epochs"
+
+
+
+# only if is_cv_loop: true
+configuration_cv_path: /home/pcallec/NACHOS/nachosv2/training/training/config_files/OCT/nachosv1_rs_config/oct_rs_0.yml
+metric_for_selection: accuracy
+
+metrics_list: 
+  - balanced_accuracy
+  - precision_micro
+  - recall_micro
+  - f1_micro

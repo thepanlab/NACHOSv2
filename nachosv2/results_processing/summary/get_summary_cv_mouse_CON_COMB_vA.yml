@@ -1,0 +1,9 @@
+results_path: "/home/pcallec/NACHOS/results/mouse_data_CON_COMB_vA"
+is_cv_loop: true
+# output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/epochs"
+
+only if is_cv_loop: true
+configuration_cv_path: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/mouse_data/mouse_data_3_CON_COMB_vA.yml"
+
+# optional, by default it will use validation accuracy
+metrics_list: ['balanced_accuracy', "precision", "recall", "f1", "roc_auc"]

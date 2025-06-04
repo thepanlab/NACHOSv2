@@ -1,0 +1,6 @@
+results_path: "/home/pcallec/NACHOS/results/mouse_data_2"
+is_cv_loop: true
+# output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/epochs"
+
+# only if is_cv_loop: true
+configuration_cv_path: "/home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/mouse_data/mouse_data_2.yml"

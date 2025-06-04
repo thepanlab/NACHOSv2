@@ -1,0 +1,9 @@
+results_path: "/home/pcallec/NACHOS/results/mouse_data"
+is_cv_loop: false
+# output_path: "/home/pcallec/NACHOS/results/pig_kidney_subset/epochs"
+
+# only if is_cv_loop: true
+# configuration_cv_path: "/home/pcallec/NACHOS/nachosv2/config_files/mouse_data/mouse_data_1.yml"
+
+list_metrics:
+- "accuracy"
