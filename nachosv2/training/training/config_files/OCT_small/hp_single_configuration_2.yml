@@ -1,0 +1,46 @@
+
+# only used when use_hpo: true
+n_combinations: 1
+
+# Specify single value or range e.g.
+# if using a single value use
+# batch_size: 32 OR
+# batch_size: 
+#   - 32 
+# if using a range specify the min and max values
+# batch_size:
+#   - 16
+#   - 128
+batch_size: 32
+
+do_cropping: false
+# x and y cropping position
+cropping_position:
+  x: 40
+  y: 10
+
+# Specify single value or range
+n_epochs: 10
+
+# Specify single value or range
+patience: 5
+
+# Specify single value or range
+learning_rate: 0.01
+
+# Specify scheduler learning rate
+# If not specified learning rate is constant
+learning_rate_scheduler: "InverseTimeDecay"
+learning_rate_scheduler_parameters:
+  decay: 0.01
+
+# Specify single value or range
+# if you don't want to use momentum, place 0 or omit value
+# e.g. momentum: -1  
+momentum: 0.9
+
+# Specify single value or range
+enable_nesterov: true
+
+# Specify single value or range
+architecture: vit_b_16
