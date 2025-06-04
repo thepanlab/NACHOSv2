@@ -3,35 +3,41 @@ import torchvision.models as models
 import torch.nn as nn
 import math
 
-# from nachosv2.model_processing.models.cifar10ff import CIFAR10FF
-# from nachosv2.model_processing.models.conv3D import Conv3DModel
-# from nachosv2.model_processing.models.inceptionv3 import InceptionV3
-# from nachosv2.model_processing.models.resnet3D import ResNet3D
-# from nachosv2.model_processing.models.resnet18_3D import ResNet18_3D
+
+def get_new_dimensions(target_dimensions: list,
+                       patch_size: int) -> tuple:
+            """
+            Ensure that the target dimensions are divisible by the patch size.
+            """
+            n_patches = max(math.floor(target_dimensions[0] / patch_size),
+                            math.floor(target_dimensions[1] / patch_size))
+            return (n_patches * patch_size, n_patches * patch_size)
 
 
-# This is a dictionary of all possible models to create. There are not pre-trained
-# models_dictionary = {
-#     "Cifar10FF": CIFAR10FF,
-#     "Conv3DModel": Conv3DModel,
-#     "InceptionV3": InceptionV3,
-#     "ResNet18-3D": ResNet18_3D,
-#     "ResNet3D": ResNet3D,
-# }
+def modify_first_conv(conv_layer: nn.Conv2d, in_channels: int) -> nn.Conv2d:
+    """Replace the input Conv2D layer to handle a different number of channels."""
+    return nn.Conv2d(
+        in_channels=in_channels,
+        out_channels=conv_layer.out_channels,
+        kernel_size=conv_layer.kernel_size,
+        stride=conv_layer.stride,
+        padding=conv_layer.padding,
+        bias=conv_layer.bias is not None,
+    )
 
-l_models = [
-            "Cifar10FF",
-            "Conv3DModel",
-            "InceptionV3",
-            "ResNet18-3D",
-            "ResNet50",
-            "vit_b_16",
-            ]
 
 def get_model(model_name: str,
               number_classes: int,
               number_channels: int,
               target_dimensions: tuple):
+    
+    vit_patch_sizes = {
+        "vit_b_16": 16, # https://docs.pytorch.org/vision/main/models/generated/torchvision.models.vit_b_16.html#torchvision.models.vit_b_16
+        "vit_l_16": 16, # https://docs.pytorch.org/vision/main/models/generated/torchvision.models.vit_l_16.html#vit-l-16
+        "vit_h_14": 14,
+        "vit_b_32": 32,
+        "vit_l_32": 32,
+    }
     
     new_dimensions = None
     # https://github.com/pytorch/vision/blob/main/torchvision/models/inception.py
@@ -47,76 +53,40 @@ def get_model(model_name: str,
                                     aux_logits=False)
         
 
-        model.Conv2d_1a_3x3.conv = nn.Conv2d(
-            in_channels=number_channels,  # Change to 1 channel for grayscale
-            out_channels=model.Conv2d_1a_3x3.conv.out_channels,
-            kernel_size=model.Conv2d_1a_3x3.conv.kernel_size,
-            stride=model.Conv2d_1a_3x3.conv.stride,
-            padding=model.Conv2d_1a_3x3.conv.padding,
-            bias=model.Conv2d_1a_3x3.conv.bias is not None
-        )
+        model.Conv2d_1a_3x3.conv = modify_first_conv(
+            model.Conv2d_1a_3x3.conv,
+            number_channels
+            )
         
     elif model_name == "ResNet50":
         # ResNet50-specific logic
         model = models.resnet50(weights=None,
                                 num_classes=number_classes)
         # Adjust the first convolutional layer to handle a different number of input channels
-        model.conv1 = nn.Conv2d(
-            in_channels=number_channels,
-            out_channels=model.conv1.out_channels,
-            kernel_size=model.conv1.kernel_size,
-            stride=model.conv1.stride,
-            padding=model.conv1.padding,
-            bias=model.conv1.bias is not None
-        )
-    elif model_name == "vit_b_16":
-        # Ensure that the target dimensions are divisible by 16        
-        n_patches = max(math.floor(target_dimensions[0]/16.0),
-                        math.floor(target_dimensions[1]/16.0))
-        
-        new_dimensions = (n_patches * 16, n_patches * 16)
-        
-        print("New dimensions for ViT model:", new_dimensions)
-        
-        # Adjusting image to match patch size 
+        model.conv1 = modify_first_conv(model.conv1, number_channels)
+
+    elif model_name in vit_patch_sizes:
+
         if len(target_dimensions) != 2:
-            raise ValueError(colored(f"Error: Target dimensions for ViT model should be a tuple of two integers, got {target_dimensions}.", 'red'))
+            raise ValueError(colored(
+                f"Error: Target dimensions for ViT model should be a tuple of two integers, got {target_dimensions}.",
+                'red'))
 
-        # Source code: https://docs.pytorch.org/vision/main/_modules/torchvision/models/vision_transformer.html#vit_b_16
-        model = models.vit_b_16(weights=None,
-                                image_size=new_dimensions[0],
-                                num_classes=number_classes)
+        patch_size = vit_patch_sizes[model_name]
+        new_dimensions = get_new_dimensions(target_dimensions, patch_size)
+        print(f"New dimensions for {model_name}: {new_dimensions}")
+
+        # Dynamically get the model
+        model_fn = getattr(models, model_name)
+        model = model_fn(
+            weights=None,
+            image_size=new_dimensions[0],
+            num_classes=number_classes
+            )
+        model.conv_proj = modify_first_conv(model.conv_proj, number_channels)
         
-        # Modify the first patch embedding layer to accept 1-channel input
-        # Original: Conv2d(3, embed_dim, kernel_size=16, stride=16)
-        old_conv = model.conv_proj
-        model.conv_proj = nn.Conv2d(
-            in_channels=number_channels,
-            out_channels=old_conv.out_channels,
-            kernel_size=old_conv.kernel_size,
-            stride=old_conv.stride,
-            padding=old_conv.padding,
-            bias=old_conv.bias is not None
-        )
-    
-    elif model_name == "vit_b_32":
-        model = models.vit_b_32(weights=None,
-                                num_classes=number_classes)
-
-        # Source code: https://docs.pytorch.org/vision/main/_modules/torchvision/models/vision_transformer.html#vit_b_16
-        # Modify the first patch embedding layer to accept 1-channel input
-        # Original: Conv2d(3, embed_dim, kernel_size=16, stride=16)
-        old_conv = model.conv_proj
-        model.conv_proj = nn.Conv2d(
-            in_channels=number_channels,
-            out_channels=old_conv.out_channels,
-            kernel_size=old_conv.kernel_size,
-            stride=old_conv.stride,
-            padding=old_conv.padding,
-            bias=old_conv.bias is not None
-        )
     else:
-        raise ValueError(colored(f"Error: Model '{model_name}' not found in the list of possible models: {l_models}.", 'red'))
+        raise ValueError(colored(f"Error: Model '{model_name}' not found in the list of possible models.", 'red'))
 
     return model, new_dimensions
 
@@ -139,15 +109,6 @@ def create_model(configuration_file:dict,
     model_name = hyperparameters["architecture"]
     number_classes = len(configuration_file["class_names"])
     number_channels = configuration_file["number_channels"]
-    
-    if model_name not in l_models:
-        raise ValueError(colored(f"Error: Model '{model_name}' not found in the list of possible models: {l_models}.", 'red'))
-
-    # # Gets the model
-    # ModelClass = models_dictionary[model_type]
-    
-    # # Creates the model
-    # training_model = ModelClass(configuration_file)
 
     training_model, new_target_dimensions = get_model(
         model_name=model_name,
