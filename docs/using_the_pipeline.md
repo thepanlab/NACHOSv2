@@ -58,8 +58,6 @@ mpirun -n 6 NACHOSv2_train \
     --enable_dummy_process
 ```
 
-
-
 #### Get summary
 
 To get summary results:
