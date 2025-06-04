@@ -95,12 +95,12 @@ class Dataset2D(Dataset):
         if self.number_channels == 1 and image.ndim == 3:
             image = rgb2gray(image)
         
-        if self.image_size:
-            image = skimage.transform.resize(image, self.image_size)
-        
         # If asked, crops the image
         if self.do_cropping:
             image = crop_image(image, self.crop_box)
+
+        if self.image_size:
+            image = skimage.transform.resize(image, self.image_size)        
 
         # Converts the image into a tensor
         image = transforms.ToTensor()(image)
