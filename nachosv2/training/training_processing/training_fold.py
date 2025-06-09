@@ -145,6 +145,8 @@ class TrainingFold():
 
         self.prev_checkpoint_file_path = None
         self.prev_best_checkpoint_file_path = None
+        self.prev_checkpoint_file_path_backup = None
+        self.prev_best_checkpoint_file_path_backup = None        
         self.last_checkpoint_file_path = None
 
         # TODO: verify it doesnt contradict with prefix
@@ -886,7 +888,17 @@ class TrainingFold():
                 if prev_attr:
                     prev_path = getattr(self, prev_attr, None)
                     if prev_path and Path(prev_path).exists():
-                        os.remove(prev_path)
+                        
+                        path_to_remove = getattr(self, prev_attr + "_backup", None)
+                        if path_to_remove:
+                            os.remove(path_to_remove)
+                                                       
+                        # name for prev_path to backup
+                        backup_path = prev_path.with_name(prev_path.stem + "_backup" + prev_path.suffix)
+                        prev_path.replace(backup_path)
+                        
+                        setattr(self, prev_attr + "_backup", backup_path)
+                                
                     setattr(self, prev_attr, file_path)
 
 
