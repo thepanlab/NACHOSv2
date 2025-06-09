@@ -143,11 +143,12 @@ class TrainingFold():
         self.checkpoint_folder_path = Path(self.configuration['output_path']) / loop_folder /'checkpoints'
         self.start_epoch = 0
 
-        self.prev_checkpoint_file_path = None
-        self.prev_best_checkpoint_file_path = None
-        self.prev_checkpoint_file_path_backup = None
-        self.prev_best_checkpoint_file_path_backup = None        
+        # self.prev_checkpoint_file_path = None
+        # self.prev_checkpoint_file_path_backup = None
+        self.best_checkpoint_file_path = None
+        self.best_checkpoint_file_path_backup = None        
         self.last_checkpoint_file_path = None
+        self.last_checkpoint_file_path_backup = None
 
         # TODO: verify it doesnt contradict with prefix
         if is_cv_loop: 
@@ -854,10 +855,10 @@ class TrainingFold():
         checkpoint_conditions = [
         (is_frequency_checkpoint,
          f"{self.prefix_name}_epoch_{epoch_index + 1}.pth",
-         "prev_checkpoint_file_path"),
+         "last_checkpoint_file_path"),
         (is_best,
          f"{self.prefix_name}_epoch_{epoch_index + 1}_best.pth",
-         "prev_best_checkpoint_file_path"),
+         "best_checkpoint_file_path"),
         (is_last_epoch,
          f"{self.prefix_name}_epoch_{epoch_index + 1}_last.pth",
          "last_checkpoint_file_path"),
@@ -894,7 +895,7 @@ class TrainingFold():
                             os.remove(path_to_remove)
                                                        
                         # name for prev_path to backup
-                        backup_path = prev_path.with_name(prev_path.stem + "_backup" + prev_path.suffix)
+                        backup_path = prev_path.with_name(prev_path.stem + "-backup" + prev_path.suffix)
                         prev_path.replace(backup_path)
                         
                         setattr(self, prev_attr + "_backup", backup_path)
@@ -909,6 +910,11 @@ class TrainingFold():
         last_checkpoint_epoch = 0
         last_checkpoint_path = None
         best_checkpoint_path = None
+        best_checkpoint_path_backup = None
+        prev_checkpoint_path = None
+        prev_checkpoint_epoch = None
+        prev_checkpoint_path_backup = None
+        prev_checkpoint_epoch_backup = None
 
         # epoch index is 0-indexed
         # epoch number in file name is 1-indexed
@@ -920,6 +926,8 @@ class TrainingFold():
             epoch_index = path.stem.split("_")[-1]
             if epoch_index == "best":
                 best_checkpoint_path = path
+            elif epoch_index == "best-backup":
+                best_checkpoint_path_backup = path
             elif epoch_index == "last" and not bool_last:
                 last_checkpoint_epoch = int(path.stem.split("_")[-2]) - 1
                 last_checkpoint_path = path
@@ -928,13 +936,18 @@ class TrainingFold():
                 last_checkpoint_epoch = int(path.stem.split("_")[-2]) - 1
                 last_checkpoint_path = path
                 bool_last = True
-            elif not bool_last: 
-                last_checkpoint_epoch = int(epoch_index) - 1
-                last_checkpoint_path = path
-
-        return last_checkpoint_path, last_checkpoint_epoch, \
-               best_checkpoint_path
-
+            elif epoch_index.isdigit():
+                prev_checkpoint_path = path
+                prev_checkpoint_epoch = int(epoch_index) - 1
+            elif epoch_index.isalnum(): # epoch-backup e.g. 8-backup
+                prev_checkpoint_path_backup = path
+                prev_checkpoint_epoch_backup = int(epoch_index.split("-")[0]) - 1
+                    
+        return best_checkpoint_path, best_checkpoint_path_backup,\
+               last_checkpoint_path, last_checkpoint_epoch,\
+               prev_checkpoint_path, prev_checkpoint_epoch,\
+               prev_checkpoint_path_backup, prev_checkpoint_epoch_backup
+        
 
     def load_checkpoint(self):
         """
@@ -943,26 +956,65 @@ class TrainingFold():
         # get list of checkpoints
         checkpoint_list = list(self.checkpoint_folder_path.glob(f"*{self.prefix_name}*.pth"))
         
-        last_checkpoint_path, last_checkpoint_epoch, best_checkpoint_path = self.get_checkpoint_info(checkpoint_list)
+        checkpoint_info_tuple = self.get_checkpoint_info(checkpoint_list)
+
+        checkpoint_info_tuple
+
+        best_checkpoint_path = checkpoint_info_tuple[0]
+        best_checkpoint_path_backup = checkpoint_info_tuple[1]
+        last_checkpoint_path = checkpoint_info_tuple[2]
+        last_checkpoint_epoch = checkpoint_info_tuple[3]
+        prev_checkpoint_path = checkpoint_info_tuple[4]
+        prev_checkpoint_epoch = checkpoint_info_tuple[5]
+        prev_checkpoint_path_backup = checkpoint_info_tuple[6]
+        prev_checkpoint_epoch_backup = checkpoint_info_tuple[7]
+
+        bool_load = False
 
         if last_checkpoint_path:
-            self.prev_checkpoint_path = last_checkpoint_path
-            # the checkpoint_epoch is finished
-            # therefore the start should be the next one
-            
-            if last_checkpoint_epoch == self.number_of_epochs - 1:
-                print(colored(f"Last checkpoint epoch {last_checkpoint_epoch + 1} is the last epoch of the training. No further training will be done.", 'yellow'))
+            try:
+                checkpoint = torch.load(
+                    f=last_checkpoint_path,
+                    weights_only=True,
+                    map_location=self.execution_device)
+                bool_load = True
+                self.last_checkpoint_file_path = last_checkpoint_path        
+                self.start_epoch = last_checkpoint_epoch + 1              
+            except Exception as e:
+                print(f"Failed to load main checkpoint: {e} at {last_checkpoint_path}")
 
-                self.last_checkpoint_file_path = last_checkpoint_path
-            
-            self.start_epoch = last_checkpoint_epoch + 1
-            # retrieve specific checkpoint file
-            checkpoint = torch.load(last_checkpoint_path,
-                                    weights_only=True,
-                                    map_location=self.execution_device)
+        if prev_checkpoint_path and not bool_load:
+            print(colored(f"Previous checkpoint found at {prev_checkpoint_path}.", 'yellow'))
+            try:
+                checkpoint = torch.load(
+                    f=prev_checkpoint_path,
+                    weights_only=True,
+                    map_location=self.execution_device)
+                bool_load = True
+                self.last_checkpoint_file_path = prev_checkpoint_path        
+                self.start_epoch = prev_checkpoint_epoch + 1
+                if prev_checkpoint_path_backup:
+                    self.last_checkpoint_file_path_backup = prev_checkpoint_path_backup
+                    
+            except Exception as e:
+                print(f"Failed to load main checkpoint: {e} at {prev_checkpoint_path}")
+        
+        if prev_checkpoint_path_backup and not bool_load:
+            print(colored(f"Previous checkpoint found at {prev_checkpoint_path_backup}.", 'yellow'))
+            try:
+                checkpoint = torch.load(
+                    f=prev_checkpoint_path_backup,
+                    weights_only=True,
+                    map_location=self.execution_device)
+                self.last_checkpoint_file_path = prev_checkpoint_path_backup        
+                self.start_epoch = prev_checkpoint_epoch_backup + 1
+            except Exception as e:
+                print(f"Failed to load main checkpoint: {e} at {prev_checkpoint_path_backup}")
 
         if best_checkpoint_path:
-            self.prev_best_checkpoint_file_path = best_checkpoint_path
+            self.best_checkpoint_file_path = best_checkpoint_path
+        if best_checkpoint_path_backup:
+            self.best_checkpoint_file_path_backup = best_checkpoint_path_backup
 
         return checkpoint
 
@@ -976,7 +1028,7 @@ class TrainingFold():
         
         # Loads the best model weights
         checkpoint_path = (
-            self.prev_best_checkpoint_file_path if self.is_cv_loop
+            self.best_checkpoint_file_path if self.is_cv_loop
             else self.last_checkpoint_file_path
         )
 
