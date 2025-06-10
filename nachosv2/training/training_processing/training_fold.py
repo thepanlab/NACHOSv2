@@ -851,17 +851,23 @@ class TrainingFold():
         # save last
         is_last_early_stop = ( self.counter_early_stopping == self.hyperparameters['patience'])
 
+        if is_frequency_checkpoint and is_last_early_stop and is_last_epoch:
+            is_frequency_checkpoint = False
+            is_last_early_stop = False
+        elif is_last_early_stop and is_last_epoch:
+            is_last_early_stop = False
+            
         # Prepare checkpoint targets
         checkpoint_conditions = [
-        (is_frequency_checkpoint,
-         f"{self.prefix_name}_epoch_{epoch_index + 1}.pth",
-         "last_checkpoint_file_path"),
         (is_best,
          f"{self.prefix_name}_epoch_{epoch_index + 1}_best.pth",
          "best_checkpoint_file_path"),
+        (is_frequency_checkpoint,
+         f"{self.prefix_name}_epoch_{epoch_index + 1}.pth",
+         "last_checkpoint_file_path"),
         (is_last_epoch,
          f"{self.prefix_name}_epoch_{epoch_index + 1}_last.pth",
-         "last_checkpoint_file_path"),
+         None),
         (is_last_early_stop,
          f"{self.prefix_name}_epoch_{epoch_index + 1}_last-early-stopping.pth",
          None),
@@ -1038,8 +1044,11 @@ class TrainingFold():
         )
 
         print(colored(f"For predictions using checkpoint file: {checkpoint_path}", 'green'))
+        
         checkpoint = torch.load(checkpoint_path,
                                 weights_only=True)
+
+
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
