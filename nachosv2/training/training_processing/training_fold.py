@@ -937,9 +937,15 @@ class TrainingFold():
                 last_checkpoint_path = path
                 bool_last = True
             elif epoch_index.isdigit():
-                prev_checkpoint_path = path
-                prev_checkpoint_epoch = int(epoch_index) - 1
-            elif epoch_index.isalnum(): # epoch-backup e.g. 8-backup
+                if prev_checkpoint_path is not None:
+                    if prev_checkpoint_epoch < int(epoch_index) - 1:
+                        prev_checkpoint_path = path
+                        prev_checkpoint_epoch = int(epoch_index) - 1                
+                else:
+                    prev_checkpoint_path = path
+                    prev_checkpoint_epoch = int(epoch_index) - 1
+                    
+            elif "-" in epoch_index and epoch_index.split("-")[1] == "backup": # epoch-backup e.g. 8-backup
                 prev_checkpoint_path_backup = path
                 prev_checkpoint_epoch_backup = int(epoch_index.split("-")[0]) - 1
                     
@@ -957,8 +963,6 @@ class TrainingFold():
         checkpoint_list = list(self.checkpoint_folder_path.glob(f"*{self.prefix_name}*.pth"))
         
         checkpoint_info_tuple = self.get_checkpoint_info(checkpoint_list)
-
-        checkpoint_info_tuple
 
         best_checkpoint_path = checkpoint_info_tuple[0]
         best_checkpoint_path_backup = checkpoint_info_tuple[1]
@@ -1006,7 +1010,8 @@ class TrainingFold():
                     f=prev_checkpoint_path_backup,
                     weights_only=True,
                     map_location=self.execution_device)
-                self.last_checkpoint_file_path = prev_checkpoint_path_backup        
+                self.last_checkpoint_file_path = prev_checkpoint_path_backup
+                # For this case, the file may require to be rename        
                 self.start_epoch = prev_checkpoint_epoch_backup + 1
             except Exception as e:
                 print(f"Failed to load main checkpoint: {e} at {prev_checkpoint_path_backup}")
