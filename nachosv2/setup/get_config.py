@@ -30,11 +30,8 @@ def get_config(config_file_path: str) -> dict:
     # If a file is specified, reads it and returns it
     if config_file_path:
         if not Path(config_file_path).exists(): # Checks if the file exists
-            raise Exception(colored(f"Error: The file '{config_file_path}' does not exist.", 'red'))
-               
-        # with open(config_file_path) as file:  # Guarantees that the file will be close, even if there is an reading error
-        #     dict_config = json.load(file)
-        #     verify_configuration_types(dict_config)
+            raise FileNotFoundError(colored(f"Error: The file '{config_file_path}' does not exist.", 'red'))
+        
         with open(config_file_path, 'r') as f:
             config_dict = yaml.load(f, Loader=yaml.SafeLoader)            
                     
