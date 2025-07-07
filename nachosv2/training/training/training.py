@@ -25,7 +25,7 @@ from nachosv2.setup.command_line_parser import parse_command_line_args
 from nachosv2.setup.get_config import get_config
 from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import write_log
 from nachosv2.training.hpo.hpo import get_hp_configuration
-
+from nachosv2.setup.utils import determine_if_cv_loop
 
 def create_loop_indices(config_dict: dict,
                         is_cv_loop: bool) -> List[dict]:
@@ -280,36 +280,6 @@ def get_index_device(num_device_to_use: int,
 
     print("rank", rank, "index_gpu", index_gpu)
     return index_gpu
-
-
-def determine_if_cv_loop(loop: str) -> bool:
-    """
-    Determines whether the given loop type corresponds to a cross-validation loop.
-
-    Parameters:
-    ----------
-    loop : str
-        The type of training loop. Must be either "cross-validation" or "cross-testing".
-
-    Returns:
-    -------
-    bool
-        True if the loop is "cross-validation", False if "cross-testing".
-
-    Raises:
-    -------
-    ValueError
-        If the provided loop type is not one of the supported values.
-    """
-    if loop not in ["cross-validation", "cross-testing"]:
-        raise ValueError(f"Invalid loop type: {loop}")
-
-    if loop == 'cross-testing':
-        is_cv_loop = False
-    else:
-        is_cv_loop = True
-        
-    return is_cv_loop
 
 
 def train_sequential(config_dict: dict,

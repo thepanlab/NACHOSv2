@@ -7,6 +7,35 @@ import pandas as pd
 import re
 
 
+def determine_if_cv_loop(loop: str) -> bool:
+    """
+    Determines whether the given loop type corresponds to a cross-validation loop.
+
+    Parameters:
+    ----------
+    loop : str
+        The type of training loop. Must be either "cross-validation" or "cross-testing".
+
+    Returns:
+    -------
+    bool
+        True if the loop is "cross-validation", False if "cross-testing".
+
+    Raises:
+    -------
+    ValueError
+        If the provided loop type is not one of the supported values.
+    """
+    if loop not in ["cross-validation", "cross-testing"]:
+        raise ValueError(f"Invalid loop type: {loop}")
+
+    if loop == 'cross-testing':
+        is_cv_loop = False
+    else:
+        is_cv_loop = True
+        
+    return is_cv_loop
+
 def get_other_result(path: Path,
                      suffix: str):
     # take path prediction and get class name file
