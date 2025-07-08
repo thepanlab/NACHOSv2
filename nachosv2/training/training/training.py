@@ -141,7 +141,7 @@ def perform_single_training(index: int,
         is_cv_loop=is_cv_loop,
         fold_list=config_dict['fold_list'],
         test_fold_name=test_fold
-        ) 
+        )
 
     training_folds_list = partitions_dict['training']
 
