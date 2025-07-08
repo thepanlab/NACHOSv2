@@ -98,7 +98,7 @@ def create_individual_training_configurations(config_dict,
     return individual_training_dict
 
 
-def get_individual_configurations():
+def main():
     
     args = parse_command_line_args()
     
@@ -136,5 +136,5 @@ def get_individual_configurations():
         
         
 if __name__ == "__main__":
-    get_individual_configurations()
+    main()
     

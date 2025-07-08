@@ -44,6 +44,7 @@ NACHOSv2_get_explainability = "nachosv2.results_processing.explainability.get_ex
 NACHOSv2_get_predictions = "nachosv2.results_processing.prediction.get_prediction:main"
 NACHOSv2_update_csv_absolute_filepath = "nachosv2.data_processing.update_csv_absolute_filepath:main"
 NACHOSv2_edit_yaml_entry = "nachosv2.data_processing.edit_yaml_entry:main"
+NACHOSv2_get_individual_configurations = "nachosv2.slurm_processing.get_individual_configurations:main"
 
 [tool.setuptools.packages.find]
 # where = ["."]  # list of folders that contain the packages (["."] by default)
