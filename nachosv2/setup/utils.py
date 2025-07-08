@@ -81,21 +81,6 @@ def get_filepath_list(directory_to_search_path: Path,
         matched_files.append(file)
     
     return matched_files
-
-
-def determine_if_cv_loop(path: Path):
-    """Based on the filepath name of results we can determine if it is a cross-validation loop or cross-testing loop
-
-    Args:
-        path (Path): any results filepath
-
-    Returns:
-        bool: if it is cv loop
-    """
-    if "_val_" in path.name:
-        return True
-    else:
-        return False
     
     
 def get_default_folder(path: Path,
