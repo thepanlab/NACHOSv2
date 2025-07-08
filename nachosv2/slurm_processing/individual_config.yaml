@@ -1,0 +1,2 @@
+output_folder: "/home/pcallec/NACHOS/results/slurm_configurations"
+suffix_filename: "individual_config"
