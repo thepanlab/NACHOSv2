@@ -7,6 +7,7 @@ DEFAULT_CONFIGURATION_PATH = 'scripts/config_files'
 DEFAULT_VERBOSE = False
 DEFAULT_EXECUTION_DEVICE = "cuda:0"
 
+
 def add_arguments_to_parser(parser):
     """
     Given an existing parActually parses the arguments.
@@ -19,13 +20,13 @@ def add_arguments_to_parser(parser):
     parser.add_argument( # Allows to specify the config file in command line
         '--file', '--config_file',
         type = str, default = None, required = False,
-        help = 'Load settings from a JSON file.'
+        help = 'Load settings from a YAML file.'
     )
     
     parser.add_argument( # Allows to specify the config folder in command line
         '--folder', '--config_folder',
         type = str, default = DEFAULT_CONFIGURATION_PATH, required = False,
-        help = 'Load settings from a JSON folder.'
+        help = 'Load settings from a folder that contains YAML files.'
     )
     
     parser.add_argument( # Allows to activate verbose mode in command line
@@ -46,17 +47,18 @@ def add_arguments_to_parser(parser):
         type = str, required = False,
         help = 'Determine the type of loop'
     )
-    
-    # parser.add_argument( # Specify parallelization
-    #     '--parallel',
-    #     action="store_true",
-    #     help="Enable parallelization"
-    # )
-    
+        
     parser.add_argument( # Specify parallelization
         '--enable_dummy_process',
         action="store_true",
         help="Enable dummy node when want to use same number of processes on each server"
+    )
+
+    parser.add_argument( # Allows to specify the config folder in command line
+        '--config_individual',
+        type = str,
+        required = False,
+        help = 'Load settings from a YAML folder.'
     )
 
 
