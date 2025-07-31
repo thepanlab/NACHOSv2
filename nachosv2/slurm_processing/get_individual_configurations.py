@@ -75,7 +75,7 @@ def create_individual_training_configurations(config_dict,
     output_folder = Path(config_dict["output_folder"])
     pathfile = output_folder / f"hp_config_{hp_index}.yaml"
 
-    individual_training_dict["configuration_filepath"] = pathfile
+    individual_training_dict["configuration_filepath"] = str(pathfile)
     
     keys_to_copy = [
         "number_channels", "path_metadata_csv", "output_path", "job_name",
