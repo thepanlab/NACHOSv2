@@ -27,6 +27,7 @@ from nachosv2.checkpoint_processing.load_save_metadata_checkpoint import write_l
 from nachosv2.training.hpo.hpo import get_hp_configuration
 from nachosv2.setup.utils import determine_if_cv_loop
 
+
 def create_loop_indices(config_dict: dict,
                         is_cv_loop: bool) -> List[dict]:
     """
@@ -532,6 +533,9 @@ def train():
     - Executes either a sequential or parallel version of the training pipeline 
       based on the number of available MPI processes.
     """
+    
+    print("torch.cuda.device_count() =", torch.cuda.device_count())
+    print(torch.cuda.get_device_name(0) if torch.cuda.device_count() > 0 else "No GPU available")
     
     args = parse_command_line_args()
 
