@@ -27,7 +27,7 @@ To start training, use the following command:
 #### Sequential version
 
 ```bash
-python NACHOSv2_train --loop "cross-validation" --device cuda:0 --file config_training.yml 
+NACHOSv2_train --loop "cross-validation" --device cuda:0 --file config_training.yml 
 ```
 
 - `--file` or `--config_file`: Specify a single configuration filepath. More details in [training_guide.md](training_guide.md)
@@ -62,7 +62,7 @@ mpirun -n 6 NACHOSv2_train \
 
 To get summary results:
 ```bash
-python NACHOSv2_get_summary --file config_summary_cv.yml
+NACHOSv2_get_summary --file config_summary_cv.yml
 ```
 If are getting summary for `cross-validation`, it will automatically generate the configuration files to train `for cross-testing` inside the folder ``
 
@@ -70,20 +70,20 @@ If are getting summary for `cross-validation`, it will automatically generate th
 
 To get confusion matrix:
 ```bash
-python3 NACHOSv2_get_confusion_matrix --file config_confusionmatrix_cv.yml
+NACHOSv2_get_confusion_matrix --file config_confusionmatrix_cv.yml
 ```
 
 ### Get learning curve
 
 To get learning curve:
 ```bash
-python3 NACHOSv2_get_learning_curve --file config_confusionmatrix_cv.yml
+NACHOSv2_get_learning_curve --file config_confusionmatrix_cv.yml
 ```
 
 ### Get predictions
 
 ```bash
-python3 NACHOSv2_get_predictions --file config_confusionmatrix_cv.yml
+NACHOSv2_get_predictions --file config_confusionmatrix_cv.yml
 ```
 
 ## Troubleshooting
