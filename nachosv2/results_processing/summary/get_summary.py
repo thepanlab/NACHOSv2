@@ -336,8 +336,6 @@ def generate_ct_hp_configurations(best_filepath: Path,
         training_config_dict["validation_fold_list"] = []
         # use_hpo to False
         training_config_dict["use_hpo"] = False
-        # save yml file
-        save_dict_to_yaml(training_config_dict, ct_training_config_path)
 
         if use_hpo:
             # Based on the hp_config_index, load the corresponding hyperparameter configuration
@@ -350,7 +348,10 @@ def generate_ct_hp_configurations(best_filepath: Path,
             hp_config_dict.pop("n_combinations", None)
             del hp_config_dict["patience"]
             
+        # save yml file
         training_config_dict["configuration_filepath"] = str(ct_hp_config_path)
+        save_dict_to_yaml(training_config_dict, ct_training_config_path)
+        
         hp_config_dict["n_epochs"] = n_epochs
         save_dict_to_yaml(hp_config_dict, ct_hp_config_path)
 
