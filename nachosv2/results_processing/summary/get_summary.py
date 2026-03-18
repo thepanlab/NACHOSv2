@@ -354,6 +354,14 @@ def generate_ct_hp_configurations(best_filepath: Path,
             hp_config_dict.pop("n_combinations", None)
             del hp_config_dict["patience"]
 
+        # Verify that checkpoint frequency is equal or less than number of epochs
+        # Otherwise, reduce to number of epochs
+        if "checkpoint_epoch_frequency" in training_config_dict:
+            checkpoint_freq = training_config_dict["checkpoint_epoch_frequency"]
+            if checkpoint_freq > n_epochs:
+                training_config_dict["checkpoint_epoch_frequency"] = int(n_epochs/2) # reduce to half
+                print(f"Checkpoint frequency reduced to {n_epochs} epochs from {checkpoint_freq}.")
+
         # save yml file
         training_config_dict["configuration_filepath"] = str(ct_hp_config_path)
         save_dict_to_yaml(training_config_dict, ct_training_config_path)
