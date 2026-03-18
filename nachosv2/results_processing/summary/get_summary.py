@@ -341,13 +341,19 @@ def generate_ct_hp_configurations(best_filepath: Path,
             # Based on the hp_config_index, load the corresponding hyperparameter configuration
             df_best_hp_config = df_hp_random_search.query("hp_config_index==@hp_config_index")
             hp_config_dict = df_best_hp_config.to_dict(orient='records')[0]
+            
+            # Assuming one value for single learning_rate_scheduler
+            # copy same values to new hp configuration
+            hp_config_dict_initial = get_config(training_config_dict["configuration_filepath"])
+            hp_config_dict["learning_rate_scheduler"] = hp_config_dict_initial["learning_rate_scheduler"]
+            hp_config_dict["learning_rate_scheduler_parameters"] = hp_config_dict_initial["learning_rate_scheduler_parameters"]
         else:
             hp_config_dict = get_config(training_config_dict["configuration_filepath"])
             
             del training_config_dict["validation_fold_list"]
             hp_config_dict.pop("n_combinations", None)
             del hp_config_dict["patience"]
-            
+
         # save yml file
         training_config_dict["configuration_filepath"] = str(ct_hp_config_path)
         save_dict_to_yaml(training_config_dict, ct_training_config_path)
