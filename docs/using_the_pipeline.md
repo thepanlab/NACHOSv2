@@ -65,7 +65,7 @@ To get summary results:
 NACHOSv2_get_summary --file config_summary_cv.yml
 ```
 If are getting summary for `cross-validation`, it will automatically generate the configuration files to train `for cross-testing` inside the folder. Complete list of metrics can be found in 
-[`utils_processing.py`](../setup/utils_processing.py).
+[`utils_processing.py`](../nachosv2/setup/utils_processing.py).
 
 #### Get confusion matrix
 
