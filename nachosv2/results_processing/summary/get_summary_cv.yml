@@ -6,6 +6,7 @@ is_cv_loop: true
 configuration_cv_path: /home/pcallec/NACHOS/nachosv2/training/training_sequential/config_files/OCT_small/oct_small_1.yml
 
 # optional, by default it will use validation accuracy
+# metric_for_best_model: accuracy
 # complete list of metrics in setup/utils_processing
 metrics_list: 
   - balanced_accuracy
