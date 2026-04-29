@@ -407,6 +407,11 @@ def main():
     metric_for_selection = f"avg_validation_{raw_metric}"  # always formatted consistently
     if not is_metric_allowed(raw_metric):
         raise ValueError(f"{raw_metric} is not allowed in list of metrics.")
+    if raw_metric.endswith('_per_class'):
+        raise ValueError(
+            f"'{raw_metric}' returns per-class values and cannot be used as "
+            "metric_for_selection. Use a scalar metric (e.g., 'f1_macro') instead."
+        )
     # ------------------------------
     # Step 3: Define list of metrics to extract
     # ------------------------------

@@ -4,6 +4,7 @@ from sklearn import metrics
 import yaml
 from termcolor import colored
 import pandas as pd
+from nachosv2.setup.utils import get_other_result
 
 """
 Green: indications about where is the training
@@ -41,7 +42,12 @@ metric_functions = {
     'roc_auc_ovr': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovr'),
     'roc_auc_ovo': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovo'),
     'roc_auc_ovr_weighted': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovr', average='weighted'),
-    'roc_auc_ovo_weighted': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovo', average='weighted')
+    'roc_auc_ovo_weighted': lambda y_true, y_pred: metrics.roc_auc_score(y_true, y_pred, multi_class='ovo', average='weighted'),
+    # Per-class metrics (average=None → returns array, one value per class)
+    'f1_per_class':        lambda y_true, y_pred: metrics.f1_score(y_true, y_pred, average=None),
+    'precision_per_class': lambda y_true, y_pred: metrics.precision_score(y_true, y_pred, average=None),
+    'recall_per_class':    lambda y_true, y_pred: metrics.recall_score(y_true, y_pred, average=None),
+    'jaccard_per_class':   lambda y_true, y_pred: metrics.jaccard_score(y_true, y_pred, average=None),
 }
 
 
@@ -112,7 +118,17 @@ def generate_individual_metric(metrics_list: List[str],
                 df_results = pd.read_csv(path)
                 actual = df_results['true_label']
                 predicted = df_results['predicted_class']
-                metrics_dict[f"{partition}_{metric}"] = [metric_functions[metric](actual, predicted)]
+                result = metric_functions[metric](actual, predicted)
+                if hasattr(result, '__len__'):  # per-class: result is an ndarray
+                    df_class_names = get_other_result(path, "class_names")
+                    df_class_names.set_index('index', inplace=True)
+                    series_class_names = df_class_names['class_name']
+                    series_class_names.name = None
+                    for cls_idx, val in zip(sorted(actual.unique()), result):
+                        cls_name = series_class_names[cls_idx]
+                        metrics_dict[f"{partition}_{metric}_{cls_name}"] = [val]
+                else:
+                    metrics_dict[f"{partition}_{metric}"] = [result]
 
     return metrics_dict
 
